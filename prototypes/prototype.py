@@ -539,6 +539,7 @@ class Erl2prototype:
         airoverride.insert(END, '2000')
         airoverride.config(state='disabled')
         airoverride.grid(column=2, row=1, padx='4 0')
+        airoverride.bind('<FocusIn>', self.numpadEntry)
 
         ph2controlsub4frame = ttk.Frame(ph2controlframe, padding='0 2') #, relief='solid', borderwidth=1)
         ph2controlsub4frame.grid(column=1, row=4, padx='2', pady='2', sticky='sw')
@@ -557,6 +558,7 @@ class Erl2prototype:
         co2override.insert(END, '1.00')
         co2override.config(state='disabled')
         co2override.grid(column=2, row=1, padx='4 0')
+        co2override.bind('<FocusIn>', self.numpadEntry)
 
         ph2controlframe.columnconfigure(1, weight=1)
         ph2controlframe.rowconfigure(1, weight=0)
