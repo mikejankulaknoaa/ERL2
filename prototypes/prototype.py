@@ -30,7 +30,7 @@ class NumPad(Toplevel):
     def loadImages(self):
         if len(NumPad.key_images) == 0:
              for label in NumPad.btn_list:
-                 NumPad.key_images.append(PhotoImage(file='/home/ocedadmin/Desktop/img/key' + label + '.png'))
+                 NumPad.key_images.append(PhotoImage(file='../img/key' + label + '.png'))
 
     def createWidgets(self):
         # when first opening, copy the initial value from the field being edited
@@ -180,18 +180,18 @@ class Erl2prototype:
         #root.title('ERL2 Prototype')
 
         # load some images for later display (mock-up purposes only)
-        loadplot1 = Image.open('/home/ocedadmin/Desktop/img/plot-1-285.png')
-        loadplot2 = Image.open('/home/ocedadmin/Desktop/img/plot-2-285.png')
+        loadplot1 = Image.open('../img/plot-1-285.png')
+        loadplot2 = Image.open('../img/plot-2-285.png')
         renderplot1 = ImageTk.PhotoImage(loadplot1)
         renderplot2 = ImageTk.PhotoImage(loadplot2)
 
         # on/off switch images
-        on30 = PhotoImage(file="/home/ocedadmin/Desktop/img/button-green-30.png")
-        off30 = PhotoImage(file="/home/ocedadmin/Desktop/img/button-grey-30.png")
-        lightoff = PhotoImage(file="/home/ocedadmin/Desktop/img/button-grey-30.png")
-        lightheat = PhotoImage(file="/home/ocedadmin/Desktop/img/button-red-30.png")
-        lightchill = PhotoImage(file="/home/ocedadmin/Desktop/img/button-blue-30.png")
-        exit25 = PhotoImage(file="/home/ocedadmin/Desktop/img/x-25.png")
+        on30 = PhotoImage(file="../img/button-green-30.png")
+        off30 = PhotoImage(file="../img/button-grey-30.png")
+        lightoff = PhotoImage(file="../img/button-grey-30.png")
+        lightheat = PhotoImage(file="../img/button-red-30.png")
+        lightchill = PhotoImage(file="../img/button-blue-30.png")
+        exit25 = PhotoImage(file="../img/x-25.png")
 
         # one frame to encompass everything
         # note: padding on sides is 8, but 4 vertically because the two
@@ -765,11 +765,11 @@ root.numpad = None  # NumPad
 root.current_entry = None  # currently selected entry
 
 # argh these won't display properly unless they are kept in global variables
-labelhome = PhotoImage(file='/home/ocedadmin/Desktop/img/label_Home_65.png')
-labeltemp = PhotoImage(file='/home/ocedadmin/Desktop/img/label_Temp_65.png')
-labelph = PhotoImage(file='/home/ocedadmin/Desktop/img/label_pH_65.png')
-labelo2 = PhotoImage(file='/home/ocedadmin/Desktop/img/label_Oxygen_65.png')
-labeldebug = PhotoImage(file='/home/ocedadmin/Desktop/img/label_Debug_65.png')
+labelhome = PhotoImage(file='../img/label_Home_65.png')
+labeltemp = PhotoImage(file='../img/label_Temp_65.png')
+labelph = PhotoImage(file='../img/label_pH_65.png')
+labelo2 = PhotoImage(file='../img/label_Oxygen_65.png')
+labeldebug = PhotoImage(file='../img/label_Debug_65.png')
 
 Erl2prototype(root)
 root.mainloop()
