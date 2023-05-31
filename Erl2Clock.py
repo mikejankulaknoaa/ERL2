@@ -14,16 +14,13 @@ class Erl2Clock():
         self.__clockType = clockType
         self.__withSeconds = withSeconds
 
+        # create the clock's base frame as a child of its parent
         self.__frame = ttk.Frame(self.__parent, padding='2 2', relief='solid', borderwidth=1)
         self.__frame.grid(column=1, row=1, padx='2', pady='2', sticky='ne')
 
-        # add the subframes for time and date
-        self.__clockTime = ttk.Label(self.__frame, text='14:20', font='Arial 16 bold'
-            #, relief='solid', borderwidth=1
-            )
-        self.__clockDate = ttk.Label(self.__frame, text='1.16.23', font='Arial 12'
-            #, relief='solid', borderwidth=1
-            )
+        # add the Label widgets for time and date
+        self.__clockTime = ttk.Label(self.__frame, text='14:20', font='Arial 16 bold')
+        self.__clockDate = ttk.Label(self.__frame, text='1.16.23', font='Arial 12')
 
         # different positioning depending on clock type
         if self.__clockType == 'oneline':
@@ -39,7 +36,7 @@ class Erl2Clock():
             self.__frame.rowconfigure(1,weight=1)
             self.__frame.rowconfigure(2,weight=1)
 
-        # start the clock running
+        # start the loop to update the clock every 1s
         self.myClock()
 
     # this method runs every second to update the clock readout
@@ -52,13 +49,14 @@ class Erl2Clock():
         clockDate = strftime('%-m.%d.%y')
         self.__clockTime.config(text=clockTime)
         self.__clockDate.config(text=clockDate)
+
+        # update the clock display again after 1s
         self.__clockDate.after(1000, self.myClock)
 
 def main():
 
     root = Tk()
-    clock = Erl2Clock(root,clockType='oneline',withSeconds=True)
-    #clock.myClock()
+    clock = Erl2Clock(root)
     root.mainloop()
 
 if __name__ == "__main__": main()

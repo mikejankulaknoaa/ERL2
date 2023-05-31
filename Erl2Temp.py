@@ -19,16 +19,12 @@ class Erl2Temp():
         self.tempC = None
         self.tempF = None
 
-        # stylistic stuff
-        #s = ttk.Style()
-        #s.configure('Erl2Temp.TLabel',foreground='1C4587', font='Arial 40 bold')
-
+        # create the temp display's base frame as a child of its parent
         self.__frame = ttk.Frame(self.__parent, padding='2 2', relief='solid', borderwidth=1)
-        self.__frame.grid(column=1, row=1, padx='2', pady='2', sticky='ne')
+        self.__frame.grid(column=1, row=1, padx='2', pady='2', sticky='nwse')
 
-        # a Label to show the current temperature
+        # add a Label widget to show the current temperature
         self.__tempDisplay = ttk.Label(self.__frame, text='0.0', font='Arial 40 bold', foreground='#1C4587')
-        #self.__tempDisplay.configure(style='Erl2Temp.TLabel')
         self.__tempDisplay.grid(column=1, row=1, sticky='nwse')
         self.__frame.columnconfigure(1,weight=1)
         self.__frame.rowconfigure(1,weight=1)
@@ -42,12 +38,12 @@ class Erl2Temp():
         self.tempMa = ind.get4_20In(self.__stack, self.__channel)
 
         # convert from 4-20 mA to 0-100 degC
-        self.tempC = self.tempMa * 100. / 16. - 25.
+        self.tempC = (self.tempMa - 4.) * 100. / 16.
 
         # convert degC to degF
         self.tempF = self.tempC * 9. / 5. + 32.
 
-        # update the display
+        # update the display (default is degC)
         if self.__units == 'f':
             self.__tempDisplay.config(text=f'{float(round(self.tempF,self.__places)):.{self.__places}f}')
         elif self.__units == 'ma':
@@ -55,7 +51,7 @@ class Erl2Temp():
         else:
             self.__tempDisplay.config(text=f'{float(round(self.tempC,self.__places)):.{self.__places}f}')
 
-        # update again after 1s
+        # update the temperature display again after 1s
         self.__tempDisplay.after(1000, self.readTemp)
 
 def main():
