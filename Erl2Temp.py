@@ -49,11 +49,11 @@ class Erl2Temp():
 
         # update the display
         if self.__units == 'f':
-            self.__tempDisplay.config(text=round(self.tempF,self.__places))
+            self.__tempDisplay.config(text=f'{float(round(self.tempF,self.__places)):.{self.__places}f}')
         elif self.__units == 'ma':
-            self.__tempDisplay.config(text=round(self.tempMa,self.__places))
+            self.__tempDisplay.config(text=f'{float(round(self.tempMa,self.__places)):.{self.__places}f}')
         else:
-            self.__tempDisplay.config(text=round(self.tempC,self.__places))
+            self.__tempDisplay.config(text=f'{float(round(self.tempC,self.__places)):.{self.__places}f}')
 
         # update again after 1s
         self.__tempDisplay.after(1000, self.readTemp)

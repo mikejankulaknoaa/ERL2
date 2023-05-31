@@ -3,6 +3,7 @@
 from tkinter import *
 from tkinter import ttk
 from Erl2Clock import Erl2Clock
+from Erl2Temp import Erl2Temp
 
 class Erl2Tank:
 
@@ -46,7 +47,10 @@ class Erl2Tank:
         mainTabs.add(settingsTab,text='Settings',padding=0)
 
         # add a clock widget
-        clock = Erl2Clock(self.__parent,withSeconds=True)
+        clock = Erl2Clock(self.__parent)
+
+        # add a readout of the current temperature
+        temp = Erl2Temp(dataTab)
 
 def main():
 
