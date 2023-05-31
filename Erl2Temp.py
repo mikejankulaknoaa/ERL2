@@ -20,15 +20,15 @@ class Erl2Temp():
         self.tempF = None
 
         # stylistic stuff
-        s = ttk.Style()
-        s.configure('Erl2Temp.TLabel',foreground='1C4587', font='Arial 40 bold')
+        #s = ttk.Style()
+        #s.configure('Erl2Temp.TLabel',foreground='1C4587', font='Arial 40 bold')
 
         self.__frame = ttk.Frame(self.__parent, padding='2 2', relief='solid', borderwidth=1)
         self.__frame.grid(column=1, row=1, padx='2', pady='2', sticky='ne')
 
         # a Label to show the current temperature
-        self.__tempDisplay = ttk.Label(self.__frame, text='0.0')
-        self.__tempDisplay.configure(style='Erl2Temp.TLabel')
+        self.__tempDisplay = ttk.Label(self.__frame, text='0.0', font='Arial 40 bold', foreground='#1C4587')
+        #self.__tempDisplay.configure(style='Erl2Temp.TLabel')
         self.__tempDisplay.grid(column=1, row=1, sticky='nwse')
         self.__frame.columnconfigure(1,weight=1)
         self.__frame.rowconfigure(1,weight=1)
@@ -39,7 +39,7 @@ class Erl2Temp():
 
     def readTemp(self):
         # milliAmps are read from the input channel
-        self.tempMa = ind.get4_In(self.__stack, self.__channel)
+        self.tempMa = ind.get4_20In(self.__stack, self.__channel)
 
         # convert from 4-20 mA to 0-100 degC
         self.tempC = self.tempMa * 100. / 16. - 25.
