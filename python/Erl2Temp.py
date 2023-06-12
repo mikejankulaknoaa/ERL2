@@ -3,6 +3,7 @@
 from tkinter import *
 from tkinter import ttk
 import megaind as ind
+from Erl2Log import Erl2Log
 
 # ProSense Pt100 temperature transmitter XTP25N-100-0100C
 class Erl2Temp():
@@ -18,6 +19,11 @@ class Erl2Temp():
         self.tempMa = None
         self.tempC = None
         self.tempF = None
+
+        # start a data/log file for the sensor; we will track milliAmps and deg Celsius
+        #print(f'Erl2Temp.__init__: initializing dataLog')
+        self.dataLog = Erl2Log(logType='sensor', logName='temp') #,
+                               #logHeaders=('Temp-mA', 'Temp-degC'))
 
         # create the temp display's base frame as a child of its parent
         self.__frame = ttk.Frame(self.__parent, padding='2 2', relief='solid', borderwidth=1)
@@ -53,6 +59,9 @@ class Erl2Temp():
 
         # update the temperature display again after 1s
         self.__tempDisplay.after(1000, self.readTemp)
+
+        # send the new temperature data to the log
+        self.dataLog.writeData(self.tempMa, self.tempC)
 
 def main():
 
