@@ -3,16 +3,24 @@
 from tkinter import *
 from tkinter import ttk
 from time import strftime
+from Erl2Config import Erl2Config
 
 # clock/calendar widget adapted from an example found at
 # https://www.geeksforgeeks.org/python-create-a-digital-clock-using-tkinter/#
 
 class Erl2Clock():
 
-    def __init__(self, parent, clockType='oneline', withSeconds=False):
+    def __init__(self, parent, clockType='oneline', withSeconds=False, config=None):
         self.__parent = parent
         self.__clockType = clockType
         self.__withSeconds = withSeconds
+        self.config = config
+
+        # read in the system configuration file if needed
+        if self.config is None:
+            self.config = Erl2Config()
+            if 'tank' in self.config.sections() and 'id' in self.config['tank']:
+                print (f"Erl2Clock: Tank Id is [{self.config['tank']['id']}]")
 
         # create the clock's base frame as a child of its parent
         self.__frame = ttk.Frame(self.__parent, padding='2 2', relief='solid', borderwidth=1)

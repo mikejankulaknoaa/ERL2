@@ -1,4 +1,6 @@
 __pycache__
+._*
 .DS_Store
-zTemplate.py
+erl2.conf
+z*.py
 log/

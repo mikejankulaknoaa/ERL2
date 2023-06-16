@@ -1,0 +1,80 @@
+[system]
+
+# logging to file on/off
+fileLogging = True
+
+#### Default Project
+###project = ERL2 Development
+
+
+[tank]
+
+# Tank Identifier
+id = Tank 0
+
+#### Physical Location
+###location = ERL2
+
+
+[temperature]
+
+# temperature module enabled?
+enabled = True
+
+# sampling: frequency (seconds)
+# how often the sensor is sampled; not all values may be saved in memory/files
+sampleFrequency = 5
+
+# sampling: retention (seconds)
+# how long data from the sensor are held in memory; 86400s is one day
+sampleRetention = 86400
+
+# logging: frequency (seconds)
+# controls how often measured values are saved in memory and written to log files
+loggingFrequency = 300
+
+# valid range: values outside of this range will be considered errors
+validRange = [10.0, 40.0]
+
+# default temperature setpoint (degrees Celsius)
+setpointDefault = 25.0
+
+# default temperature offset (degrees Celsius)
+# i.e. the hysteresis parameter
+offsetDefault = 0.1
+
+# default dynamic program (24 values, degrees Celsisu)
+# this is a sine shape running between 25 degC (6am low point) and 29 degC (6pm high point)
+dynamicDefault = [27.0, 26.5, 26.0, 25.6, 25.3, 25.1, 25.0, 25.1, 25.3, 25.6, 26.0, 26.5, 27.0, 27.5, 28.0, 28.4, 28.7, 28.9, 29.0, 28.9, 28.7, 28.4, 28.0, 27.5]
+
+
+[pH]
+
+# pH module enabled?
+enabled = True
+
+# sampling: frequency (seconds)
+# how often the sensor is sampled; not all values may be saved in memory/files
+sampleFreq = 300
+
+# sampling: retention (seconds)
+# how long data from the sensor are held in memory; 86400s is one day
+sampleRetention = 86400
+
+# logging: frequency (seconds)
+# controls how often measured values are saved in memory and written to log files
+loggingFreq = 300
+
+# valid range: values outside of this range will be considered errors
+validRange = [6.00, 9.00]
+
+# default pH setpoint (total pH)
+setpointDefault = 7.80
+
+# default pH offset (total pH)
+# i.e. the hysteresis parameter
+offsetDefault = 0.01
+
+# default dynamic program (24 values, degrees Celsisu)
+# this is a sine shape running between 7.95 (6am low point) and 8.05 (6pm high point)
+dynamicDefault = [8.00, 7.99, 7.98, 7.96, 7.96, 7.95, 7.95, 7.95, 7.96, 7.96, 7.98, 7.99, 8.00, 8.01, 8.03, 8.04, 8.04, 8.05, 8.05, 8.05, 8.04, 8.04, 8.03, 8.01]

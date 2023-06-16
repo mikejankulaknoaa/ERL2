@@ -3,12 +3,20 @@
 from tkinter import *
 from tkinter import ttk
 from Erl2Clock import Erl2Clock
-from Erl2Temp import Erl2Temp
+from Erl2Config import Erl2Config
+from Erl2Temperature import Erl2Temperature
 
 class Erl2Tank:
 
-    def __init__(self, parent):
+    def __init__(self, parent, config=None):
         self.__parent = parent
+        self.config = config
+
+        # read in the system configuration file if needed
+        if self.config is None:
+            self.config = Erl2Config()
+            if 'tank' in self.config.sections() and 'id' in self.config['tank']:
+                print (f"Erl2Tank: Tank Id is [{self.config['tank']['id']}]")
 
         # stylistic stuff
         s = ttk.Style()
@@ -47,10 +55,10 @@ class Erl2Tank:
         mainTabs.add(settingsTab,text='Settings',padding=0)
 
         # add a clock widget
-        clock = Erl2Clock(self.__parent)
+        clock = Erl2Clock(self.__parent, config=self.config)
 
         # add a readout of the current temperature
-        temp = Erl2Temp(dataTab)
+        temp = Erl2Temperature(dataTab, config=self.config)
 
 def main():
 
