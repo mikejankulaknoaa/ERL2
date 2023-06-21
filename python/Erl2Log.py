@@ -8,10 +8,10 @@ from Erl2Config import Erl2Config
 
 class Erl2Log():
 
-    def __init__(self, logType='system', logName='default', config=None):
+    def __init__(self, logType='system', logName='default', erl2conf=None):
         self.__logType = logType
         self.__logName = logName
-        self.config = config
+        self.__erl2conf = erl2conf
 
         # we'll keep a certain number of measurements resident in-memory for plotting
         self.history = []
@@ -21,20 +21,20 @@ class Erl2Log():
         try:
             assert sys.version_info > (3,7)
         except:
-            print("Erl2Log: Python 3.7 or higher is required for this system")
+            print (f"{self.__class__.__name__}: Error: Python 3.7 or higher is required for this system")
             raise
 
         # read in the system configuration file if needed
-        if self.config is None:
-            self.config = Erl2Config()
-            if 'tank' in self.config.sections() and 'id' in self.config['tank']:
-                print (f"Erl2Log: Tank Id is [{self.config['tank']['id']}]")
+        if self.__erl2conf is None:
+            self.__erl2conf = Erl2Config()
+            if 'tank' in self.__erl2conf.sections() and 'id' in self.__erl2conf['tank']:
+                print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.__erl2conf['tank']['id']}]")
 
         # determine location of main logging directory
         try:
-            self.__logDir = self.config['system']['logDir'] + '/' + self.__logType
+            self.__logDir = self.__erl2conf['system']['logDir'] + '/' + self.__logType
         except Exception as e:
-            print(f"Erl2Log: Could not determine location of main logging directory: {e}")
+            print (f"{self.__class__.__name__}: Error: Could not determine location of main logging directory: {e}")
             raise
 
         # internal attributes
@@ -42,13 +42,13 @@ class Erl2Log():
         self.__logData = self.__logDir + '/' + self.__logName + '.dat'
 
         # initial directories
-        if not os.path.isdir(self.config['system']['logDir']):
-            os.makedirs(self.config['system']['logDir'])
+        if not os.path.isdir(self.__erl2conf['system']['logDir']):
+            os.makedirs(self.__erl2conf['system']['logDir'])
         if not os.path.isdir(self.__logDir):
             os.makedirs(self.__logDir)
 
         # initial messaging
-        self.writeMessage(f'Erl2Log[{self.__logType}][{self.__logName}]: log initialized')
+        self.writeMessage(f'{self.__class__.__name__}[{self.__logType}][{self.__logName}]: log initialized')
 
         # are there any data records to be read in?
         if os.path.isfile(self.__logData) and os.stat(self.__logData).st_size > 0:
@@ -59,14 +59,14 @@ class Erl2Log():
                 self.history = list(r)
 
             # calculate the oldest timestamp that should be kept in memory
-            oldest = datetime.datetime.utcnow().timestamp() - self.config['temperature']['sampleRetention']
+            oldest = datetime.datetime.utcnow().timestamp() - self.__erl2conf['temperature']['sampleRetention']
 
             # delete any historical data older than the retention timeframe
-            self.history = [ x for x in self.history if datetime.datetime.strptime(x['Timestamp'], self.config['system']['dtFormat']).timestamp() > oldest ]
+            self.history = [ x for x in self.history if datetime.datetime.strptime(x['Timestamp'], self.__erl2conf['system']['dtFormat']).timestamp() > oldest ]
 
         # make a note if we've reloaded anything from memory
         if len(self.history) > 0:
-            self.writeMessage(f'Erl2Log[{self.__logType}][{self.__logName}]: loaded [{len(self.history)}] record(s) from existing data files')
+            self.writeMessage(f'{self.__class__.__name__}[{self.__logType}][{self.__logName}]: loaded [{len(self.history)}] record(s) from existing data files')
 
     def writeData(self, data):
 
@@ -74,10 +74,10 @@ class Erl2Log():
         self.history.append(data)
 
         # calculate the oldest timestamp that should be kept in memory
-        oldest = datetime.datetime.utcnow().timestamp() - self.config['temperature']['sampleRetention']
+        oldest = datetime.datetime.utcnow().timestamp() - self.__erl2conf['temperature']['sampleRetention']
 
         # delete any historical data older than the retention timeframe
-        self.history = [ x for x in self.history if datetime.datetime.strptime(x['Timestamp'], self.config['system']['dtFormat']).timestamp() > oldest ]
+        self.history = [ x for x in self.history if datetime.datetime.strptime(x['Timestamp'], self.__erl2conf['system']['dtFormat']).timestamp() > oldest ]
 
         # finally, write the new data point to the data file
         try:
@@ -101,12 +101,12 @@ class Erl2Log():
                 w.writerow(data)
 
         except Exception as e:
-            print(f'Debug Erl2Log.__writeData() error: {str(e)}')
+            print (f'{self.__class__.__name__}: Error: __writeData(): {str(e)}')
 
     def writeMessage(self, *args):
         try:
             # create a list starting with the current timestamp
-            writeList = [datetime.datetime.utcnow().strftime(self.config['system']['dtFormat'])]
+            writeList = [datetime.datetime.utcnow().strftime(self.__erl2conf['system']['dtFormat'])]
 
             # add whatever parameters were passed
             if len(args) > 0:
@@ -119,4 +119,4 @@ class Erl2Log():
                 w.writerow(writeList)
 
         except Exception as e:
-            print(f'Debug Erl2Log.__writeMessage({str(args)}) error: {str(e)}')
+            print (f'{self.__class__.__name__}: Error: __writeMessage({str(args)}): {str(e)}')
