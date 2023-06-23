@@ -6,13 +6,14 @@ from configparser import ConfigParser
 
 class Erl2Config():
 
+    # top-level categories in the erl2.conf file
+    CATEGORIES = [ 'system', 'tank', 'temperature', 'pH', 'heater', 'chiller']
+
     # use these parameter strings as defaults if they are missing from the erl2.conf file
     def __setDefaults(self):
         self.__default = {}
-        self.__default['system'] = {}
-        self.__default['tank'] = {}
-        self.__default['temperature'] = {}
-        self.__default['pH'] = {}
+        for c in self.CATEGORIES:
+            self.__default[c] = {}
 
         self.__default['system']['fileLogging'] = 'True'
 
@@ -20,7 +21,7 @@ class Erl2Config():
 
         self.__default['temperature']['enabled'] = 'True'
         self.__default['temperature']['sampleFrequency'] = '5'
-        self.__default['temperature']['sampleRetention'] = '86400'
+        self.__default['temperature']['memoryRetention'] = '86400'
         self.__default['temperature']['loggingFrequency'] = '300'
         self.__default['temperature']['validRange'] = '[10.0, 40.0]'
         self.__default['temperature']['setpointDefault'] = '25.0'
@@ -32,7 +33,7 @@ class Erl2Config():
 
         self.__default['pH']['enabled'] = 'True'
         self.__default['pH']['sampleFrequency'] = '300'
-        self.__default['pH']['sampleRetention'] = '86400'
+        self.__default['pH']['memoryRetention'] = '86400'
         self.__default['pH']['loggingFrequency'] = '300'
         self.__default['pH']['validRange'] = '[6.00, 9.00]'
         self.__default['pH']['setpointDefault'] = '7.80'
@@ -42,6 +43,12 @@ class Erl2Config():
                                                   '8.00, 8.01, 8.03, 8.04, 8.04, 8.05, '
                                                   '8.05, 8.05, 8.04, 8.04, 8.03, 8.01]')
 
+        self.__default['heater']['loggingFrequency'] = '300'
+        self.__default['heater']['memoryRetention'] = '86400'
+
+        self.__default['chiller']['loggingFrequency'] = '300'
+        self.__default['chiller']['memoryRetention'] = '86400'
+
     def __init__(self):
 
         # initialize configuration object that reads in erl2.conf parameters
@@ -49,10 +56,8 @@ class Erl2Config():
 
         # initialize internal parameter dictionary
         self.__erl2conf = {}
-        self.__erl2conf['system'] = {}
-        self.__erl2conf['tank'] = {}
-        self.__erl2conf['temperature'] = {}
-        self.__erl2conf['pH'] = {}
+        for c in self.CATEGORIES:
+            self.__erl2conf[c] = {}
 
         # the python source file that is currently executing
         thisFile = os.path.realpath(__file__)
@@ -94,7 +99,7 @@ class Erl2Config():
         else:
             raise RuntimeError('Cannot find the erl2.conf configuration file')
 
-        # explicitly define a datetime format to ensure reading/writing is consistent
+        # explicitly define a date+time format to ensure reading/writing is consistent
         # (this one cannot be customized in the erl2.conf file)
         self.__erl2conf['system']['dtFormat'] = '%Y-%m-%d %H:%M:%S.%f'
 
@@ -147,7 +152,7 @@ class Erl2Config():
             try:
                 self.__erl2conf[sensorType]['enabled'] = in_conf.getboolean(sensorType,'enabled')
             except:
-                raise TypeError(f"{self.__class__.__name__}: [sensorType]['enabled'] = [{in_conf[sensorType]['enabled']}] is not boolean")
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['enabled'] = [{in_conf[sensorType]['enabled']}] is not boolean")
 
             if 'sampleFrequency' not in in_conf[sensorType]:
                 in_conf[sensorType]['sampleFrequency'] = self.__default[sensorType]['sampleFrequency']
@@ -156,16 +161,16 @@ class Erl2Config():
                 if self.__erl2conf[sensorType]['sampleFrequency'] <= 0:
                     raise TypeError
             except:
-                raise TypeError(f"{self.__class__.__name__}: [sensorType]['sampleFrequency'] = [{self.conf[sensorType]['sampleFrequency']}] is not a positive integer")
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['sampleFrequency'] = [{self.__erl2conf[sensorType]['sampleFrequency']}] is not a positive integer")
 
-            if 'sampleRetention' not in in_conf[sensorType]:
-                in_conf[sensorType]['sampleRetention'] = self.__default[sensorType]['sampleRetention']
+            if 'memoryRetention' not in in_conf[sensorType]:
+                in_conf[sensorType]['memoryRetention'] = self.__default[sensorType]['memoryRetention']
             try:
-                self.__erl2conf[sensorType]['sampleRetention'] = int(in_conf[sensorType]['sampleRetention'])
-                if self.__erl2conf[sensorType]['sampleRetention'] <= 0:
+                self.__erl2conf[sensorType]['memoryRetention'] = int(in_conf[sensorType]['memoryRetention'])
+                if self.__erl2conf[sensorType]['memoryRetention'] <= 0:
                     raise TypeError
             except:
-                raise TypeError(f"{self.__class__.__name__}: [sensorType]['sampleRetention'] = [{self.conf[sensorType]['sampleRetention']}] is not a positive integer")
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['memoryRetention'] = [{self.__erl2conf[sensorType]['memoryRetention']}] is not a positive integer")
 
             if 'loggingFrequency' not in in_conf[sensorType]:
                 in_conf[sensorType]['loggingFrequency'] = self.__default[sensorType]['loggingFrequency']
@@ -174,7 +179,7 @@ class Erl2Config():
                 if self.__erl2conf[sensorType]['loggingFrequency'] <= 0:
                     raise TypeError
             except:
-                raise TypeError(f"{self.__class__.__name__}: [sensorType]['loggingFrequency'] = [{self.conf[sensorType]['loggingFrequency']}] is not a positive integer")
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['loggingFrequency'] = [{self.__erl2conf[sensorType]['loggingFrequency']}] is not a positive integer")
 
             if 'validRange' not in in_conf[sensorType]:
                 in_conf[sensorType]['validRange'] = self.__default[sensorType]['validRange']
@@ -189,7 +194,7 @@ class Erl2Config():
                 if len([ x for x in self.__erl2conf[sensorType]['validRange'] if type(x) is not float ]) > 1:
                     raise
             except:
-                raise TypeError(f"{self.__class__.__name__}: [sensorType]['validRange'] = [{in_conf[sensorType]['validRange']}] is not a list of 2 floats")
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['validRange'] = [{in_conf[sensorType]['validRange']}] is not a list of 2 floats")
 
             if 'setpointDefault' not in in_conf[sensorType]:
                 in_conf[sensorType]['setpointDefault'] = self.__default[sensorType]['setpointDefault']
@@ -200,7 +205,7 @@ class Erl2Config():
                         or self.__erl2conf[sensorType]['setpointDefault'] > self.__erl2conf[sensorType]['validRange'][1]):
                     raise
             except:
-                raise TypeError(f"{self.__class__.__name__}: [sensorType]['setpointDefault'] = [{in_conf[sensorType]['setpointDefault']}] is not a float within the valid range for this sensor")
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['setpointDefault'] = [{in_conf[sensorType]['setpointDefault']}] is not a float within the valid range for this sensor")
 
             if 'offsetDefault' not in in_conf[sensorType]:
                 in_conf[sensorType]['offsetDefault'] = self.__default[sensorType]['offsetDefault']
@@ -209,7 +214,7 @@ class Erl2Config():
                 if self.__erl2conf[sensorType]['offsetDefault'] <= 0.:
                     raise
             except:
-                raise TypeError(f"{self.__class__.__name__}: [sensorType]['offsetDefault'] = [{in_conf[sensorType]['offsetDefault']}] is not a positive float")
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['offsetDefault'] = [{in_conf[sensorType]['offsetDefault']}] is not a positive float")
 
             if 'dynamicDefault' not in in_conf[sensorType]:
                 in_conf[sensorType]['dynamicDefault'] = self.__default[sensorType]['dynamicDefault']
@@ -228,7 +233,28 @@ class Erl2Config():
                          or x > self.__erl2conf[sensorType]['validRange'][1] ]) > 1:
                     raise
             except:
-                raise TypeError(f"{self.__class__.__name__}: [sensorType]['dynamicDefault'] = [{in_conf[sensorType]['dynamicDefault']}] is not a list of 24 floats within the valid range for this sensor")
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['dynamicDefault'] = [{in_conf[sensorType]['dynamicDefault']}] is not a list of 24 floats within the valid range for this sensor")
+
+        # heater and chiller share a lot of the same parameter logic
+
+        for controlType in ['heater', 'chiller']:
+            if 'loggingFrequency' not in in_conf[controlType]:
+                in_conf[controlType]['loggingFrequency'] = self.__default[controlType]['loggingFrequency']
+            try:
+                self.__erl2conf[controlType]['loggingFrequency'] = int(in_conf[controlType]['loggingFrequency'])
+                if self.__erl2conf[controlType]['loggingFrequency'] <= 0:
+                    raise TypeError
+            except:
+                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['loggingFrequency'] = [{self.__erl2conf[controlType]['loggingFrequency']}] is not a positive integer")
+
+            if 'memoryRetention' not in in_conf[controlType]:
+                in_conf[controlType]['memoryRetention'] = self.__default[controlType]['memoryRetention']
+            try:
+                self.__erl2conf[controlType]['memoryRetention'] = int(in_conf[controlType]['memoryRetention'])
+                if self.__erl2conf[controlType]['memoryRetention'] <= 0:
+                    raise TypeError
+            except:
+                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['memoryRetention'] = [{self.__erl2conf[controlType]['memoryRetention']}] is not a positive integer")
 
     # override [] syntax to return dictionaries of parameter values
     def __getitem__(self, key):
