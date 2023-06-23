@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 
 import csv
-import datetime
+from datetime import datetime as dt
 import os
 import sys
 from Erl2Config import Erl2Config
@@ -59,10 +59,10 @@ class Erl2Log():
                 self.history = list(r)
 
             # calculate the oldest timestamp that should be kept in memory
-            oldest = datetime.datetime.utcnow().timestamp() - self.__erl2conf['temperature']['sampleRetention']
+            oldest = dt.utcnow().timestamp() - self.__erl2conf['temperature']['memoryRetention']
 
             # delete any historical data older than the retention timeframe
-            self.history = [ x for x in self.history if datetime.datetime.strptime(x['Timestamp'], self.__erl2conf['system']['dtFormat']).timestamp() > oldest ]
+            self.history = [ x for x in self.history if dt.strptime(x['Timestamp'], self.__erl2conf['system']['dtFormat']).timestamp() > oldest ]
 
         # make a note if we've reloaded anything from memory
         if len(self.history) > 0:
@@ -74,10 +74,10 @@ class Erl2Log():
         self.history.append(data)
 
         # calculate the oldest timestamp that should be kept in memory
-        oldest = datetime.datetime.utcnow().timestamp() - self.__erl2conf['temperature']['sampleRetention']
+        oldest = dt.utcnow().timestamp() - self.__erl2conf['temperature']['memoryRetention']
 
         # delete any historical data older than the retention timeframe
-        self.history = [ x for x in self.history if datetime.datetime.strptime(x['Timestamp'], self.__erl2conf['system']['dtFormat']).timestamp() > oldest ]
+        self.history = [ x for x in self.history if dt.strptime(x['Timestamp'], self.__erl2conf['system']['dtFormat']).timestamp() > oldest ]
 
         # finally, write the new data point to the data file
         try:
@@ -106,7 +106,7 @@ class Erl2Log():
     def writeMessage(self, *args):
         try:
             # create a list starting with the current timestamp
-            writeList = [datetime.datetime.utcnow().strftime(self.__erl2conf['system']['dtFormat'])]
+            writeList = [dt.utcnow().strftime(self.__erl2conf['system']['dtFormat'])]
 
             # add whatever parameters were passed
             if len(args) > 0:
