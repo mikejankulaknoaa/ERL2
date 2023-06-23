@@ -1,7 +1,6 @@
 #! /usr/bin/python3
 
-from datetime import datetime
-from random import random
+from datetime import datetime as dt
 from tkinter import *
 from tkinter import ttk
 from Erl2Config import Erl2Config
@@ -9,18 +8,18 @@ from Erl2Log import Erl2Log
 
 class Erl2Sensor():
 
-    def __init__(self, parent, clones=[], type='generic', row=0, column=0, erl2conf=None):
+    def __init__(self, parent, clones=[], type='generic', parameter=None, places=1, row=0, column=0, erl2conf=None):
         self.__parent = parent
         self.__clones = clones
         self.__sensorType = type
+        self.__parameter = parameter
+        self.__places = places
         self.__row = row
         self.__column = column
         self.__erl2conf = erl2conf
 
         # these attributes are merely placeholders
         self.value = {}
-        self.value['generic1'] = None
-        self.value['generic2'] = None
 
         # remember what widgets are active in showing the sensor's current value
         self.__sensorDisplays = []
@@ -44,8 +43,8 @@ class Erl2Sensor():
         for par in [self.__parent] + self.__clones:
 
             # create the display widget's base frame as a child of its parent
-            f = ttk.Frame(par, padding='2 2', relief='solid', borderwidth=0)
-            f.grid(row=self.__row, column=self.__column, padx='2', pady='2', sticky='nwse')
+            f = ttk.Frame(par, padding='0 0', relief='solid', borderwidth=0)
+            f.grid(row=self.__row, column=self.__column, padx='2', pady='0', sticky='nwse')
 
             # add a Label widget to show the current sensor value
             l = ttk.Label(f, text='0.0', font='Arial 40 bold', foreground='#1C4587')
@@ -62,8 +61,8 @@ class Erl2Sensor():
         m = self.measure()
 
         # remember the timestamp at the exact moment of measurement
-        self.datetime = datetime.utcnow()
-        m = {'Timestamp': self.datetime.strftime(self.__erl2conf['system']['dtFormat']), **m}
+        currentTime = dt.utcnow()
+        m = {'Timestamp': currentTime.strftime(self.__erl2conf['system']['dtFormat']), **m}
 
         # update the display widget(s)
         self.updateDisplays(self.__sensorDisplays)
@@ -73,12 +72,12 @@ class Erl2Sensor():
                   (
                     (
                       int(
-                        self.datetime.timestamp()                               # timestamp in seconds
+                        currentTime.timestamp()                                 # timestamp in seconds
                         / self.__erl2conf[self.__sensorType]['sampleFrequency'] # convert to number of intervals of length sampleFrequency
                       )                                                         # truncate to beginning of previous interval (past)
                     + 1)                                                        # advance by one time interval (future)
                     * self.__erl2conf[self.__sensorType]['sampleFrequency']     # convert back to seconds/timestamp
-                    - self.datetime.timestamp()                                 # calculate how many seconds from now to next interval
+                    - currentTime.timestamp()                                   # calculate how many seconds from now to next interval
                     )
                   * 1000)                                                       # convert to milliseconds, then truncate to integer
                 )
@@ -90,42 +89,37 @@ class Erl2Sensor():
         if self.__erl2conf['system']['fileLogging']:
 
             # if we've passed the next file-writing interval time, write it
-            if self.__nextFileTime is not None and self.datetime.timestamp() > self.__nextFileTime:
+            if self.__nextFileTime is not None and currentTime.timestamp() > self.__nextFileTime:
 
                 # send the new sensor data to the log (in dictionary form)
                 if self.dataLog is not None:
                     self.dataLog.writeData(m)
 
             # if the next file-writing interval time is empty or in the past, update it
-            if self.__nextFileTime is None or self.datetime.timestamp() > self.__nextFileTime:
+            if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
                 self.__nextFileTime = (
                   (
                     int(
-                      self.datetime.timestamp()                                # timestamp in seconds
+                      currentTime.timestamp()                                  # timestamp in seconds
                       / self.__erl2conf[self.__sensorType]['loggingFrequency'] # convert to number of intervals of length loggingFrequency
                     )                                                          # truncate to beginning of previous interval (past)
                   + 1)                                                         # advance by one time interval (future)
                   * self.__erl2conf[self.__sensorType]['loggingFrequency']     # convert back to seconds/timestamp
                 )
 
-    def measure(self):
-        # mimic a sensor reading
-        self.value['generic1'] = random()
-
-        # mimic a derived sensor value
-        self.value['generic2'] = (1. - self.generic1) * 10.
-
-        # return the measurement result as a dict
-        # (key values will be used as headers in the output csv)
-        return {'generic1': self.value['generic1'],
-                'generic2': self.value['generic2']}
-
     def updateDisplays(self, widgets):
         # loop through all placements of this sensor's displays
         for w in widgets:
 
             # update the display
-            w.config(text=f"{float(round(self.value['generic1'],3)):.{3}f}")
+            if self.__parameter in self.value:
+                w.config(text=f"{float(round(self.value[self.__parameter],self.__places)):.{self.__places}f}")
+            else:
+                raise AttributeError(f"{self.__class__.__name__}: Error: no key named [{self.__parameter}] in self.value")
+
+    # override this method in the child classes
+    def measure(self):
+        return {}
 
 def main():
 
