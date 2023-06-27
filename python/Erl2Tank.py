@@ -171,10 +171,11 @@ class Erl2Tank:
             ).grid(row=1, column=0, sticky='nw')
 
         # readout displays of the current barometric pressure, as reported by the pico-pH
+        # ACTUALLY just show pH, for ERL2 testing 6/27/2023
         self.__sensors['pH'] = Erl2pH([{'parent':self.__frames['Data'][1][0],'row':1,'column':0},
                                        {'parent':self.__frames['pH'][0][0],'row':1,'column':0}],
                                       port='/dev/ttyAMA1',
-                                      parameter='pressure',
+                                      #parameter='pressure',
                                       places=0,
                                       tempSensor=self.__sensors['temperature'],
                                       erl2conf=self.__erl2conf)
