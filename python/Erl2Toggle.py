@@ -4,27 +4,35 @@ from datetime import datetime as dt
 from tkinter import *
 from tkinter import ttk
 from Erl2Config import Erl2Config
+from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
 
 class Erl2Toggle():
 
-    def __init__(self, parent, clones=[], disableOn=[], type='generic', row=0, column=0, label='Generic', offImage='button-grey-30.png', onImage='button-green-30.png', erl2conf=None, img=None):
-        self.__parent = parent
-        self.__clones = clones
-        self.__disableOn = disableOn
+    def __init__(self,
+                 type='generic',
+                 displayLocs=[],
+                 buttonLocs=[],
+                 displayImages=[],
+                 buttonImages=[],
+                 label='Generic',
+                 erl2conf=None,
+                 img=None):
+
         self.__controlType = type
-        self.__row = row
-        self.__column = column
+        self.__displayLocs = displayLocs
+        self.__buttonLocs = buttonLocs
+        self.displayImages = displayImages
+        self.buttonImages = buttonImages
         self.__label = label
-        self.offImage = offImage
-        self.onImage = onImage
         self.__erl2conf = erl2conf
         self.img = img
 
         # remember what widgets are active for this control
-        self.__controlWidgets = []
+        self.__displayWidgets = []
+        self.__buttonWidgets = []
 
-        # and whether the control is allowed to be active or not
+        # and whether the buttons are allowed to be active or not
         self.enabled = True
 
         # for a toggle control, we track on/off state and history
@@ -33,7 +41,7 @@ class Erl2Toggle():
         self.offSeconds = []
         self.onSeconds = []
 
-        # keep track of when the file-writing intervals are
+        # keep track of when the next file-writing interval is
         self.__nextFileTime = None
 
         # read in the system configuration file if needed
@@ -47,8 +55,8 @@ class Erl2Toggle():
             self.img = Erl2Image(erl2conf=self.__erl2conf)
 
         # load the associated images; just use the image name as the key
-        self.img.addImage(self.offImage,self.offImage)
-        self.img.addImage(self.onImage,self.onImage)
+        for i in self.displayImages + self.buttonImages:
+            self.img.addImage(i,i)
 
         # start a data/log file for the control
         if self.__erl2conf['system']['fileLogging']:
@@ -56,25 +64,51 @@ class Erl2Toggle():
         else:
             self.dataLog = None
 
-        # loop through the control's primary parent and all of its clones
-        for par in [self.__parent] + self.__clones:
+        # loop through the list of needed display widgets for this control
+        for loc in self.__displayLocs:
 
             # create the display widget's base frame as a child of its parent
-            f = ttk.Frame(par, padding='2 2', relief='solid', borderwidth=0)
-            f.grid(row=self.__row, column=self.__column, padx='2', pady='2', sticky='nwse')
+            f = ttk.Frame(loc['parent'], padding='2 2', relief='solid', borderwidth=0)
+            f.grid(row=loc['row'], column=loc['column'], padx='2', pady='2', sticky='nwse')
 
+            # add a Label widget to show the current control value
+            l = ttk.Label(f, image=self.img[self.displayImages[0]])
+            l.grid(row=0, column=1, padx='2 2', sticky='e')
+
+            # this is the (text) Label shown beside the (image) display widget
             ttk.Label(f, text=self.__label, font='Arial 16'
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, padx='2 2', sticky='w')
-            b = Button(f, image=self.img[self.offImage], height=40, width=40, bd=0, highlightthickness=0, activebackground='#DBDBDB', command=self.changeState)
-            b.grid(row=0, column=1, padx='2 2', sticky='e')
 
             f.rowconfigure(0,weight=1)
             f.columnconfigure(0,weight=1)
             f.columnconfigure(1,weight=0)
 
-            # keep a list of widgets for this control
-            self.__controlWidgets.append(b)
+            # keep a list of display widgets for this control
+            self.__displayWidgets.append(l)
+
+        # loop through the list of needed button widgets for this control
+        for loc in self.__buttonLocs:
+
+            # create the button widget's base frame as a child of its parent
+            f = ttk.Frame(loc['parent'], padding='2 2', relief='solid', borderwidth=0)
+            f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nwse')
+
+            # add a Button widget to change the state of the control
+            b = Button(f, image=self.img[self.buttonImages[0]], height=40, width=40, bd=0, highlightthickness=0, activebackground='#DBDBDB', command=self.changeState)
+            b.grid(row=0, column=1, padx='2 2', sticky='e')
+
+            # this is the (text) Label shown beside the (image) button widget
+            ttk.Label(f, text=self.__label, font='Arial 16'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, padx='2 2', sticky='w')
+
+            f.rowconfigure(0,weight=1)
+            f.columnconfigure(0,weight=1)
+            f.columnconfigure(1,weight=0)
+
+            # keep a list of button widgets for this control
+            self.__buttonWidgets.append(b)
 
         # now set each control's enabled state individually
         self.setActive(self.enabled)
@@ -131,10 +165,10 @@ class Erl2Toggle():
             self.__nextFileTime = (
               (
                 int(
-                  currentTime.timestamp()                                   # timestamp in seconds
+                  currentTime.timestamp()                                  # timestamp in seconds
                   / self.__erl2conf[self.__controlType]['loggingFrequency'] # convert to number of intervals of length loggingFrequency
-                )                                                           # truncate to beginning of previous interval (past)
-              + 1)                                                          # advance by one time interval (future)
+                )                                                          # truncate to beginning of previous interval (past)
+              + 1)                                                         # advance by one time interval (future)
               * self.__erl2conf[self.__controlType]['loggingFrequency']     # convert back to seconds/timestamp
             )
 
@@ -142,55 +176,60 @@ class Erl2Toggle():
         delay = int((self.__nextFileTime - currentTime.timestamp())*1000)
 
         # update the display widget(s) again after waiting an appropriate number of milliseconds
-        self.__controlWidgets[0].after(delay, self.updateLog)
+        self.__displayWidgets[0].after(delay, self.updateLog)
 
         #print (f"{self.__class__.__name__}: Debug: updateLog() to be called again after [{float(delay)/1000.}] seconds")
 
     def setActive(self, enabled=True):
 
-        #print (f"{self.__class__.__name__}: Debug: setActive([{enabled}]) called")
-        
-        # loop through all placements of this control's widgets
+        # loop through all placements of this control's button widgets
         wcount = 0
-        for w in self.__controlWidgets:
+        for w in self.__buttonWidgets:
 
             # remember if controls are enabled or not
             self.enabled = enabled
 
-            # figure out if each individual widget should be enabled
-            disabledAlways = (wcount < len(self.__disableOn) and self.__disableOn[wcount])
-            disableThis = disabledAlways or not self.enabled
-
-            #print (f"{self.__class__.__name__}: Debug: setActive() wcount [{wcount}] disableThis set to [{disableThis}]")
-
             # update the control's enabled state
-            if disableThis:
-                w.config(command=False)
+            if self.enabled:
+                #w.config(command=self.changeState)
+                w.config(state='normal')
             else:
-                w.config(command=self.changeState)
+                #w.config(command=False)
+                w.config(state='disabled')
 
             # increment counter
             wcount += 1
 
-    def updateDisplays(self, widgets):
+    def updateDisplays(self, displayWidgets, buttonWidgets):
 
-        # what image should be used for the new setting?
-        if self.state: i = self.onImage
-        else: i = self.offImage
-
-        # loop through all placements of this control's widgets
-        for w in widgets:
+        # loop through all placements of this control's display widgets
+        for w in displayWidgets:
 
             # update the display
-            w.config(image=self.img[i])
-            w.config(bd=0)
+            w.config(image=self.img[self.displayImages[self.state]])
+
+        # loop through all placements of this control's button widgets
+        for w in buttonWidgets:
+
+            # update the button
+            w.config(image=self.img[self.buttonImages[self.state]])
 
     def changeState(self):
+
         # toggle state
-        self.state = 1 - self.state
+        self.setState(1 - self.state)
+
+    def setState(self, newState=0):
+
+        # do nothing if no change is required
+        if self.state == int(newState):
+            return
+
+        # remember what the current state is
+        self.state = int(newState)
 
         # update the control's buttons to show correct on/off image
-        self.updateDisplays(self.__controlWidgets)
+        self.updateDisplays(self.__displayWidgets, self.__buttonWidgets)
 
         # apply the new state to the control's hardware
         self.changeHardwareState()
@@ -215,10 +254,10 @@ class Erl2Toggle():
         # save the new last-changed time
         self.stateLastChanged = currentTime
 
+    # placeholder method -- must be overwritten in child classes
     def changeHardwareState(self):
 
-        # placeholder method -- must be overwritten in child classes
-        pass
+        raise SystemError(f"{self.__class__.__name__}: Error: Erl2Toggle.changeHardwareState() method must be overridden in child classes")
 
 def main():
 

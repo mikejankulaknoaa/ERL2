@@ -5,18 +5,23 @@ from Erl2Toggle import Erl2Toggle
 
 class Erl2Heater(Erl2Toggle):
 
-    def __init__(self, parent, clones=[], disableOn=[], channel=None, row=0, column=0, erl2conf=None, img=None):
+    def __init__(self,
+                 displayLocs=[],
+                 buttonLocs=[],
+                 displayImages=['button-grey-30.png','button-red-30.png'],
+                 buttonImages=['radio-off-red-30.png','radio-on-red-30.png'],
+                 label='Heater',
+                 channel=None,
+                 erl2conf=None,
+                 img=None):
 
         # call the Erl2Toggle class's constructor
-        super().__init__(parent=parent,
-                         clones=clones,
-                         disableOn=disableOn,
-                         type='heater',
-                         row=row,
-                         column=column,
-                         label='Heater',
-                         offImage='button-grey-30.png',
-                         onImage='button-red-30.png',
+        super().__init__(type='heater',
+                         displayLocs=displayLocs,
+                         buttonLocs=buttonLocs,
+                         displayImages=displayImages,
+                         buttonImages=buttonImages,
+                         label=label,
                          erl2conf=erl2conf,
                          img=img)
 
