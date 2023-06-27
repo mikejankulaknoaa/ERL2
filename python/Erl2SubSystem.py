@@ -308,7 +308,8 @@ class Erl2SubSystem():
             raise SystemError(f"{self.__class__.__name__}: Error: monitorSystem() invalid mode [{var}]")
 
         # for now, redraw setpoints by calling changeMode()
-        self.changeMode()
+        if var>0:
+            self.changeMode()
 
         # wake up every five seconds and see if anything needs adjustement
         self.__radioWidgets[0].after(5000, self.monitorSystem)
