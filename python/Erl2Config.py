@@ -1,8 +1,9 @@
 #! /usr/bin/python3
 
 import ast
-import os
 from configparser import ConfigParser
+import os
+import tzlocal
 
 class Erl2Config():
 
@@ -98,6 +99,9 @@ class Erl2Config():
         # otherwise we couldn't find a config
         else:
             raise RuntimeError('Cannot find the erl2.conf configuration file')
+
+        # whatever the OS considers our local timezone to be
+        self.__erl2conf['system']['timezone'] = tzlocal.get_localzone()
 
         # explicitly define a date+time format to ensure reading/writing is consistent
         # (this one cannot be customized in the erl2.conf file)

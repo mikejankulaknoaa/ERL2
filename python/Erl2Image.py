@@ -18,17 +18,17 @@ class Erl2Image():
         self.__imgDir = self.__erl2conf['system']['imgDir']
 
         # this dictionary will hold all of the images used by the system
-        self.__img = {}
+        self.img = {}
 
     def addImage(self, key, file):
         # don't reload the image if it's already there
-        if key not in self.__img:
-            self.__img[key] = PhotoImage(file=self.__imgDir + '/' + file)
+        if key not in self.img:
+            self.img[key] = PhotoImage(file=self.__imgDir + '/' + file)
 
     # override [] syntax to return PhotoImage objects
     def __getitem__(self, key):
-        if key in self.__img:
-            return self.__img[key]
+        if key in self.img:
+            return self.img[key]
         else:
             return None
 

@@ -10,7 +10,8 @@ from Erl2Config import Erl2Config
 
 class Erl2Clock():
 
-    def __init__(self, parent, clockType='oneline', withSeconds=False, erl2conf=None):
+    def __init__(self, parent, clockType='oneline', withSeconds=False, erl2conf=None, img=None):
+
         self.__parent = parent
         self.__clockType = clockType
         self.__withSeconds = withSeconds
