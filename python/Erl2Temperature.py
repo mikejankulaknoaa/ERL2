@@ -6,18 +6,32 @@ from Erl2Sensor import Erl2Sensor
 # ProSense Pt100 temperature transmitter XTP25N-100-0100C
 class Erl2Temperature(Erl2Sensor):
 
-    def __init__(self, parent, clones=[], stack=0, channel=1, parameter='temp.degC', places=1, row=0, column=0, erl2conf=None):
+    def __init__(self,
+                 displayLocs=[],
+                 stack=0,
+                 channel=1,
+                 parameter='temp.degC',
+                 places=1,
+                 erl2conf=None,
+                 img=None):
+
         # call the Erl2Sensor class's constructor
-        super().__init__(parent=parent, clones=clones, type='temperature', parameter=parameter, places=places, row=row, column=column, erl2conf=erl2conf)
+        super().__init__(type='temperature',
+                         displayLocs=displayLocs,
+                         parameter=parameter,
+                         places=places,
+                         erl2conf=erl2conf,
+                         img=img)
 
         # private attributes specific to Erl2Temperature
         self.__stack = stack
         self.__channel = channel
 
-        # start the loop to update the display widget every 1s
+        # start the loop to update the display widgets every 1s
         self.readSensor()
 
     def measure(self):
+
         # reinitialize self.value
         self.value = {}
 
