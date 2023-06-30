@@ -1,6 +1,8 @@
 #! /usr/bin/python3
 
-import megaind as ind
+from megaind import get4_20In
+import tkinter as tk
+from tkinter import ttk
 from Erl2Sensor import Erl2Sensor
 
 # ProSense Pt100 temperature transmitter XTP25N-100-0100C
@@ -8,18 +10,16 @@ class Erl2Temperature(Erl2Sensor):
 
     def __init__(self,
                  displayLocs=[],
+                 statusLocs=[],
                  stack=0,
                  channel=1,
-                 parameter='temp.degC',
-                 places=1,
                  erl2conf=None,
                  img=None):
 
         # call the Erl2Sensor class's constructor
         super().__init__(type='temperature',
                          displayLocs=displayLocs,
-                         parameter=parameter,
-                         places=places,
+                         statusLocs=statusLocs,
                          erl2conf=erl2conf,
                          img=img)
 
@@ -27,28 +27,51 @@ class Erl2Temperature(Erl2Sensor):
         self.__stack = stack
         self.__channel = channel
 
-        # start the loop to update the display widgets every 1s
-        self.readSensor()
+        # start up the timing loop to update the display widgets
+        # (check first if this object is an Erl2Temperature or a child class)
+        if self.__class__.__name__ == 'Erl2Temperature':
+            self.readSensor()
 
     def measure(self):
 
-        # reinitialize self.value
+        # initialize the measurement result
         self.value = {}
 
         # milliAmps are read from the input channel
-        self.value['temp.mA'] = ind.get4_20In(self.__stack, self.__channel)
+        milliAmps = get4_20In(self.__stack, self.__channel)
 
-        # convert from 4-20 mA to 0-100 degC
-        self.value['temp.degC'] = (self.value['temp.mA'] - 4.) * 100. / 16.
+        # validate result: by definition this should be between 4 and 20 mA
+        if milliAmps >= 4. and milliAmps <= 20.:
 
-        # return the measurement result as a dict
-        # (key values will be used as headers in the output csv)
-        return self.value
+            # add milliAmps to the results
+            self.value['temp.mA'] = milliAmps
+
+            # convert from 4-20 mA to 0-100 degC
+            self.value['temp.degC'] = (self.value['temp.mA'] - 4.) * 100. / 16.
+
+        # check if we're still/currently offline
+        self.online = not (self.value == {})
+
+        # add Timestamps to measurement record
+        t, m = self.getTimestamp()
+
+        # produce the final measurement dict with timestamps and values
+        self.value = {**m, **self.value}
+
+        # remember timestamp of last valid measurement
+        if self.online:
+            self.lastValid = t
+
+        #print (f"{self.__class__.__name__}: Debug: measure() returning [{str(t)}][{str(self.value)}][{str(self.online)}]")
+
+        # return timestamp, measurement and status
+        return t, self.value, self.online
 
 def main():
 
-    root = Tk()
-    temperature = Erl2Temperature(root)
+    root = tk.Tk()
+    temperature = Erl2Temperature(displayLocs=[{'parent':root,'row':0,'column':0}],
+                                  statusLocs=[{'parent':root,'row':1,'column':0}])
     root.mainloop()
 
 if __name__ == "__main__": main()
