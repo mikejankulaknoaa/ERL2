@@ -5,6 +5,8 @@ from datetime import datetime as dt
 from datetime import timezone as tz
 from os import makedirs,path,stat
 from sys import version_info
+import tkinter as tk
+from tkinter import ttk
 from Erl2Config import Erl2Config
 
 class Erl2Log():
@@ -60,7 +62,7 @@ class Erl2Log():
                 self.history = list(r)
 
             # calculate the oldest timestamp that should be kept in memory
-            oldest = dt.utcnow().timestamp() - self.erl2conf['temperature']['memoryRetention']
+            oldest = dt.now(tz=tz.utc).timestamp() - self.erl2conf['temperature']['memoryRetention']
 
             # delete any historical data older than the retention timeframe
             self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2conf['system']['dtFormat']).timestamp() > oldest ]
@@ -75,7 +77,7 @@ class Erl2Log():
         self.history.append(data)
 
         # calculate the oldest timestamp that should be kept in memory
-        oldest = dt.utcnow().timestamp() - self.erl2conf['temperature']['memoryRetention']
+        oldest = dt.now(tz=tz.utc).timestamp() - self.erl2conf['temperature']['memoryRetention']
 
         # delete any historical data older than the retention timeframe
         self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2conf['system']['dtFormat']).timestamp() > oldest ]
@@ -132,4 +134,12 @@ class Erl2Log():
 
         except Exception as e:
             print (f'{self.__class__.__name__}: Error: __writeMessage({str(args)}): {str(e)}')
+
+def main():
+
+    root = tk.Tk()
+    log = Erl2Log()
+    root.mainloop()
+
+if __name__ == "__main__": main()
 

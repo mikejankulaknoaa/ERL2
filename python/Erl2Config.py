@@ -5,6 +5,8 @@ from configparser import ConfigParser
 from datetime import datetime as dt
 from datetime import timezone as tz
 from os import path
+import tkinter as tk
+from tkinter import ttk
 from tzlocal import get_localzone
 
 class Erl2Config():
@@ -319,4 +321,12 @@ class Erl2Config():
     # provide a method similar to configparser's section()
     def sections(self):
         return self.__erl2conf.keys()
+
+def main():
+
+    root = tk.Tk()
+    config = Erl2Config()
+    root.mainloop()
+
+if __name__ == "__main__": main()
 
