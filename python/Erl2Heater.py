@@ -1,6 +1,8 @@
 #! /usr/bin/python3
 
 import RPi.GPIO as GPIO
+import tkinter as tk
+from tkinter import ttk
 from Erl2Toggle import Erl2Toggle
 
 class Erl2Heater(Erl2Toggle):
@@ -46,8 +48,10 @@ class Erl2Heater(Erl2Toggle):
         # set the channel's state explicitly, to match our logical state
         GPIO.output(self.__channel, self.state)
 
-        # start up the timing loop to log heater-related metrics to a log file
-        self.updateLog()
+        # start up the timing loop to log control metrics to a log file
+        # (check first if this object is an Erl2Heater or a child class)
+        if self.__class__.__name__ == 'Erl2Heater':
+            self.updateLog()
 
     def changeHardwareState(self):
 
@@ -57,8 +61,9 @@ class Erl2Heater(Erl2Toggle):
 
 def main():
 
-    root = Tk()
-    heater = Erl2Heater(root)
+    root = tk.Tk()
+    heater = Erl2Heater(displayLocs=[{'parent':root,'row':0,'column':0}],
+                        buttonLocs=[{'parent':root,'row':1,'column':0}])
     root.mainloop()
 
 if __name__ == "__main__": main()

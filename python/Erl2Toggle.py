@@ -1,7 +1,8 @@
 #! /usr/bin/python3
 
 from datetime import datetime as dt
-from tkinter import *
+from datetime import timezone as tz
+import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
 from Erl2Image import Erl2Image
@@ -13,8 +14,8 @@ class Erl2Toggle():
                  type='generic',
                  displayLocs=[],
                  buttonLocs=[],
-                 displayImages=[],
-                 buttonImages=[],
+                 displayImages=['button-grey-30.png','button-green-30.png'],
+                 buttonImages=['radio-off-30.png','radio-on-30.png'],
                  label='Generic',
                  erl2conf=None,
                  img=None):
@@ -25,7 +26,7 @@ class Erl2Toggle():
         self.displayImages = displayImages
         self.buttonImages = buttonImages
         self.__label = label
-        self.__erl2conf = erl2conf
+        self.erl2conf = erl2conf
         self.img = img
 
         # remember what widgets are active for this control
@@ -40,27 +41,35 @@ class Erl2Toggle():
         self.stateLastChanged = None
         self.offSeconds = []
         self.onSeconds = []
+        self.numChanges = 0
 
         # keep track of when the next file-writing interval is
         self.__nextFileTime = None
 
         # read in the system configuration file if needed
-        if self.__erl2conf is None:
-            self.__erl2conf = Erl2Config()
-            if 'tank' in self.__erl2conf.sections() and 'id' in self.__erl2conf['tank']:
-                print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.__erl2conf['tank']['id']}]")
+        if self.erl2conf is None:
+            self.erl2conf = Erl2Config()
+            #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
+
+        # if this gets instantiated somehow as 'generic', this parameter isn't in the config
+        self.__loggingFrequency = 300
+
+        # but for real controls, load it from Erl2Config
+        if self.__controlType != 'generic':
+            self.__loggingFrequency = self.erl2conf[self.__controlType]['loggingFrequency']
 
         # if necessary, create an object to hold/remember image objects
         if self.img is None:
-            self.img = Erl2Image(erl2conf=self.__erl2conf)
+            self.img = Erl2Image(erl2conf=self.erl2conf)
 
         # load the associated images; just use the image name as the key
         for i in self.displayImages + self.buttonImages:
             self.img.addImage(i,i)
 
         # start a data/log file for the control
-        if self.__erl2conf['system']['fileLogging']:
-            self.dataLog = Erl2Log(logType='control', logName=self.__controlType, erl2conf=self.__erl2conf)
+        if not self.erl2conf['system']['disableFileLogging']:
+            self.dataLog = Erl2Log(logType='control', logName=self.__controlType, erl2conf=self.erl2conf)
         else:
             self.dataLog = None
 
@@ -94,8 +103,15 @@ class Erl2Toggle():
             f = ttk.Frame(loc['parent'], padding='2 2', relief='solid', borderwidth=0)
             f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nwse')
 
-            # add a Button widget to change the state of the control
-            b = Button(f, image=self.img[self.buttonImages[0]], height=40, width=40, bd=0, highlightthickness=0, activebackground='#DBDBDB', command=self.changeState)
+            # add a button widget to change the state of the control
+            b = tk.Button(f,
+                          image=self.img[self.buttonImages[0]],
+                          height=40,
+                          width=40,
+                          bd=0,
+                          highlightthickness=0,
+                          activebackground='#DBDBDB',
+                          command=self.changeState)
             b.grid(row=0, column=1, padx='2 2', sticky='e')
 
             # this is the (text) Label shown beside the (image) button widget
@@ -113,10 +129,15 @@ class Erl2Toggle():
         # now set each control's enabled state individually
         self.setActive(self.enabled)
 
+        # start up the timing loop to log control metrics to a log file
+        # (check first if this object is an Erl2Toggle or a child class)
+        if self.__class__.__name__ == 'Erl2Toggle':
+            self.updateLog()
+
     def updateLog(self):
 
         # remember the timestamp at the exact moment of logging
-        currentTime = dt.utcnow()
+        currentTime = dt.now(tz=tz.utc)
 
         #print (f"{self.__class__.__name__}: Debug: updateLog() called [{str(currentTime)}]")
 
@@ -129,13 +150,17 @@ class Erl2Toggle():
         # (limited to the current logging interval)
         else:
             timing = currentTime.timestamp() - self.stateLastChanged.timestamp()
-            timing = min(timing, self.__erl2conf[self.__controlType]['loggingFrequency'])
+            timing = min(timing, self.__loggingFrequency)
 
         # add up on+off times, then reset them
         onTime = sum(self.onSeconds)
         self.onSeconds = []
         offTime = sum(self.offSeconds)
         self.offSeconds = []
+
+        # remember the number of state changes, then reset those too
+        changes = self.numChanges
+        self.numChanges = 0
 
         # include current timing as appropriate
         if self.state:
@@ -144,17 +169,19 @@ class Erl2Toggle():
             offTime += timing
 
         # is file logging enabled?
-        if self.__erl2conf['system']['fileLogging']:
+        if not self.erl2conf['system']['disableFileLogging']:
 
             # if we've passed the next file-writing interval time, write it
             if self.__nextFileTime is not None and currentTime.timestamp() > self.__nextFileTime:
 
                 # create a dict of values we want to log
-                m = {'Timestamp': currentTime.strftime(self.__erl2conf['system']['dtFormat']), 
+                m = {'Timestamp.UTC': currentTime.strftime(self.erl2conf['system']['dtFormat']), 
+                     'Timestamp.Local': currentTime.astimezone(self.erl2conf['system']['timezone']).strftime(self.erl2conf['system']['dtFormat']),
                      'Current State': self.state,
                      'Off (seconds)': offTime,
                      'On (seconds)': onTime,
-                     'Last State Change': self.stateLastChanged}
+                     'State Changes (count)':changes,
+                     'State Last Changed (Local)': self.stateLastChanged.astimezone(self.erl2conf['system']['timezone']).strftime(self.erl2conf['system']['dtFormat'])}
 
                 # send the new sensor data to the log (in dictionary form)
                 if self.dataLog is not None:
@@ -165,11 +192,11 @@ class Erl2Toggle():
             self.__nextFileTime = (
               (
                 int(
-                  currentTime.timestamp()                                  # timestamp in seconds
-                  / self.__erl2conf[self.__controlType]['loggingFrequency'] # convert to number of intervals of length loggingFrequency
-                )                                                          # truncate to beginning of previous interval (past)
-              + 1)                                                         # advance by one time interval (future)
-              * self.__erl2conf[self.__controlType]['loggingFrequency']     # convert back to seconds/timestamp
+                  currentTime.timestamp()   # timestamp in seconds
+                  / self.__loggingFrequency # convert to number of intervals of length loggingFrequency
+                )                           # truncate to beginning of previous interval (past)
+              + 1)                          # advance by one time interval (future)
+              * self.__loggingFrequency     # convert back to seconds/timestamp
             )
 
         # when should this method be called next? (milliseconds)
@@ -225,6 +252,9 @@ class Erl2Toggle():
         if self.state == int(newState):
             return
 
+        # tally up how many times the state is changing
+        self.numChanges += 1
+
         # remember what the current state is
         self.state = int(newState)
 
@@ -235,12 +265,16 @@ class Erl2Toggle():
         self.changeHardwareState()
 
         # remember the time that the state was changed
-        currentTime = dt.utcnow()
+        currentTime = dt.now(tz=tz.utc)
+
+        # default the last-changed time to now if it hasn't already been set
+        if self.stateLastChanged is None:
+            self.stateLastChanged = currentTime
 
         # calculate how long the system had been in its prior state
         # (but don't count earlier than the start of the current interval)
         fromTime = max(self.stateLastChanged.timestamp(),
-                       self.__nextFileTime - self.__erl2conf[self.__controlType]['loggingFrequency'])
+                       self.__nextFileTime - self.__loggingFrequency)
         timing = currentTime.timestamp() - fromTime
 
         # add this timing to the tally of cumulative off/on time
@@ -256,13 +290,13 @@ class Erl2Toggle():
 
     # placeholder method -- must be overwritten in child classes
     def changeHardwareState(self):
-
-        raise SystemError(f"{self.__class__.__name__}: Error: Erl2Toggle.changeHardwareState() method must be overridden in child classes")
+        pass
 
 def main():
 
-    root = Tk()
-    toggle = Erl2Toggle(root)
+    root = tk.Tk()
+    toggle = Erl2Toggle(displayLocs=[{'parent':root,'row':0,'column':0}],
+                        buttonLocs=[{'parent':root,'row':1,'column':0}])
     root.mainloop()
 
 if __name__ == "__main__": main()

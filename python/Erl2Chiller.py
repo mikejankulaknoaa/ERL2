@@ -1,6 +1,8 @@
 #! /usr/bin/python3
 
-import megaind as ind
+from megaind import setOdPWM
+import tkinter as tk
+from tkinter import ttk
 from Erl2Toggle import Erl2Toggle
 
 class Erl2Chiller(Erl2Toggle):
@@ -34,8 +36,10 @@ class Erl2Chiller(Erl2Toggle):
         if self.__channel is None:
             self.__channel = 1
 
-        # start up the timing loop to log chiller-related metrics to a log file
-        self.updateLog()
+        # start up the timing loop to log control metrics to a log file
+        # (check first if this object is an Erl2Chiller or a child class)
+        if self.__class__.__name__ == 'Erl2Chiller':
+            self.updateLog()
 
     def changeHardwareState(self):
 
@@ -44,15 +48,16 @@ class Erl2Chiller(Erl2Toggle):
 
         if self.state:
             # turn on chiller -- set to 100%
-            ind.setOdPWM(self.__stack,self.__channel,100)
+            setOdPWM(self.__stack,self.__channel,100)
         else:
             # turn off chiller -- set to 0%
-            ind.setOdPWM(self.__stack,self.__channel,0)
+            setOdPWM(self.__stack,self.__channel,0)
 
 def main():
 
-    root = Tk()
-    chiller = Erl2Chiller(root)
+    root = tk.Tk()
+    chiller = Erl2Chiller(displayLocs=[{'parent':root,'row':0,'column':0}],
+                          buttonLocs=[{'parent':root,'row':1,'column':0}])
     root.mainloop()
 
 if __name__ == "__main__": main()
