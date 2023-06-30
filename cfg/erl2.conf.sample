@@ -1,10 +1,14 @@
 [system]
 
-# logging to file on/off
-fileLogging = True
+# Project Name
+project = Default Project
 
-#### Default Project
-###project = ERL2 Development
+# logging to file on/off
+disableFileLogging = False
+
+# configure the system's clock display
+clockWithSeconds = False
+clockTwoLines = False
 
 
 [tank]
@@ -12,14 +16,21 @@ fileLogging = True
 # Tank Identifier
 id = Tank 0
 
-#### Physical Location
-###location = ERL2
+# Physical Location
+location = Default Location
+
+
+[virtualtemp]
+
+# this is a virtual sensor for testing, designed to 'react' to heater and chiller
+enabled = False
 
 
 [temperature]
 
-# temperature module enabled?
-enabled = True
+# which parameter to display in GUI, and with how many decimal places
+displayParameter = temp.degC
+displayDecimals = 1
 
 # sampling: frequency (seconds)
 # how often the sensor is sampled; not all values may be saved in memory/files
@@ -27,7 +38,7 @@ sampleFrequency = 5
 
 # sampling: retention (seconds)
 # how long data from the sensor are held in memory; 86400s is one day
-sampleRetention = 86400
+memoryRetention = 86400
 
 # logging: frequency (seconds)
 # controls how often measured values are saved in memory and written to log files
@@ -50,20 +61,21 @@ dynamicDefault = [27.0, 26.5, 26.0, 25.6, 25.3, 25.1, 25.0, 25.1, 25.3, 25.6, 26
 
 [pH]
 
-# pH module enabled?
-enabled = True
+# which parameter to display in GUI, and with how many decimal places
+displayParameter = pH
+displayDecimals = 2
 
 # sampling: frequency (seconds)
 # how often the sensor is sampled; not all values may be saved in memory/files
-sampleFreq = 300
+sampleFrequency = 60
 
 # sampling: retention (seconds)
 # how long data from the sensor are held in memory; 86400s is one day
-sampleRetention = 86400
+memoryRetention = 86400
 
 # logging: frequency (seconds)
 # controls how often measured values are saved in memory and written to log files
-loggingFreq = 300
+loggingFrequency = 300
 
 # valid range: values outside of this range will be considered errors
 validRange = [6.00, 9.00]
@@ -78,3 +90,26 @@ offsetDefault = 0.01
 # default dynamic program (24 values, degrees Celsisu)
 # this is a sine shape running between 7.95 (6am low point) and 8.05 (6pm high point)
 dynamicDefault = [8.00, 7.99, 7.98, 7.96, 7.96, 7.95, 7.95, 7.95, 7.96, 7.96, 7.98, 7.99, 8.00, 8.01, 8.03, 8.04, 8.04, 8.05, 8.05, 8.05, 8.04, 8.04, 8.03, 8.01]
+
+
+[heater]
+
+# logging: frequency (seconds)
+# controls how often heater metrics are saved in memory and written to log files
+loggingFrequency = 300
+
+# sampling: retention (seconds)
+# how long metrics from the heater are held in memory; 86400s is one day
+memoryRetention = 86400
+
+
+[chiller]
+
+# logging: frequency (seconds)
+# controls how often chiller metrics are saved in memory and written to log files
+loggingFrequency = 300
+
+# sampling: retention (seconds)
+# how long metrics from the chiller are held in memory; 86400s is one day
+memoryRetention = 86400
+
