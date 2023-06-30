@@ -2,5 +2,6 @@ __pycache__
 ._*
 .DS_Store
 erl2.conf
-z*.py
+*.swp
+z*
 log/

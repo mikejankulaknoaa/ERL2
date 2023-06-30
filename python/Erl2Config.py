@@ -1,14 +1,19 @@
 #! /usr/bin/python3
 
-import ast
+from ast import literal_eval
 from configparser import ConfigParser
-import os
-import tzlocal
+from datetime import datetime as dt
+from datetime import timezone as tz
+from os import path
+from tzlocal import get_localzone
 
 class Erl2Config():
 
+    # hardcoded ERL2 version string
+    VERSION = '0.01b (2023-06-30)'
+
     # top-level categories in the erl2.conf file
-    CATEGORIES = [ 'system', 'tank', 'temperature', 'pH', 'heater', 'chiller']
+    CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'heater', 'chiller']
 
     # use these parameter strings as defaults if they are missing from the erl2.conf file
     def __setDefaults(self):
@@ -16,11 +21,18 @@ class Erl2Config():
         for c in self.CATEGORIES:
             self.__default[c] = {}
 
-        self.__default['system']['fileLogging'] = 'True'
+        self.__default['system']['project'] = 'Default Project'
+        self.__default['system']['disableFileLogging'] = 'False'
+        self.__default['system']['clockWithSeconds'] = 'False'
+        self.__default['system']['clockTwoLines'] = 'False'
 
         self.__default['tank']['id'] = 'Tank 0'
+        self.__default['tank']['location'] = 'Default Location'
 
-        self.__default['temperature']['enabled'] = 'True'
+        self.__default['virtualtemp']['enabled'] = 'False'
+
+        self.__default['temperature']['displayParameter'] = 'temp.degC'
+        self.__default['temperature']['displayDecimals'] = '1'
         self.__default['temperature']['sampleFrequency'] = '5'
         self.__default['temperature']['memoryRetention'] = '86400'
         self.__default['temperature']['loggingFrequency'] = '300'
@@ -32,7 +44,8 @@ class Erl2Config():
                                                            '27.0, 27.5, 28.0, 28.4, 28.7, 28.9, '
                                                            '29.0, 28.9, 28.7, 28.4, 28.0, 27.5]')
 
-        self.__default['pH']['enabled'] = 'True'
+        self.__default['pH']['displayParameter'] = 'pH'
+        self.__default['pH']['displayDecimals'] = '2'
         self.__default['pH']['sampleFrequency'] = '300'
         self.__default['pH']['memoryRetention'] = '86400'
         self.__default['pH']['loggingFrequency'] = '300'
@@ -60,30 +73,34 @@ class Erl2Config():
         for c in self.CATEGORIES:
             self.__erl2conf[c] = {}
 
+            # there's no guarantee the file will mention all the categories
+            if c not in in_conf:
+                in_conf[c] = {}
+
         # the python source file that is currently executing
-        thisFile = os.path.realpath(__file__)
+        thisFile = path.realpath(__file__)
 
         # the directory holding the currently executing source file
-        parent = os.path.dirname(thisFile)
+        parent = path.dirname(thisFile)
 
         # look for erl2.conf in its parent directories one by one
         loop = 0
         while (True):
 
             # found a file named erl2.conf !
-            if os.path.exists(parent + '/erl2.conf'): 
+            if path.exists(parent + '/erl2.conf'): 
                 self.__erl2conf['system']['rootDir'] = parent
                 self.__erl2conf['system']['confFile'] = parent + '/erl2.conf'
-                print (f"{self.__class__.__name__}: Debug: found root directory {self.__erl2conf['system']['rootDir']}")
-                print (f"{self.__class__.__name__}: Debug: found configuration file {self.__erl2conf['system']['confFile']}")
+                #print (f"{self.__class__.__name__}: Debug: found root directory {self.__erl2conf['system']['rootDir']}")
+                #print (f"{self.__class__.__name__}: Debug: found configuration file {self.__erl2conf['system']['confFile']}")
                 break
 
             # give up if there are no higher directories to check
-            if parent == os.path.dirname(parent):
+            if parent == path.dirname(parent):
                 break
 
             # next time through the loop, look one level higher up
-            parent = os.path.dirname(parent)
+            parent = path.dirname(parent)
 
             # avoid infinite looping
             loop += 1
@@ -100,12 +117,18 @@ class Erl2Config():
         else:
             raise RuntimeError('Cannot find the erl2.conf configuration file')
 
+        # share the version info with the app
+        self.__erl2conf['system']['version'] = self.VERSION
+
+        # record the system startup time
+        self.__erl2conf['system']['startup'] = dt.now(tz=tz.utc)
+
         # whatever the OS considers our local timezone to be
-        self.__erl2conf['system']['timezone'] = tzlocal.get_localzone()
+        self.__erl2conf['system']['timezone'] = get_localzone()
 
         # explicitly define a date+time format to ensure reading/writing is consistent
         # (this one cannot be customized in the erl2.conf file)
-        self.__erl2conf['system']['dtFormat'] = '%Y-%m-%d %H:%M:%S.%f'
+        self.__erl2conf['system']['dtFormat'] = '%Y-%m-%d %H:%M:%S'
 
         # special logic for setting the main log and img directories
         if 'logDir' not in in_conf['system']:
@@ -118,11 +141,11 @@ class Erl2Config():
             self.__erl2conf['system']['imgDir'] = in_conf['system']['imgDir']
 
         # we must insist that the parent of the specified log directory already exists, at least
-        if not os.path.isdir(os.path.dirname(self.__erl2conf['system']['logDir'])):
+        if not path.isdir(path.dirname(self.__erl2conf['system']['logDir'])):
             raise TypeError(f"{self.__class__.__name__}: ['system']['logDir'] = [{self.__erl2conf['system']['logDir']}] is not a valid directory")
 
         # and the images directory itself must exist
-        if not os.path.isdir(self.__erl2conf['system']['imgDir']):
+        if not path.isdir(self.__erl2conf['system']['imgDir']):
             raise TypeError(f"{self.__class__.__name__}: ['system']['imgDir'] = [{self.__erl2conf['system']['imgDir']}] is not a valid directory")
 
         # here is where we will define default values for key parameters,
@@ -134,12 +157,17 @@ class Erl2Config():
 
         # system
 
-        if 'fileLogging' not in in_conf['system']:
-            in_conf['system']['fileLogging'] = self.__default['system']['fileLogging']
-        try:
-            self.__erl2conf['system']['fileLogging'] = in_conf.getboolean('system','fileLogging')
-        except:
-            raise TypeError(f"{self.__class__.__name__}: ['system']['fileLogging'] = [{in_conf['system']['fileLogging']}] is not boolean")
+        if 'project' not in in_conf['system']:
+            in_conf['system']['project'] = self.__default['system']['project']
+        self.__erl2conf['system']['project'] = in_conf['system']['project']
+
+        for val in ['disableFileLogging', 'clockWithSeconds', 'clockTwoLines']:
+            if val not in in_conf['system']:
+                in_conf['system'][val] = self.__default['system'][val]
+            try:
+                self.__erl2conf['system'][val] = in_conf.getboolean('system',val)
+            except:
+                raise TypeError(f"{self.__class__.__name__}: ['system'][val] = [{in_conf['system'][val]}] is not boolean")
 
         # tank
 
@@ -147,16 +175,35 @@ class Erl2Config():
             in_conf['tank']['id'] = self.__default['tank']['id']
         self.__erl2conf['tank']['id'] = in_conf['tank']['id']
 
+        if 'location' not in in_conf['tank']:
+            in_conf['tank']['location'] = self.__default['tank']['location']
+        self.__erl2conf['tank']['location'] = in_conf['tank']['location']
+
+        # whether to use a 'virtual' temperature sensor...
+
+        if 'enabled' not in in_conf['virtualtemp']:
+            in_conf['virtualtemp']['enabled'] = self.__default['virtualtemp']['enabled']
+        try:
+            self.__erl2conf['virtualtemp']['enabled'] = in_conf.getboolean('virtualtemp','enabled')
+        except:
+            raise TypeError(f"{self.__class__.__name__}: ['virtualtemp']['enabled'] = [{in_conf['virtualtemp']['enabled']}] is not boolean")
+
         # temperature and pH share a lot of the same parameter logic
 
         for sensorType in ['temperature', 'pH']:
 
-            if 'enabled' not in in_conf[sensorType]:
-                in_conf[sensorType]['enabled'] = self.__default[sensorType]['enabled']
+            if 'displayParameter' not in in_conf[sensorType]:
+                in_conf[sensorType]['displayParameter'] = self.__default[sensorType]['displayParameter']
+            self.__erl2conf[sensorType]['displayParameter'] = in_conf[sensorType]['displayParameter']
+
+            if 'displayDecimals' not in in_conf[sensorType]:
+                in_conf[sensorType]['displayDecimals'] = self.__default[sensorType]['displayDecimals']
             try:
-                self.__erl2conf[sensorType]['enabled'] = in_conf.getboolean(sensorType,'enabled')
+                self.__erl2conf[sensorType]['displayDecimals'] = int(in_conf[sensorType]['displayDecimals'])
+                if self.__erl2conf[sensorType]['displayDecimals'] < 0:
+                    raise TypeError
             except:
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['enabled'] = [{in_conf[sensorType]['enabled']}] is not boolean")
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['displayDecimals'] = [{self.__erl2conf[sensorType]['displayDecimals']}] is not a positive integer")
 
             if 'sampleFrequency' not in in_conf[sensorType]:
                 in_conf[sensorType]['sampleFrequency'] = self.__default[sensorType]['sampleFrequency']
@@ -189,7 +236,7 @@ class Erl2Config():
                 in_conf[sensorType]['validRange'] = self.__default[sensorType]['validRange']
             try:
                 # convert a string that looks like a Python list into an actual Python list
-                self.__erl2conf[sensorType]['validRange'] = ast.literal_eval(in_conf[sensorType]['validRange'])
+                self.__erl2conf[sensorType]['validRange'] = literal_eval(in_conf[sensorType]['validRange'])
                 if (type(self.__erl2conf[sensorType]['validRange']) is not list
                         or len (self.__erl2conf[sensorType]['validRange']) != 2):
                     raise
@@ -223,7 +270,7 @@ class Erl2Config():
             if 'dynamicDefault' not in in_conf[sensorType]:
                 in_conf[sensorType]['dynamicDefault'] = self.__default[sensorType]['dynamicDefault']
             try:
-                self.__erl2conf[sensorType]['dynamicDefault'] = ast.literal_eval(in_conf[sensorType]['dynamicDefault'])
+                self.__erl2conf[sensorType]['dynamicDefault'] = literal_eval(in_conf[sensorType]['dynamicDefault'])
                 if (type(self.__erl2conf[sensorType]['dynamicDefault']) is not list
                         or len (self.__erl2conf[sensorType]['dynamicDefault']) != 24):
                     raise
@@ -238,6 +285,11 @@ class Erl2Config():
                     raise
             except:
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['dynamicDefault'] = [{in_conf[sensorType]['dynamicDefault']}] is not a list of 24 floats within the valid range for this sensor")
+
+        # if using the virtual temperature sensor, duplicate its settings from temperature
+
+        if self.__erl2conf['virtualtemp']['enabled']:
+            self.__erl2conf['virtualtemp'] = {**self.__erl2conf['virtualtemp'], **self.__erl2conf['temperature']}
 
         # heater and chiller share a lot of the same parameter logic
 
@@ -267,12 +319,4 @@ class Erl2Config():
     # provide a method similar to configparser's section()
     def sections(self):
         return self.__erl2conf.keys()
-
-def main():
-
-    config = Erl2Config()
-    if config.conf is not None:
-        print (f"{self.__class__.__name__}: Debug: Tank Id is [{config.conf['tank']['id']}]")
-
-if __name__ == "__main__": main()
 
