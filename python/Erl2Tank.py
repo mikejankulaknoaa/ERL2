@@ -95,13 +95,15 @@ class Erl2Tank:
                     if (p in ['Temp','pH','DO'] and r==0 and c==3):
                         self.__frames[p][r][c] = ttk.Frame(self.__tabs[p], padding='2', relief='solid', borderwidth=1)
                         self.__frames[p][r][c].grid(row=r, column=c, rowspan=2, padx='2', pady='2', sticky='nesw')
-                    elif (p in ['Temp','pH','DO'] and r==1 and c==0):
-                        self.__frames[p][r][c] = ttk.Frame(self.__tabs[p], padding='2', relief='solid', borderwidth=1)
-                        self.__frames[p][r][c].grid(row=r, column=c, columnspan=2, padx='2', pady='2', sticky='nesw')
+                    #elif (p in ['Temp','pH','DO'] and r==1 and c==0):
+                    #    self.__frames[p][r][c] = ttk.Frame(self.__tabs[p], padding='2', relief='solid', borderwidth=1)
+                    #    self.__frames[p][r][c].grid(row=r, column=c, columnspan=2, padx='2', pady='2', sticky='nesw')
                     elif (p in ['Temp','pH','DO'] and r==2 and c==0):
                         self.__frames[p][r][c] = ttk.Frame(self.__tabs[p], padding='2', relief='solid', borderwidth=1)
                         self.__frames[p][r][c].grid(row=r, column=c, columnspan=4, padx='2', pady='2', sticky='nesw')
-                    elif (p in ['Temp','pH','DO'] and (r,c) in [(1,1),(1,3),(2,1),(2,2),(2,3)]):
+                    #elif (p in ['Temp','pH','DO'] and (r,c) in [(1,1),(1,3),(2,1),(2,2),(2,3)]):
+                    #    pass
+                    elif (p in ['Temp','pH','DO'] and (r,c) in [(1,3),(2,1),(2,2),(2,3)]):
                         pass
                     else:
                         self.__frames[p][r][c] = ttk.Frame(self.__tabs[p], padding='2', relief='solid', borderwidth=1)
@@ -331,6 +333,7 @@ class Erl2Tank:
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
                 statusLocs=tempStatusLocs,
+                correctionLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
                 erl2conf=self.erl2conf,
                 img=self.img)
         else:
@@ -338,6 +341,7 @@ class Erl2Tank:
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
                 statusLocs=tempStatusLocs,
+                correctionLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
                 erl2conf=self.erl2conf,
                 img=self.img)
 
@@ -345,7 +349,7 @@ class Erl2Tank:
         self.controls['heater'] = Erl2Heater(
             displayLocs=[{'parent':self.__frames['Data'][0][1],'row':0,'column':0},
                          {'parent':self.__frames['Temp'][0][1],'row':0,'column':0}],
-            buttonLocs=[{'parent':self.__frames['Temp'][1][2],'row':2,'column':0}],
+            buttonLocs=[{'parent':self.__frames['Temp'][1][1],'row':2,'column':0}],
             erl2conf=self.erl2conf,
             img=self.img)
 
@@ -353,7 +357,7 @@ class Erl2Tank:
         self.controls['chiller'] = Erl2Chiller(
             displayLocs=[{'parent':self.__frames['Data'][0][1],'row':1,'column':0},
                          {'parent':self.__frames['Temp'][0][1],'row':1,'column':0}],
-            buttonLocs=[{'parent':self.__frames['Temp'][1][2],'row':3,'column':0}],
+            buttonLocs=[{'parent':self.__frames['Temp'][1][1],'row':3,'column':0}],
             erl2conf=self.erl2conf,
             img=self.img)
 
@@ -361,7 +365,7 @@ class Erl2Tank:
         self.systems['temperature'] = Erl2SubSystem(
             radioLoc={'parent':self.__frames['Temp'][1][0],'row':0,'column':0},
             staticLoc={'parent':self.__frames['Temp'][1][2],'row':1,'column':0},
-            offsetLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
+            offsetLoc={'parent':self.__frames['Temp'][1][2],'row':2,'column':0},
             dynamicLoc={'parent':self.__frames['Temp'][2][0],'row':1,'column':0},
 
             setpointLocs=[{'parent':self.__frames['Data'][0][0],'row':3,'column':0},
@@ -386,27 +390,33 @@ class Erl2Tank:
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='n')
 
-        ttk.Label(self.__frames['Temp'][0][2], text='Temperature Offset', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['Temp'][1][2], text='Auto Static Setpoint', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['Temp'][2][0], text='Auto Dynamic Setpoints (by hour of day)', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['Temp'][0][3], text='Error Report', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['Temp'][0][3], text=dummyError, font='Arial 14', wraplength=300
-            #, relief='solid', borderwidth=1
-            ).grid(row=1, column=0, sticky='nw')
+        # standardized labels for some Temp, pH and DO frames
+        for name in ['Temp', 'pH', 'DO']:
+            ttk.Label(self.__frames[name][0][2], text=name+' Correction', font='Arial 12 bold'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
+            ttk.Label(self.__frames[name][1][1], text='Manual Controls', font='Arial 12 bold'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
+            ttk.Label(self.__frames[name][1][2], text='Auto Controls', font='Arial 12 bold'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
+            ttk.Label(self.__frames[name][2][0], text='Auto Dynamic Setpoints (by hour of day)', font='Arial 12 bold'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
+            ttk.Label(self.__frames[name][0][3], text='Error Report', font='Arial 12 bold'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
+            ttk.Label(self.__frames[name][0][3], text=dummyError, font='Arial 14', wraplength=250
+                #, relief='solid', borderwidth=1
+                ).grid(row=1, column=0, sticky='nw')
 
         # readout displays for the current pH, as reported by the pico-pH
         self.sensors['pH'] = Erl2pH(
             displayLocs=[{'parent':self.__frames['Data'][1][0],'row':1,'column':0},
                          {'parent':self.__frames['pH'][0][0],'row':1,'column':0}],
             statusLocs=pHStatusLocs,
+            correctionLoc={'parent':self.__frames['pH'][0][2],'row':1,'column':0},
             port='/dev/ttyAMA1',
             tempSensor=self.sensors['temperature'],
             erl2conf=self.erl2conf)
@@ -429,27 +439,27 @@ class Erl2Tank:
                 #, relief='solid', borderwidth=1
                 ).grid(row=3, column=0, sticky='n')
 
-        ttk.Label(self.__frames['pH'][0][2], text='pH Offset', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['pH'][1][2], text='Auto Static Setpoint', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['pH'][2][0], text='Auto Dynamic Setpoints (by hour of day)', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['pH'][0][3], text='Error Report', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['pH'][0][3], text=dummyError, font='Arial 14', wraplength=300
-            #, relief='solid', borderwidth=1
-            ).grid(row=1, column=0, sticky='nw')
+        #ttk.Label(self.__frames['pH'][0][2], text='pH Offset', font='Arial 12 bold'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=0, sticky='nw')
+        #ttk.Label(self.__frames['pH'][1][2], text='Auto Static Setpoint', font='Arial 12 bold'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=0, sticky='nw')
+        #ttk.Label(self.__frames['pH'][2][0], text='Auto Dynamic Setpoints (by hour of day)', font='Arial 12 bold'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=0, sticky='nw')
+        #ttk.Label(self.__frames['pH'][0][3], text='Error Report', font='Arial 12 bold'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=0, sticky='nw')
+        #ttk.Label(self.__frames['pH'][0][3], text=dummyError, font='Arial 14', wraplength=300
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=1, column=0, sticky='nw')
 
         # pH label spacing/weighting
-        for f in [self.__frames['Data'][1][0], self.__frames['pH'][0][0]]:
-            for r in range(4):
-                f.rowconfigure(r, weight=1)
-            f.columnconfigure(0, weight=0)
+        #for f in [self.__frames['Data'][1][0], self.__frames['pH'][0][0]]:
+        #    for r in range(4):
+        #        f.rowconfigure(r, weight=1)
+        #    f.columnconfigure(0, weight=0)
 
         # add placeholder(s) for dissolved oxygen
         for f in [self.__frames['Data'][2][0], self.__frames['DO'][0][0]]:
@@ -473,21 +483,21 @@ class Erl2Tank:
                 f.rowconfigure(r, weight=1)
             f.columnconfigure(0, weight=0)
 
-        ttk.Label(self.__frames['DO'][0][2], text='DO Offset', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['DO'][1][2], text='Auto Static Setpoint', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['DO'][2][0], text='Auto Dynamic Setpoints (by hour of day)', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['DO'][0][3], text='Error Report', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
-        ttk.Label(self.__frames['DO'][0][3], text=dummyError, font='Arial 14', wraplength=300
-            #, relief='solid', borderwidth=1
-            ).grid(row=1, column=0, sticky='nw')
+        #ttk.Label(self.__frames['DO'][0][2], text='DO Offset', font='Arial 12 bold'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=0, sticky='nw')
+        #ttk.Label(self.__frames['DO'][1][2], text='Auto Static Setpoint', font='Arial 12 bold'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=0, sticky='nw')
+        #ttk.Label(self.__frames['DO'][2][0], text='Auto Dynamic Setpoints (by hour of day)', font='Arial 12 bold'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=0, sticky='nw')
+        #ttk.Label(self.__frames['DO'][0][3], text='Error Report', font='Arial 12 bold'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=0, sticky='nw')
+        #ttk.Label(self.__frames['DO'][0][3], text=dummyError, font='Arial 14', wraplength=300
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=1, column=0, sticky='nw')
 
     # a method to call whenever we detect a tab change
     def changeTabs(self, event):

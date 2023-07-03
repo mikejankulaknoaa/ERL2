@@ -14,17 +14,20 @@ class Erl2Sensor():
                  type='generic',
                  displayLocs=[],
                  statusLocs=[],
+                 correctionLoc={},
                  erl2conf=None,
                  img=None):
 
         self.__sensorType = type
         self.__displayLocs = displayLocs
         self.__statusLocs = statusLocs
+        self.__correctionLoc = correctionLoc
         self.erl2conf = erl2conf
 
         # remember what widgets are active for this sensor
         self.__displayWidgets = []
         self.__statusWidgets = []
+        self.__correctionWidgets = []
 
         # for a sensor, we track current value and last valid update time
         # (be careful to update these values only in the measure() method)
@@ -88,6 +91,51 @@ class Erl2Sensor():
             # keep a list of status widgets for this sensor
             self.__statusWidgets.append(l)
 
+        # create the correction widgets' base frame as a child of its parent
+        f = ttk.Frame(self.__correctionLoc['parent'], padding='0 0', relief='solid', borderwidth=0)
+        f.grid(row=self.__correctionLoc['row'], column=self.__correctionLoc['column'], padx='2', pady='0', sticky='nw')
+
+        # create the entry field for the correction offset
+        e = ttk.Entry(f, width=4, font='Arial 20',justify='right')
+        e.insert(tk.END, self.erl2conf[self.__sensorType]['offsetDefault'])
+        e.grid(row=0,column=1, sticky='e')
+        #e.bind('<FocusIn>', self.numpadEntry)
+        #e.selection_range(0,0)
+        e.config(state='disabled')
+
+        # this is the Label shown beside the entry widget
+        ttk.Label(f, text='Offset', font='Arial 14'
+            #, relief='solid', borderwidth=1
+            ).grid(row=0, column=0, padx='2 2', sticky='w')
+
+        #self.__correctionWidgets.append(e)
+
+        # add a Label widget to show the raw sensor value
+        l = ttk.Label(f, text='--', font='Arial 16', justify='right')
+        l.grid(row=1, column=1, sticky='e')
+
+        ttk.Label(f, text='Raw Value', font='Arial 14'
+            #, relief='solid', borderwidth=1
+            ).grid(row=1, column=0, padx='2 2', sticky='w')
+
+        self.__correctionWidgets.append(l)
+
+        ## add a Label widget to show the corrected sensor value
+        #l = ttk.Label(f, text='--', font='Arial 16', justify='right')
+        #l.grid(row=2, column=1, sticky='e')
+
+        #ttk.Label(f, text='Corrected', font='Arial 14'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=2, column=0, padx='2 2', sticky='w')
+
+        #self.__correctionWidgets.append(l)
+
+        f.rowconfigure(0,weight=1)
+        f.rowconfigure(1,weight=1)
+        #f.rowconfigure(2,weight=1)
+        f.columnconfigure(1,weight=1)
+        f.columnconfigure(0,weight=0)
+
         # start up the timing loop to update the display widgets
         # (check first if this object is an Erl2Sensor or a child class)
         if self.__class__.__name__ == 'Erl2Sensor':
@@ -101,7 +149,7 @@ class Erl2Sensor():
         #print (f"{self.__class__.__name__}: Debug: readSensor() receiving [{str(currentTime)}][{str(measurement)}][{str(online)}]")
 
         # update the display widgets with their current values
-        self.updateDisplays(self.__displayWidgets,self.__statusWidgets)
+        self.updateDisplays(self.__displayWidgets,self.__statusWidgets,self.__correctionWidgets)
 
         # how long before we should update the display widgets again?
         delay = (int(
@@ -143,7 +191,7 @@ class Erl2Sensor():
                   * self.__loggingFrequency     # convert back to seconds/timestamp
                 )
 
-    def updateDisplays(self, displayWidgets, statusWidgets):
+    def updateDisplays(self, displayWidgets, statusWidgets, correctionWidgets):
 
         #print (f"{self.__class__.__name__}: Debug: updateDisplays() using [{str(self.lastValid)}][{str(self.value)}][{str(self.online)}]")
 
@@ -173,7 +221,7 @@ class Erl2Sensor():
                 #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.__sensorType}] float exception for [{self.value[self.__displayParameter]}][{self.__displayDecimals}]")
 
         # loop through all placements of this sensor's display widgets
-        for w in displayWidgets:
+        for w in displayWidgets + correctionWidgets:
 
             # update the display
             w.config(text=upd)

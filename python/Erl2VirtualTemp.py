@@ -13,6 +13,7 @@ class Erl2VirtualTemp(Erl2Sensor):
                  parent=None,
                  displayLocs=[],
                  statusLocs=[],
+                 correctionLoc={},
                  stack=0,
                  channel=1,
                  erl2conf=None,
@@ -22,6 +23,7 @@ class Erl2VirtualTemp(Erl2Sensor):
         super().__init__(type='virtualtemp',
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
+                         correctionLoc=correctionLoc,
                          erl2conf=erl2conf,
                          img=img)
 
@@ -36,9 +38,6 @@ class Erl2VirtualTemp(Erl2Sensor):
             self.readSensor()
 
     def measure(self):
-
-        # initialize the measurement result
-        self.value = {}
 
         # the local time
         local = dt.now()
@@ -55,6 +54,9 @@ class Erl2VirtualTemp(Erl2Sensor):
         else:
             # at startup, assign tank temp to be environmental temp
             prevTemp = targetTemp
+
+        # initialize the measurement result
+        self.value = {}
 
         # sneak a peak at whether the system has the heater or chiller turned on
         try:
@@ -101,7 +103,7 @@ class Erl2VirtualTemp(Erl2Sensor):
         # remember timestamp of last valid measurement
         self.lastValid = t
 
-        #print (f"{self.__class__.__name__}: Debug: measure() returning [{str(t)}][{str(self.value)}][{str(self.online)}]")
+        #print (f"{self.__class__.__name__}: Debug: measure() before [{prevTemp}], offset [{delta}], after [{self.value['temp.degC']}]")
 
         # return timestamp, measurement and status
         return t, self.value, self.online

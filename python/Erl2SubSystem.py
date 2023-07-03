@@ -110,23 +110,49 @@ class Erl2SubSystem():
             r.grid(row=value,column=0,ipadx=2,ipady=2,sticky='w')
 
             self.__radioWidgets.append(r)
-            
-        # create the entry fields for the auto static setpoint
-        e = ttk.Entry(self.__staticLoc['parent'], width=4, font='Arial 20')
-        e.insert(tk.END, self.erl2conf['temperature']['setpointDefault'])
-        e.grid(row=self.__staticLoc['row'],column=self.__staticLoc['column']) #, sticky='s')
-        #e.bind('<FocusIn>', self.numpadEntry)
-        e.selection_range(0,0)
 
+        # create the static setpoint entry widget's base frame as a child of its parent
+        f = ttk.Frame(self.__staticLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
+        f.grid(row=self.__staticLoc['row'], column=self.__staticLoc['column'], padx='2', pady='0', sticky='nwse')
+
+        # create the entry field for the auto static setpoint
+        e = ttk.Entry(f, width=4, font='Arial 20',justify='right')
+        e.insert(tk.END, self.erl2conf['temperature']['setpointDefault'])
+        e.grid(row=0,column=1, sticky='e')
+        #e.bind('<FocusIn>', self.numpadEntry)
+        #e.selection_range(0,0)
+
+        # this is the Label shown beside the entry widget
+        ttk.Label(f, text='Static\nSetpoint', font='Arial 14'
+            #, relief='solid', borderwidth=1
+            ).grid(row=0, column=0, padx='2 2', sticky='e')
+
+        f.rowconfigure(0,weight=1)
+        f.columnconfigure(1,weight=1)
+        f.columnconfigure(0,weight=0)
+            
         self.__staticWidgets.append(e)
     
-        # add offset entry fields
-        e = ttk.Entry(self.__offsetLoc['parent'], width=3, font='Arial 20')
-        e.insert(tk.END, self.erl2conf['temperature']['offsetDefault'])
-        e.grid(row=self.__offsetLoc['row'],column=self.__offsetLoc['column']) #, sticky='s')
+        # create the hysteresis entry widget's base frame as a child of its parent
+        f = ttk.Frame(self.__offsetLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
+        f.grid(row=self.__offsetLoc['row'], column=self.__offsetLoc['column'], padx='2', pady='0', sticky='nwse')
+
+        # add offset entry field
+        e = ttk.Entry(f, width=4, font='Arial 20',justify='right')
+        e.insert(tk.END, self.erl2conf['temperature']['hysteresisDefault'])
+        e.grid(row=0,column=1, sticky='s')
         #e.bind('<FocusIn>', self.numpadEntry)
         e.selection_range(0,0)
 
+        # this is the Label shown beside the entry widget
+        ttk.Label(f, text='Hysteresis', font='Arial 14'
+            #, relief='solid', borderwidth=1
+            ).grid(row=0, column=0, padx='2 2', sticky='e')
+
+        f.rowconfigure(0,weight=1)
+        f.columnconfigure(1,weight=1)
+        f.columnconfigure(0,weight=0)
+            
         self.__offsetWidgets.append(e)
     
         # add dynamic setpoint entry fields
@@ -218,7 +244,7 @@ class Erl2SubSystem():
 
         # enable/disable this subsystem's associated controls as appropriate
         for c in self.__controls.values():
-            c.setActive(bool(var==0))
+            c.setActive(int(var==0))
 
         # enable/disable the static setpoint entry fields as appropriate
         for w in self.__staticWidgets:

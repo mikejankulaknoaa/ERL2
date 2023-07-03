@@ -11,6 +11,7 @@ class Erl2Temperature(Erl2Sensor):
     def __init__(self,
                  displayLocs=[],
                  statusLocs=[],
+                 correctionLoc={},
                  stack=0,
                  channel=1,
                  erl2conf=None,
@@ -20,6 +21,7 @@ class Erl2Temperature(Erl2Sensor):
         super().__init__(type='temperature',
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
+                         correctionLoc=correctionLoc,
                          erl2conf=erl2conf,
                          img=img)
 

@@ -25,6 +25,7 @@ class Erl2pH(Erl2Sensor):
     def __init__(self,
                  displayLocs=[],
                  statusLocs=[],
+                 correctionLoc={},
                  port='/dev/ttyAMA1',
                  baud=19200,
                  tempSensor=None,
@@ -35,6 +36,7 @@ class Erl2pH(Erl2Sensor):
         super().__init__(type='pH',
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
+                         correctionLoc=correctionLoc,
                          erl2conf=erl2conf,
                          img=img)
 

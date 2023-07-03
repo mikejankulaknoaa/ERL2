@@ -34,7 +34,7 @@ class Erl2Toggle():
         self.__buttonWidgets = []
 
         # and whether the buttons are allowed to be active or not
-        self.enabled = True
+        self.enabled = 0
 
         # for a toggle control, we track on/off state and history
         self.state = 0
@@ -90,8 +90,8 @@ class Erl2Toggle():
                 ).grid(row=0, column=0, padx='2 2', sticky='w')
 
             f.rowconfigure(0,weight=1)
-            f.columnconfigure(0,weight=1)
-            f.columnconfigure(1,weight=0)
+            f.columnconfigure(1,weight=1)
+            f.columnconfigure(0,weight=0)
 
             # keep a list of display widgets for this control
             self.__displayWidgets.append(l)
@@ -112,16 +112,16 @@ class Erl2Toggle():
                           highlightthickness=0,
                           activebackground='#DBDBDB',
                           command=self.changeState)
-            b.grid(row=0, column=1, padx='2 2', sticky='e')
+            b.grid(row=0, column=0, padx='2 2', sticky='w')
 
             # this is the (text) Label shown beside the (image) button widget
-            ttk.Label(f, text=self.__label, font='Arial 16'
+            ttk.Label(f, text=self.__label, font='Arial 14'
                 #, relief='solid', borderwidth=1
-                ).grid(row=0, column=0, padx='2 2', sticky='w')
+                ).grid(row=0, column=1, padx='2 2', sticky='w')
 
             f.rowconfigure(0,weight=1)
-            f.columnconfigure(0,weight=1)
-            f.columnconfigure(1,weight=0)
+            f.columnconfigure(0,weight=0)
+            f.columnconfigure(1,weight=1)
 
             # keep a list of button widgets for this control
             self.__buttonWidgets.append(b)
@@ -207,7 +207,7 @@ class Erl2Toggle():
 
         #print (f"{self.__class__.__name__}: Debug: updateLog() to be called again after [{float(delay)/1000.}] seconds")
 
-    def setActive(self, enabled=True):
+    def setActive(self, enabled=1):
 
         # loop through all placements of this control's button widgets
         wcount = 0
@@ -238,8 +238,12 @@ class Erl2Toggle():
         # loop through all placements of this control's button widgets
         for w in buttonWidgets:
 
+            # for a button to diplay the 'on' image, two things are required:
+            # the control must be in the on state, and the button must be enabled
+            imageInd = self.enabled * self.state
+
             # update the button
-            w.config(image=self.img[self.buttonImages[self.state]])
+            w.config(image=self.img[self.buttonImages[imageInd]])
 
     def changeState(self):
 

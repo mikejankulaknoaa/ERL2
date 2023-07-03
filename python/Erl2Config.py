@@ -38,26 +38,28 @@ class Erl2Config():
         self.__default['temperature']['sampleFrequency'] = '5'
         self.__default['temperature']['memoryRetention'] = '86400'
         self.__default['temperature']['loggingFrequency'] = '300'
+        self.__default['temperature']['offsetDefault'] = '0.0'
         self.__default['temperature']['validRange'] = '[10.0, 40.0]'
         self.__default['temperature']['setpointDefault'] = '25.0'
-        self.__default['temperature']['offsetDefault'] = '0.1'
         self.__default['temperature']['dynamicDefault'] = ('[27.0, 26.5, 26.0, 25.6, 25.3, 25.1, '
                                                            '25.0, 25.1, 25.3, 25.6, 26.0, 26.5, '
                                                            '27.0, 27.5, 28.0, 28.4, 28.7, 28.9, '
                                                            '29.0, 28.9, 28.7, 28.4, 28.0, 27.5]')
+        self.__default['temperature']['hysteresisDefault'] = '0.1'
 
         self.__default['pH']['displayParameter'] = 'pH'
         self.__default['pH']['displayDecimals'] = '2'
         self.__default['pH']['sampleFrequency'] = '300'
         self.__default['pH']['memoryRetention'] = '86400'
         self.__default['pH']['loggingFrequency'] = '300'
+        self.__default['pH']['offsetDefault'] = '0.00'
         self.__default['pH']['validRange'] = '[6.00, 9.00]'
         self.__default['pH']['setpointDefault'] = '7.80'
-        self.__default['pH']['offsetDefault'] = '0.01'
         self.__default['pH']['dynamicDefault'] = ('[8.00, 7.99, 7.98, 7.96, 7.96, 7.95, '
                                                   '7.95, 7.95, 7.96, 7.96, 7.98, 7.99, '
                                                   '8.00, 8.01, 8.03, 8.04, 8.04, 8.05, '
                                                   '8.05, 8.05, 8.04, 8.04, 8.03, 8.01]')
+        self.__default['pH']['hysteresisDefault'] = '0.01'
 
         self.__default['heater']['loggingFrequency'] = '300'
         self.__default['heater']['memoryRetention'] = '86400'
@@ -234,6 +236,15 @@ class Erl2Config():
             except:
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['loggingFrequency'] = [{self.__erl2conf[sensorType]['loggingFrequency']}] is not a positive integer")
 
+            if 'offsetDefault' not in in_conf[sensorType]:
+                in_conf[sensorType]['offsetDefault'] = self.__default[sensorType]['offsetDefault']
+            try:
+                self.__erl2conf[sensorType]['offsetDefault'] = float(in_conf[sensorType]['offsetDefault'])
+                #if self.__erl2conf[sensorType]['offsetDefault'] <= 0.:
+                #    raise
+            except:
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['offsetDefault'] = [{in_conf[sensorType]['offsetDefault']}] is not a positive float")
+
             if 'validRange' not in in_conf[sensorType]:
                 in_conf[sensorType]['validRange'] = self.__default[sensorType]['validRange']
             try:
@@ -260,15 +271,6 @@ class Erl2Config():
             except:
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['setpointDefault'] = [{in_conf[sensorType]['setpointDefault']}] is not a float within the valid range for this sensor")
 
-            if 'offsetDefault' not in in_conf[sensorType]:
-                in_conf[sensorType]['offsetDefault'] = self.__default[sensorType]['offsetDefault']
-            try:
-                self.__erl2conf[sensorType]['offsetDefault'] = float(in_conf[sensorType]['offsetDefault'])
-                if self.__erl2conf[sensorType]['offsetDefault'] <= 0.:
-                    raise
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['offsetDefault'] = [{in_conf[sensorType]['offsetDefault']}] is not a positive float")
-
             if 'dynamicDefault' not in in_conf[sensorType]:
                 in_conf[sensorType]['dynamicDefault'] = self.__default[sensorType]['dynamicDefault']
             try:
@@ -287,6 +289,15 @@ class Erl2Config():
                     raise
             except:
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['dynamicDefault'] = [{in_conf[sensorType]['dynamicDefault']}] is not a list of 24 floats within the valid range for this sensor")
+
+            if 'hysteresisDefault' not in in_conf[sensorType]:
+                in_conf[sensorType]['hysteresisDefault'] = self.__default[sensorType]['hysteresisDefault']
+            try:
+                self.__erl2conf[sensorType]['hysteresisDefault'] = float(in_conf[sensorType]['hysteresisDefault'])
+                if self.__erl2conf[sensorType]['hysteresisDefault'] <= 0.:
+                    raise
+            except:
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['hysteresisDefault'] = [{in_conf[sensorType]['hysteresisDefault']}] is not a positive float")
 
         # if using the virtual temperature sensor, duplicate its settings from temperature
 
