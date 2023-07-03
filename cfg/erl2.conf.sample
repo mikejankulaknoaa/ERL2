@@ -44,17 +44,21 @@ memoryRetention = 86400
 # controls how often measured values are saved in memory and written to log files
 loggingFrequency = 300
 
+# default corrective offset (degrees Celsius)
+# (i.e. an offset applied when external/redundant temperature readings
+#  suggest that the temperature sensor is off by a consistent factor)
+offsetDefault = 0.0
+
 # valid range: values outside of this range will be considered errors
 validRange = [10.0, 40.0]
 
 # default temperature setpoint (degrees Celsius)
 setpointDefault = 25.0
 
-# default temperature offset (degrees Celsius)
-# i.e. the hysteresis parameter
-offsetDefault = 0.1
+# default temperature hysteresis (degrees Celsius)
+hysteresisDefault = 0.1
 
-# default dynamic program (24 values, degrees Celsisu)
+# default dynamic program (24 values, degrees Celsius)
 # this is a sine shape running between 25 degC (6am low point) and 29 degC (6pm high point)
 dynamicDefault = [27.0, 26.5, 26.0, 25.6, 25.3, 25.1, 25.0, 25.1, 25.3, 25.6, 26.0, 26.5, 27.0, 27.5, 28.0, 28.4, 28.7, 28.9, 29.0, 28.9, 28.7, 28.4, 28.0, 27.5]
 
@@ -77,15 +81,19 @@ memoryRetention = 86400
 # controls how often measured values are saved in memory and written to log files
 loggingFrequency = 300
 
+# default corrective offset (total pH)
+# (i.e. an offset applied when external/redundant pH readings
+# suggest that the pH sensor is off by a consistent factor)
+offsetDefault = 0.0
+
 # valid range: values outside of this range will be considered errors
 validRange = [6.00, 9.00]
 
 # default pH setpoint (total pH)
 setpointDefault = 7.80
 
-# default pH offset (total pH)
-# i.e. the hysteresis parameter
-offsetDefault = 0.01
+# default temperature hysteresis (total pH)
+hysteresisDefault = 0.01
 
 # default dynamic program (24 values, degrees Celsisu)
 # this is a sine shape running between 7.95 (6am low point) and 8.05 (6pm high point)
