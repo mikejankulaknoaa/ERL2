@@ -417,7 +417,6 @@ class Erl2Tank:
                          {'parent':self.__frames['pH'][0][0],'row':1,'column':0}],
             statusLocs=pHStatusLocs,
             correctionLoc={'parent':self.__frames['pH'][0][2],'row':1,'column':0},
-            port='/dev/ttyAMA1',
             tempSensor=self.sensors['temperature'],
             erl2conf=self.erl2conf)
 

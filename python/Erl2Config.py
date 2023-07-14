@@ -17,6 +17,10 @@ class Erl2Config():
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'heater', 'chiller']
 
+    # valid baud rates (borrowed from the pyrolib code)
+    BAUDS = [ 1200,  2400,   4800,   9600,  14400,  19200,  28800,  38400,  38400,
+             56000, 57600, 115200, 128000, 153600, 230400, 256000, 460800, 921600]
+
     # use these parameter strings as defaults if they are missing from the erl2.conf file
     def __setDefaults(self):
         self.__default = {}
@@ -33,6 +37,8 @@ class Erl2Config():
 
         self.__default['virtualtemp']['enabled'] = 'False'
 
+        self.__default['temperature']['stackLevel'] = '0'
+        self.__default['temperature']['inputChannel'] = '1'
         self.__default['temperature']['displayParameter'] = 'temp.degC'
         self.__default['temperature']['displayDecimals'] = '1'
         self.__default['temperature']['sampleFrequency'] = '5'
@@ -47,6 +53,8 @@ class Erl2Config():
                                                            '27.0, 27.5, 28.0, 28.4, 28.7, 28.9, '
                                                            '29.0, 28.9, 28.7, 28.4, 28.0, 27.5]')
 
+        self.__default['pH']['serialPort'] = '/dev/ttyAMA1'
+        self.__default['pH']['baudRate'] = '19200'
         self.__default['pH']['displayParameter'] = 'pH'
         self.__default['pH']['displayDecimals'] = '2'
         self.__default['pH']['sampleFrequency'] = '300'
@@ -192,7 +200,50 @@ class Erl2Config():
         except:
             raise TypeError(f"{self.__class__.__name__}: ['virtualtemp']['enabled'] = [{in_conf['virtualtemp']['enabled']}] is not boolean")
 
-        # temperature and pH share a lot of the same parameter logic
+        # temperature parameters
+
+        if 'stackLevel' not in in_conf['temperature']:
+            in_conf['temperature']['stackLevel'] = self.__default['temperature']['stackLevel']
+        try:
+            self.__erl2conf['temperature']['stackLevel'] = int(in_conf['temperature']['stackLevel'])
+            if self.__erl2conf['temperature']['stackLevel'] not in range(8):
+                raise TypeError
+        except:
+            raise TypeError(f"{self.__class__.__name__}: [{'temperature'}]['stackLevel'] = [{self.__erl2conf['temperature']['stackLevel']}] is not an integer between 0 and 7")
+
+        if 'inputChannel' not in in_conf['temperature']:
+            in_conf['temperature']['inputChannel'] = self.__default['temperature']['inputChannel']
+        try:
+            self.__erl2conf['temperature']['inputChannel'] = int(in_conf['temperature']['inputChannel'])
+            if self.__erl2conf['temperature']['inputChannel'] not in range(1,5):
+                raise TypeError
+        except:
+            raise TypeError(f"{self.__class__.__name__}: [{'temperature'}]['inputChannel'] = [{self.__erl2conf['temperature']['inputChannel']}] is not an integer between 1 and 4")
+
+        # pH parameters
+
+        if 'serialPort' not in in_conf['pH']:
+            in_conf['pH']['serialPort'] = self.__default['pH']['serialPort']
+        try:
+            self.__erl2conf['pH']['serialPort'] = in_conf['pH']['serialPort']
+            if self.__erl2conf['pH']['serialPort'] == 'None':
+                self.__erl2conf['pH']['serialPort'] = None
+            else:
+                if not path.exists(self.__erl2conf['pH']['serialPort']):
+                    raise
+        except:
+            raise TypeError(f"{self.__class__.__name__}: [{'pH'}]['serialPort'] = [{self.__erl2conf['pH']['serialPort']}] does not exist on this system")
+
+        if 'baudRate' not in in_conf['pH']:
+            in_conf['pH']['baudRate'] = self.__default['pH']['baudRate']
+        try:
+            self.__erl2conf['pH']['baudRate'] = int(in_conf['pH']['baudRate'])
+            if self.__erl2conf['pH']['baudRate'] not in self.BAUDS:
+                raise TypeError
+        except:
+            raise TypeError(f"{self.__class__.__name__}: [{'pH'}]['baudRate'] = [{self.__erl2conf['pH']['baudRate']}] is not a valid baud rate.\nValid baud rates are [{self.BAUDS}].")
+
+        # temperature and pH share a lot of the same parameter logic, too
 
         for sensorType in ['temperature', 'pH']:
 

@@ -26,8 +26,6 @@ class Erl2pH(Erl2Sensor):
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
-                 port='/dev/ttyAMA1',
-                 baud=19200,
                  tempSensor=None,
                  erl2conf=None,
                  img=None):
@@ -40,9 +38,15 @@ class Erl2pH(Erl2Sensor):
                          erl2conf=erl2conf,
                          img=img)
 
+        # read in the system configuration file if needed
+        if self.erl2conf is None:
+            self.erl2conf = Erl2Config()
+            #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
+
         # private attributes specific to Erl2pH
-        self.__port = port
-        self.__baud = baud
+        self.__port = self.erl2conf['pH']['serialPort']
+        self.__baud = self.erl2conf['pH']['baudRate']
 
         # pH sensor needs to be told what the current temperature and salinity are
         self.__tempSensor = tempSensor
