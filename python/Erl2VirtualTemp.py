@@ -20,7 +20,7 @@ class Erl2VirtualTemp(Erl2Sensor):
                  img=None):
 
         # call the Erl2Sensor class's constructor
-        super().__init__(type='virtualtemp',
+        super().__init__(sensorType='virtualtemp',
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
                          correctionLoc=correctionLoc,
@@ -112,7 +112,8 @@ def main():
 
     root = tk.Tk()
     virtualtemp = Erl2VirtualTemp(displayLocs=[{'parent':root,'row':0,'column':0}],
-                                  statusLocs=[{'parent':root,'row':1,'column':0}])
+                                  statusLocs=[{'parent':root,'row':1,'column':0}],
+                                  correctionLoc={'parent':root,'row':2,'column':0})
     root.mainloop()
 
 if __name__ == "__main__": main()

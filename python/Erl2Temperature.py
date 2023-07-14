@@ -3,6 +3,7 @@
 from megaind import get4_20In
 import tkinter as tk
 from tkinter import ttk
+from Erl2Config import Erl2Config
 from Erl2Sensor import Erl2Sensor
 
 # ProSense Pt100 temperature transmitter XTP25N-100-0100C
@@ -16,7 +17,7 @@ class Erl2Temperature(Erl2Sensor):
                  img=None):
 
         # call the Erl2Sensor class's constructor
-        super().__init__(type='temperature',
+        super().__init__(sensorType='temperature',
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
                          correctionLoc=correctionLoc,
@@ -30,8 +31,8 @@ class Erl2Temperature(Erl2Sensor):
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
 
         # private attributes specific to Erl2Temperature
-        self.__stack = self.erl2conf['temperature']['stackLevel']
-        self.__channel = self.erl2conf['temperature']['inputChannel']
+        self.__stack = self.erl2conf[self.sensorType]['stackLevel']
+        self.__channel = self.erl2conf[self.sensorType]['inputChannel']
 
         # start up the timing loop to update the display widgets
         # (check first if this object is an Erl2Temperature or a child class)

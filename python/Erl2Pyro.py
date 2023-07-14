@@ -9,8 +9,8 @@ from tkinter import ttk
 from Erl2Sensor import Erl2Sensor
 from Erl2Temperature import Erl2Temperature
 
-# pyroscience pico-pH-sub sensor
-class Erl2pH(Erl2Sensor):
+# pyroscience pico-pH-sub and pico-o2-sub sensors
+class Erl2Pyro(Erl2Sensor):
 
     # note: adapted this redirection code from something found at
     # https://stackoverflow.com/questions/11130156/suppress-stdout-stderr-print-from-python-functions
@@ -23,6 +23,7 @@ class Erl2pH(Erl2Sensor):
                 yield (out)
 
     def __init__(self,
+                 sensorType='unknown', # pico-sub-pH uses 'pH', pico-o2-sub uses 'uM' (microMoles per Liter)
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
@@ -31,7 +32,7 @@ class Erl2pH(Erl2Sensor):
                  img=None):
 
         # call the Erl2Sensor class's constructor
-        super().__init__(type='pH',
+        super().__init__(sensorType=sensorType,
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
                          correctionLoc=correctionLoc,
@@ -44,9 +45,9 @@ class Erl2pH(Erl2Sensor):
             #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
 
-        # private attributes specific to Erl2pH
-        self.__port = self.erl2conf['pH']['serialPort']
-        self.__baud = self.erl2conf['pH']['baudRate']
+        # private attributes specific to Erl2Pyro
+        self.__port = self.erl2conf[self.sensorType]['serialPort']
+        self.__baud = self.erl2conf[self.sensorType]['baudRate']
 
         # pH sensor needs to be told what the current temperature and salinity are
         self.__tempSensor = tempSensor
@@ -57,8 +58,8 @@ class Erl2pH(Erl2Sensor):
         self.connect()
 
         # start up the timing loop to update the display widgets
-        # (check first if this object is an Erl2pH or a child class)
-        if self.__class__.__name__ == 'Erl2pH':
+        # (check first if this object is an Erl2Pyro or a child class)
+        if self.__class__.__name__ == 'Erl2Pyro':
             self.readSensor()
 
     def connect(self):
@@ -147,10 +148,13 @@ def main():
 
     root = tk.Tk()
     temperature = Erl2Temperature(displayLocs=[{'parent':root,'row':0,'column':0}],
-                                  statusLocs=[{'parent':root,'row':1,'column':0}])
-    ph = Erl2pH(displayLocs=[{'parent':root,'row':3,'column':0}],
-                statusLocs=[{'parent':root,'row':4,'column':0}],
-                tempSensor=temperature)
+                                  statusLocs=[{'parent':root,'row':1,'column':0}],
+                                  correctionLoc={'parent':root,'row':2,'column':0})
+    ph = Erl2Pyro(sensorType='pH',
+                  displayLocs=[{'parent':root,'row':3,'column':0}],
+                  statusLocs=[{'parent':root,'row':4,'column':0}],
+                  correctionLoc={'parent':root,'row':5,'column':0},
+                  tempSensor=temperature)
     root.mainloop()
 
 if __name__ == "__main__": main()

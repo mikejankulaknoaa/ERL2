@@ -15,7 +15,7 @@ class Erl2Config():
     VERSION = '0.01b (2023-06-30)'
 
     # top-level categories in the erl2.conf file
-    CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'heater', 'chiller']
+    CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'heater', 'chiller']
 
     # valid baud rates (borrowed from the pyrolib code)
     BAUDS = [ 1200,  2400,   4800,   9600,  14400,  19200,  28800,  38400,  38400,
@@ -39,6 +39,7 @@ class Erl2Config():
 
         self.__default['temperature']['stackLevel'] = '0'
         self.__default['temperature']['inputChannel'] = '1'
+        self.__default['temperature']['hysteresisDefault'] = '0.1'
         self.__default['temperature']['displayParameter'] = 'temp.degC'
         self.__default['temperature']['displayDecimals'] = '1'
         self.__default['temperature']['sampleFrequency'] = '5'
@@ -47,27 +48,40 @@ class Erl2Config():
         self.__default['temperature']['offsetDefault'] = '0.0'
         self.__default['temperature']['validRange'] = '[10.0, 40.0]'
         self.__default['temperature']['setpointDefault'] = '25.0'
-        self.__default['temperature']['hysteresisDefault'] = '0.1'
         self.__default['temperature']['dynamicDefault'] = ('[27.0, 26.5, 26.0, 25.6, 25.3, 25.1, '
-                                                           '25.0, 25.1, 25.3, 25.6, 26.0, 26.5, '
-                                                           '27.0, 27.5, 28.0, 28.4, 28.7, 28.9, '
-                                                           '29.0, 28.9, 28.7, 28.4, 28.0, 27.5]')
+                                                            '25.0, 25.1, 25.3, 25.6, 26.0, 26.5, '
+                                                            '27.0, 27.5, 28.0, 28.4, 28.7, 28.9, '
+                                                            '29.0, 28.9, 28.7, 28.4, 28.0, 27.5]')
 
         self.__default['pH']['serialPort'] = '/dev/ttyAMA1'
         self.__default['pH']['baudRate'] = '19200'
         self.__default['pH']['displayParameter'] = 'pH'
         self.__default['pH']['displayDecimals'] = '2'
-        self.__default['pH']['sampleFrequency'] = '300'
+        self.__default['pH']['sampleFrequency'] = '60'
         self.__default['pH']['memoryRetention'] = '86400'
         self.__default['pH']['loggingFrequency'] = '300'
         self.__default['pH']['offsetDefault'] = '0.00'
         self.__default['pH']['validRange'] = '[6.00, 9.00]'
         self.__default['pH']['setpointDefault'] = '7.80'
-        self.__default['pH']['hysteresisDefault'] = '0.01'
         self.__default['pH']['dynamicDefault'] = ('[8.00, 7.99, 7.98, 7.96, 7.96, 7.95, '
-                                                  '7.95, 7.95, 7.96, 7.96, 7.98, 7.99, '
-                                                  '8.00, 8.01, 8.03, 8.04, 8.04, 8.05, '
-                                                  '8.05, 8.05, 8.04, 8.04, 8.03, 8.01]')
+                                                   '7.95, 7.95, 7.96, 7.96, 7.98, 7.99, '
+                                                   '8.00, 8.01, 8.03, 8.04, 8.04, 8.05, '
+                                                   '8.05, 8.05, 8.04, 8.04, 8.03, 8.01]')
+
+        self.__default['DO']['serialPort'] = '/dev/ttyAMA2'
+        self.__default['DO']['baudRate'] = '19200'
+        self.__default['DO']['displayParameter'] = 'uM'
+        self.__default['DO']['displayDecimals'] = '0'
+        self.__default['DO']['sampleFrequency'] = '60'
+        self.__default['DO']['memoryRetention'] = '86400'
+        self.__default['DO']['loggingFrequency'] = '300'
+        self.__default['DO']['offsetDefault'] = '0.'
+        self.__default['DO']['validRange'] = '[100., 700.]'
+        self.__default['DO']['setpointDefault'] = '300.'
+        self.__default['DO']['dynamicDefault'] = ('[300., 294., 288., 282., 278., 276., '
+                                                   '275., 276., 278., 282., 288., 294., '
+                                                   '300., 306., 313., 318., 322., 324., '
+                                                   '325., 324., 322., 318., 313., 306.]')
 
         self.__default['heater']['loggingFrequency'] = '300'
         self.__default['heater']['memoryRetention'] = '86400'
@@ -220,32 +234,42 @@ class Erl2Config():
         except:
             raise TypeError(f"{self.__class__.__name__}: [{'temperature'}]['inputChannel'] = [{self.__erl2conf['temperature']['inputChannel']}] is not an integer between 1 and 4")
 
-        # pH parameters
-
-        if 'serialPort' not in in_conf['pH']:
-            in_conf['pH']['serialPort'] = self.__default['pH']['serialPort']
+        if 'hysteresisDefault' not in in_conf['temperature']:
+            in_conf['temperature']['hysteresisDefault'] = self.__default['temperature']['hysteresisDefault']
         try:
-            self.__erl2conf['pH']['serialPort'] = in_conf['pH']['serialPort']
-            if self.__erl2conf['pH']['serialPort'] == 'None':
-                self.__erl2conf['pH']['serialPort'] = None
-            else:
-                if not path.exists(self.__erl2conf['pH']['serialPort']):
-                    raise
+            self.__erl2conf['temperature']['hysteresisDefault'] = float(in_conf['temperature']['hysteresisDefault'])
+            if self.__erl2conf['temperature']['hysteresisDefault'] <= 0.:
+                raise
         except:
-            raise TypeError(f"{self.__class__.__name__}: [{'pH'}]['serialPort'] = [{self.__erl2conf['pH']['serialPort']}] does not exist on this system")
+            raise TypeError(f"{self.__class__.__name__}: [{'temperature'}]['hysteresisDefault'] = [{in_conf['temperature']['hysteresisDefault']}] is not a positive float")
 
-        if 'baudRate' not in in_conf['pH']:
-            in_conf['pH']['baudRate'] = self.__default['pH']['baudRate']
-        try:
-            self.__erl2conf['pH']['baudRate'] = int(in_conf['pH']['baudRate'])
-            if self.__erl2conf['pH']['baudRate'] not in self.BAUDS:
-                raise TypeError
-        except:
-            raise TypeError(f"{self.__class__.__name__}: [{'pH'}]['baudRate'] = [{self.__erl2conf['pH']['baudRate']}] is not a valid baud rate.\nValid baud rates are [{self.BAUDS}].")
+        # pH and DO parameters (not temperature)
 
-        # temperature and pH share a lot of the same parameter logic, too
+        for sensorType in ['pH', 'DO']:
+            if 'serialPort' not in in_conf[sensorType]:
+                in_conf[sensorType]['serialPort'] = self.__default[sensorType]['serialPort']
+            try:
+                self.__erl2conf[sensorType]['serialPort'] = in_conf[sensorType]['serialPort']
+                if self.__erl2conf[sensorType]['serialPort'] == 'None':
+                    self.__erl2conf[sensorType]['serialPort'] = None
+                else:
+                    if not path.exists(self.__erl2conf[sensorType]['serialPort']):
+                        raise
+            except:
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['serialPort'] = [{self.__erl2conf[sensorType]['serialPort']}] does not exist on this system")
 
-        for sensorType in ['temperature', 'pH']:
+            if 'baudRate' not in in_conf[sensorType]:
+                in_conf[sensorType]['baudRate'] = self.__default[sensorType]['baudRate']
+            try:
+                self.__erl2conf[sensorType]['baudRate'] = int(in_conf[sensorType]['baudRate'])
+                if self.__erl2conf[sensorType]['baudRate'] not in self.BAUDS:
+                    raise TypeError
+            except:
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['baudRate'] = [{self.__erl2conf[sensorType]['baudRate']}] is not a valid baud rate.\nValid baud rates are [{self.BAUDS}].")
+
+        # temperature, pH and DO share a lot of the same parameter logic
+
+        for sensorType in ['temperature', 'pH', 'DO']:
 
             if 'displayParameter' not in in_conf[sensorType]:
                 in_conf[sensorType]['displayParameter'] = self.__default[sensorType]['displayParameter']
@@ -322,15 +346,6 @@ class Erl2Config():
             except:
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['setpointDefault'] = [{in_conf[sensorType]['setpointDefault']}] is not a float within the valid range for this sensor")
 
-            if 'hysteresisDefault' not in in_conf[sensorType]:
-                in_conf[sensorType]['hysteresisDefault'] = self.__default[sensorType]['hysteresisDefault']
-            try:
-                self.__erl2conf[sensorType]['hysteresisDefault'] = float(in_conf[sensorType]['hysteresisDefault'])
-                if self.__erl2conf[sensorType]['hysteresisDefault'] <= 0.:
-                    raise
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['hysteresisDefault'] = [{in_conf[sensorType]['hysteresisDefault']}] is not a positive float")
-
             if 'dynamicDefault' not in in_conf[sensorType]:
                 in_conf[sensorType]['dynamicDefault'] = self.__default[sensorType]['dynamicDefault']
             try:
@@ -350,10 +365,10 @@ class Erl2Config():
             except:
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['dynamicDefault'] = [{in_conf[sensorType]['dynamicDefault']}] is not a list of 24 floats within the valid range for this sensor")
 
-        # if using the virtual temperature sensor, duplicate its settings from temperature
+        # the virtual temperature sensor might be required even if not explicitly enabled
 
-        if self.__erl2conf['virtualtemp']['enabled']:
-            self.__erl2conf['virtualtemp'] = {**self.__erl2conf['virtualtemp'], **self.__erl2conf['temperature']}
+        #if self.__erl2conf['virtualtemp']['enabled']:
+        self.__erl2conf['virtualtemp'] = {**self.__erl2conf['virtualtemp'], **self.__erl2conf['temperature']}
 
         # heater and chiller share a lot of the same parameter logic
 

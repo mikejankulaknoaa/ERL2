@@ -11,14 +11,14 @@ from Erl2Log import Erl2Log
 class Erl2Sensor():
 
     def __init__(self,
-                 type='generic',
+                 sensorType='generic',
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
                  erl2conf=None,
                  img=None):
 
-        self.__sensorType = type
+        self.sensorType = sensorType
         self.__displayLocs = displayLocs
         self.__statusLocs = statusLocs
         self.__correctionLoc = correctionLoc
@@ -49,17 +49,19 @@ class Erl2Sensor():
         self.__loggingFrequency = 300
         self.__displayParameter = 'generic'
         self.__displayDecimals = 3
+        self.__offsetDefault = 0.
 
         # but for real sensors, load them from Erl2Config
-        if self.__sensorType != 'generic':
-            self.__sampleFrequency = self.erl2conf[self.__sensorType]['sampleFrequency']
-            self.__loggingFrequency = self.erl2conf[self.__sensorType]['loggingFrequency']
-            self.__displayParameter = self.erl2conf[self.__sensorType]['displayParameter']
-            self.__displayDecimals = self.erl2conf[self.__sensorType]['displayDecimals']
+        if self.sensorType != 'generic':
+            self.__sampleFrequency = self.erl2conf[self.sensorType]['sampleFrequency']
+            self.__loggingFrequency = self.erl2conf[self.sensorType]['loggingFrequency']
+            self.__displayParameter = self.erl2conf[self.sensorType]['displayParameter']
+            self.__displayDecimals = self.erl2conf[self.sensorType]['displayDecimals']
+            self.__offsetDefault = self.erl2conf[self.sensorType]['offsetDefault']
 
         # start a data/log file for the sensor
         if not self.erl2conf['system']['disableFileLogging']:
-            self.dataLog = Erl2Log(logType='sensor', logName=self.__sensorType, erl2conf=self.erl2conf)
+            self.dataLog = Erl2Log(logType='sensor', logName=self.sensorType, erl2conf=self.erl2conf)
         else:
             self.dataLog = None
 
@@ -97,7 +99,7 @@ class Erl2Sensor():
 
         # create the entry field for the correction offset
         e = ttk.Entry(f, width=4, font='Arial 20',justify='right')
-        e.insert(tk.END, self.erl2conf[self.__sensorType]['offsetDefault'])
+        e.insert(tk.END, self.__offsetDefault)
         e.grid(row=0,column=1, sticky='e')
         #e.bind('<FocusIn>', self.numpadEntry)
         #e.selection_range(0,0)
@@ -198,13 +200,13 @@ class Erl2Sensor():
         # figure out what value to use in update
         if not self.online:
             upd = '--'
-            #if self.__sensorType == 'pH':
-            #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.__sensorType}] is offline")
+            #if self.sensorType == 'pH':
+            #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.sensorType}] is offline")
 
         elif len([x for x in self.value.keys() if 'Timestamp' not in x]) == 0:
             upd = '--'
-            #if self.__sensorType == 'pH':
-            #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.__sensorType}] value is empty")
+            #if self.sensorType == 'pH':
+            #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.sensorType}] value is empty")
 
         elif self.__displayParameter not in self.value:
             raise AttributeError(f"{self.__class__.__name__}: Error: no key named [{self.__displayParameter}] in self.value")
@@ -213,12 +215,12 @@ class Erl2Sensor():
             # even if the parameter is present, it might not be in float format
             try:
                 upd = f"{float(round(self.value[self.__displayParameter],self.__displayDecimals)):.{self.__displayDecimals}f}"
-                #if self.__sensorType == 'pH':
-                #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.__sensorType}] update is [{upd}]")
+                #if self.sensorType == 'pH':
+                #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.sensorType}] update is [{upd}]")
             except:
                 upd = '--'
-                #if self.__sensorType == 'pH':
-                #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.__sensorType}] float exception for [{self.value[self.__displayParameter]}][{self.__displayDecimals}]")
+                #if self.sensorType == 'pH':
+                #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.sensorType}] float exception for [{self.value[self.__displayParameter]}][{self.__displayDecimals}]")
 
         # loop through all placements of this sensor's display widgets
         for w in displayWidgets + correctionWidgets:
@@ -286,7 +288,8 @@ def main():
 
     root = tk.Tk()
     sensor = Erl2Sensor(displayLocs=[{'parent':root,'row':0,'column':0}],
-                        statusLocs=[{'parent':root,'row':1,'column':0}])
+                        statusLocs=[{'parent':root,'row':1,'column':0}],
+                        correctionLoc={'parent':root,'row':2,'column':0})
     root.mainloop()
 
 if __name__ == "__main__": main()
