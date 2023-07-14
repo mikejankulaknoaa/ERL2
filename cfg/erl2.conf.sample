@@ -28,6 +28,15 @@ enabled = False
 
 [temperature]
 
+# sequent microsystems stack level (usually 0, can be up to 7)
+stackLevel = 0
+
+# sequent microsystems input channel number
+inputChannel = 1
+
+# default temperature hysteresis (degrees Celsius)
+hysteresisDefault = 0.1
+
 # which parameter to display in GUI, and with how many decimal places
 displayParameter = temp.degC
 displayDecimals = 1
@@ -44,9 +53,11 @@ memoryRetention = 86400
 # controls how often measured values are saved in memory and written to log files
 loggingFrequency = 300
 
-# default corrective offset (degrees Celsius)
+# default corrective offset (degrees Celsius), and the parameter it applies to
 # (i.e. an offset applied when external/redundant temperature readings
-#  suggest that the temperature sensor is off by a consistent factor)
+#  suggest that the temperature sensor is off by a consistent factor);
+# In most cases the offsetParameter and the displayParameter will be the same
+offsetParameter = temp.degC
 offsetDefault = 0.0
 
 # valid range: values outside of this range will be considered errors
@@ -55,15 +66,18 @@ validRange = [10.0, 40.0]
 # default temperature setpoint (degrees Celsius)
 setpointDefault = 25.0
 
-# default temperature hysteresis (degrees Celsius)
-hysteresisDefault = 0.1
-
 # default dynamic program (24 values, degrees Celsius)
 # this is a sine shape running between 25 degC (6am low point) and 29 degC (6pm high point)
 dynamicDefault = [27.0, 26.5, 26.0, 25.6, 25.3, 25.1, 25.0, 25.1, 25.3, 25.6, 26.0, 26.5, 27.0, 27.5, 28.0, 28.4, 28.7, 28.9, 29.0, 28.9, 28.7, 28.4, 28.0, 27.5]
 
 
 [pH]
+
+# path to the Raspberry Pi serial port to be used for pH communications
+serialPort = /dev/ttyAMA1
+
+# baud rate for communicating with the pH sensor
+baudRate = 19200
 
 # which parameter to display in GUI, and with how many decimal places
 displayParameter = pH
@@ -81,9 +95,11 @@ memoryRetention = 86400
 # controls how often measured values are saved in memory and written to log files
 loggingFrequency = 300
 
-# default corrective offset (total pH)
+# default corrective offset (total pH), and the parameter it applies to
 # (i.e. an offset applied when external/redundant pH readings
-# suggest that the pH sensor is off by a consistent factor)
+# suggest that the pH sensor is off by a consistent factor);
+# In most cases the offsetParameter and the displayParameter will be the same
+offsetParameter = pH
 offsetDefault = 0.0
 
 # valid range: values outside of this range will be considered errors
@@ -95,9 +111,51 @@ setpointDefault = 7.80
 # default temperature hysteresis (total pH)
 hysteresisDefault = 0.01
 
-# default dynamic program (24 values, degrees Celsisu)
+# default dynamic program (24 values, total pH)
 # this is a sine shape running between 7.95 (6am low point) and 8.05 (6pm high point)
 dynamicDefault = [8.00, 7.99, 7.98, 7.96, 7.96, 7.95, 7.95, 7.95, 7.96, 7.96, 7.98, 7.99, 8.00, 8.01, 8.03, 8.04, 8.04, 8.05, 8.05, 8.05, 8.04, 8.04, 8.03, 8.01]
+
+
+[DO]
+
+# path to the Raspberry Pi serial port to be used for O2 communications
+serialPort = /dev/ttyAMA2
+
+# baud rate for communicating with the pH sensor
+baudRate = 19200
+
+# which parameter to display in GUI, and with how many decimal places
+displayParameter = uM
+displayDecimals = 0
+
+# sampling: frequency (seconds)
+# how often the sensor is sampled; not all values may be saved in memory/files
+sampleFrequency = 60
+
+# sampling: retention (seconds)
+# how long data from the sensor are held in memory; 86400s is one day
+memoryRetention = 86400
+
+# logging: frequency (seconds)
+# controls how often measured values are saved in memory and written to log files
+loggingFrequency = 300
+
+# default corrective offset (umol/L), and the parameter it applies to
+# (i.e. an offset applied when external/redundant DO readings
+# suggest that the O2 sensor is off by a consistent factor);
+# In most cases the offsetParameter and the displayParameter will be the same
+offsetParameter = uM
+offsetDefault = 0.
+
+# valid range: values outside of this range will be considered errors
+validRange = [100., 700.]
+
+# default pH setpoint (total pH)
+setpointDefault = 300.
+
+# default dynamic program (24 values, umol/L)
+# this is a sine shape running between 275. (6am low point) and 325. (6pm high point)
+dynamicDefault = [300., 294., 288., 282., 278., 276., 275., 276., 278., 282., 288., 294., 300., 306., 313., 318., 322., 324., 325., 324., 322., 318., 313., 306.]
 
 
 [heater]
