@@ -17,8 +17,7 @@ class Erl2Toggle():
                  displayImages=['button-grey-30.png','button-green-30.png'],
                  buttonImages=['radio-off-30.png','radio-on-30.png'],
                  label='Generic',
-                 erl2conf=None,
-                 img=None):
+                 erl2context={}):
 
         self.__controlType = type
         self.__displayLocs = displayLocs
@@ -26,8 +25,7 @@ class Erl2Toggle():
         self.displayImages = displayImages
         self.buttonImages = buttonImages
         self.__label = label
-        self.erl2conf = erl2conf
-        self.img = img
+        self.erl2context = erl2context
 
         # remember what widgets are active for this control
         self.__displayWidgets = []
@@ -47,29 +45,29 @@ class Erl2Toggle():
         self.__nextFileTime = None
 
         # read in the system configuration file if needed
-        if self.erl2conf is None:
-            self.erl2conf = Erl2Config()
-            #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # if this gets instantiated somehow as 'generic', this parameter isn't in the config
         self.__loggingFrequency = 300
 
         # but for real controls, load it from Erl2Config
         if self.__controlType != 'generic':
-            self.__loggingFrequency = self.erl2conf[self.__controlType]['loggingFrequency']
+            self.__loggingFrequency = self.erl2context['conf'][self.__controlType]['loggingFrequency']
 
         # if necessary, create an object to hold/remember image objects
-        if self.img is None:
-            self.img = Erl2Image(erl2conf=self.erl2conf)
+        if 'img' not in self.erl2context:
+            self.erl2context['img'] = Erl2Image(erl2context=self.erl2context)
 
         # load the associated images; just use the image name as the key
         for i in self.displayImages + self.buttonImages:
-            self.img.addImage(i,i)
+            self.erl2context['img'].addImage(i,i)
 
         # start a data/log file for the control
-        if not self.erl2conf['system']['disableFileLogging']:
-            self.dataLog = Erl2Log(logType='control', logName=self.__controlType, erl2conf=self.erl2conf)
+        if not self.erl2context['conf']['system']['disableFileLogging']:
+            self.dataLog = Erl2Log(logType='control', logName=self.__controlType, erl2context=self.erl2context)
         else:
             self.dataLog = None
 
@@ -81,7 +79,7 @@ class Erl2Toggle():
             f.grid(row=loc['row'], column=loc['column'], padx='2', pady='2', sticky='nwse')
 
             # add a Label widget to show the current control value
-            l = ttk.Label(f, image=self.img[self.displayImages[0]])
+            l = ttk.Label(f, image=self.erl2context['img'][self.displayImages[0]])
             l.grid(row=0, column=1, padx='2 2', sticky='e')
 
             # this is the (text) Label shown beside the (image) display widget
@@ -105,7 +103,7 @@ class Erl2Toggle():
 
             # add a button widget to change the state of the control
             b = tk.Button(f,
-                          image=self.img[self.buttonImages[0]],
+                          image=self.erl2context['img'][self.buttonImages[0]],
                           height=40,
                           width=40,
                           bd=0,
@@ -169,19 +167,19 @@ class Erl2Toggle():
             offTime += timing
 
         # is file logging enabled?
-        if not self.erl2conf['system']['disableFileLogging']:
+        if not self.erl2context['conf']['system']['disableFileLogging']:
 
             # if we've passed the next file-writing interval time, write it
             if self.__nextFileTime is not None and currentTime.timestamp() > self.__nextFileTime:
 
                 # create a dict of values we want to log
-                m = {'Timestamp.UTC': currentTime.strftime(self.erl2conf['system']['dtFormat']), 
-                     'Timestamp.Local': currentTime.astimezone(self.erl2conf['system']['timezone']).strftime(self.erl2conf['system']['dtFormat']),
+                m = {'Timestamp.UTC': currentTime.strftime(self.erl2context['conf']['system']['dtFormat']), 
+                     'Timestamp.Local': currentTime.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat']),
                      'Current State': self.state,
                      'Off (seconds)': offTime,
                      'On (seconds)': onTime,
                      'State Changes (count)':changes,
-                     'State Last Changed (Local)': self.stateLastChanged.astimezone(self.erl2conf['system']['timezone']).strftime(self.erl2conf['system']['dtFormat'])}
+                     'State Last Changed (Local)': self.stateLastChanged.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat'])}
 
                 # send the new sensor data to the log (in dictionary form)
                 if self.dataLog is not None:
@@ -233,7 +231,7 @@ class Erl2Toggle():
         for w in displayWidgets:
 
             # update the display
-            w.config(image=self.img[self.displayImages[self.state]])
+            w.config(image=self.erl2context['img'][self.displayImages[self.state]])
 
         # loop through all placements of this control's button widgets
         for w in buttonWidgets:
@@ -243,7 +241,7 @@ class Erl2Toggle():
             imageInd = self.enabled * self.state
 
             # update the button
-            w.config(image=self.img[self.buttonImages[imageInd]])
+            w.config(image=self.erl2context['img'][self.buttonImages[imageInd]])
 
     def changeState(self):
 
@@ -301,6 +299,7 @@ def main():
     root = tk.Tk()
     toggle = Erl2Toggle(displayLocs=[{'parent':root,'row':0,'column':0}],
                         buttonLocs=[{'parent':root,'row':1,'column':0}])
+    toggle.setActive()
     root.mainloop()
 
 if __name__ == "__main__": main()

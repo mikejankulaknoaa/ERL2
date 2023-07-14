@@ -10,16 +10,16 @@ from Erl2Config import Erl2Config
 
 class Erl2Clock():
 
-    def __init__(self, clockLoc=None, erl2conf=None, img=None):
+    def __init__(self, clockLoc=None, erl2context={}):
 
         self.__clockLoc = clockLoc
-        self.erl2conf = erl2conf
+        self.erl2context = erl2context
 
         # read in the system configuration file if needed
-        if self.erl2conf is None:
-            self.erl2conf = Erl2Config()
-            #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # create the clock's base frame as a child of its parent
         self.__frame = ttk.Frame(self.__clockLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
@@ -30,7 +30,7 @@ class Erl2Clock():
         self.__clockDate = ttk.Label(self.__frame, text='1.16.23', font='Arial 12')
 
         # different positioning depending on clock type
-        if self.erl2conf['system']['clockTwoLines']:
+        if self.erl2context['conf']['system']['clockTwoLines']:
             self.__clockTime.grid(row=0, column=0, sticky='n')
             self.__clockDate.grid(row=1, column=0, sticky='s')
             self.__frame.rowconfigure(0,weight=1)
@@ -53,7 +53,7 @@ class Erl2Clock():
         clock = dt.now()
 
         # I am zero-padding the hour, minute and day-of-month, but not the month
-        if self.erl2conf['system']['clockWithSeconds']:
+        if self.erl2context['conf']['system']['clockWithSeconds']:
             clockTime = clock.strftime('%H:%M:%S')
         else:
             clockTime = clock.strftime('%H:%M')

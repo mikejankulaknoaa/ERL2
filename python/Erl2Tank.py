@@ -17,30 +17,29 @@ from Erl2VirtualTemp import Erl2VirtualTemp
 
 class Erl2Tank:
 
-    def __init__(self, parent, erl2conf=None, img=None):
+    def __init__(self, parent, erl2context={}):
         self.__parent = parent
-        self.erl2conf = erl2conf
-        self.img = img
+        self.erl2context = erl2context
 
         # read in the system configuration file if needed
-        if self.erl2conf is None:
-            self.erl2conf = Erl2Config()
-            #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # start a system log
-        self.__systemLog = Erl2Log(logType='system', logName='Erl2Tank', erl2conf=self.erl2conf)
+        self.__systemLog = Erl2Log(logType='system', logName='Erl2Tank', erl2context=self.erl2context)
         self.__systemLog.writeMessage('Erl2Tank system startup')
 
         # if necessary, create an object to hold/remember image objects
-        if self.img is None:
-            self.img = Erl2Image(erl2conf=self.erl2conf)
+        if 'img' not in self.erl2context:
+            self.erl2context['img'] = Erl2Image(erl2context=self.erl2context)
 
         # load some images that will be useful later on
-        self.img.addImage('checkOff','checkbox-off-25.png')
-        self.img.addImage('checkOn','checkbox-on-25.png')
-        self.img.addImage('reload','reload-25.png')
-        self.img.addImage('shutdown','shutdown-25.png')
+        self.erl2context['img'].addImage('checkOff','checkbox-off-25.png')
+        self.erl2context['img'].addImage('checkOn','checkbox-on-25.png')
+        self.erl2context['img'].addImage('reload','reload-25.png')
+        self.erl2context['img'].addImage('shutdown','shutdown-25.png')
 
         # stylistic stuff
         s = ttk.Style()
@@ -81,8 +80,7 @@ class Erl2Tank:
 
         # add a clock widget in the upper right corner
         clock = Erl2Clock(clockLoc={'parent':self.__parent,'row':0,'column':0},
-                          erl2conf=self.erl2conf,
-                          img=self.img)
+                          erl2context=self.erl2context)
 
         # quickly create 3x4 grids of frames in all tabs except Settings
         for p in [x for x in self.__tabNames if x != 'Settings']:
@@ -161,7 +159,7 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text='ERL2 Version:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2conf['system']['version'], font=fontright
+        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['system']['version'], font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
 
@@ -169,7 +167,7 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text='Tank Id:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2conf['tank']['id'], font=fontright
+        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['tank']['id'], font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
 
@@ -177,7 +175,7 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text='Tank Location:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2conf['tank']['location'], font=fontright
+        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['tank']['location'], font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
 
@@ -185,10 +183,10 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text='Log Directory:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        if self.erl2conf['system']['disableFileLogging']:
+        if self.erl2context['conf']['system']['disableFileLogging']:
             txt = '<disabled>'
         else:
-            txt = self.erl2conf['system']['logDir']
+            txt = self.erl2context['conf']['system']['logDir']
         ttk.Label(self.__frames['Settings'][0][1], text=txt, font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
@@ -197,16 +195,18 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text='Logging Frequency:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        if (    self.erl2conf['temperature']['loggingFrequency']
-             == self.erl2conf['pH']['loggingFrequency']
-             == self.erl2conf['heater']['loggingFrequency']
-             == self.erl2conf['chiller']['loggingFrequency']):
-            txt = str(self.erl2conf['temperature']['loggingFrequency']) + ' seconds'
+        if (    self.erl2context['conf']['temperature']['loggingFrequency']
+             == self.erl2context['conf']['pH']['loggingFrequency']
+             == self.erl2context['conf']['DO']['loggingFrequency']
+             == self.erl2context['conf']['heater']['loggingFrequency']
+             == self.erl2context['conf']['chiller']['loggingFrequency']):
+            txt = str(self.erl2context['conf']['temperature']['loggingFrequency']) + ' seconds'
         else:
-            txt = (  'Temperature: ' + self.erl2conf['temperature']['loggingFrequency'] + 'seconds; '
-                   + 'pH: '          + self.erl2conf['pH'         ]['loggingFrequency'] + 'seconds; '
-                   + 'Heater: '      + self.erl2conf['heater'     ]['loggingFrequency'] + 'seconds; '
-                   + 'Chiller: '     + self.erl2conf['chiller'    ]['loggingFrequency'] + 'seconds'
+            txt = (  'Temperature: ' + self.erl2context['conf']['temperature']['loggingFrequency'] + 'seconds; '
+                   + 'pH: '          + self.erl2context['conf']['pH'         ]['loggingFrequency'] + 'seconds; '
+                   + 'DO: '          + self.erl2context['conf']['DO'         ]['loggingFrequency'] + 'seconds; '
+                   + 'Heater: '      + self.erl2context['conf']['heater'     ]['loggingFrequency'] + 'seconds; '
+                   + 'Chiller: '     + self.erl2context['conf']['chiller'    ]['loggingFrequency'] + 'seconds'
                   )
         ttk.Label(self.__frames['Settings'][0][1], text=txt, font=fontright, wraplength=300
             #, relief='solid', borderwidth=1
@@ -216,7 +216,7 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text='System Startup:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2conf['system']['startup'].astimezone(self.erl2conf['system']['timezone']).strftime(self.erl2conf['system']['dtFormat']), font=fontright
+        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['system']['startup'].astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat']), font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
 
@@ -224,7 +224,7 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text='System Timezone:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        ttk.Label(self.__frames['Settings'][0][1], text=str(self.erl2conf['system']['timezone']), font=fontright
+        ttk.Label(self.__frames['Settings'][0][1], text=str(self.erl2context['conf']['system']['timezone']), font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
 
@@ -234,7 +234,7 @@ class Erl2Tank:
             ).grid(row=r, column=0, sticky='ne')
         tempStatusLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
 
-        if self.erl2conf['virtualtemp']['enabled']:
+        if self.erl2context['conf']['virtualtemp']['enabled']:
             r += 1
             ttk.Label(self.__frames['Settings'][0][1], text='-- using Virtual Temperature --', font=fontright
                 #, relief='solid', borderwidth=1
@@ -269,8 +269,8 @@ class Erl2Tank:
         fullscreenFrame.grid(row=1, column=0, padx='2', pady='2', sticky='nwse')
         fullscreenCheckbutton = tk.Checkbutton(fullscreenFrame,
                                                indicatoron=0,
-                                               image=self.img['checkOff'],
-                                               selectimage=self.img['checkOn'],
+                                               image=self.erl2context['img']['checkOff'],
+                                               selectimage=self.erl2context['img']['checkOn'],
                                                variable=self.__fullscreenVar,
                                                height=40,
                                                width=40,
@@ -294,7 +294,7 @@ class Erl2Tank:
         restartFrame = ttk.Frame(self.__frames['Settings'][1][0], padding='2 2', relief='solid', borderwidth=0)
         restartFrame.grid(row=1, column=0, padx='2', pady='2', sticky='nwse')
         restartButton = tk.Button(restartFrame,
-                                  image=self.img['reload'],
+                                  image=self.erl2context['img']['reload'],
                                   height=40,
                                   width=40,
                                   bd=0,
@@ -302,7 +302,7 @@ class Erl2Tank:
                                   activebackground='#DBDBDB',
                                   command=self.restartPrototype)
         restartButton.grid(row=0, column=0, padx='2 2', sticky='w')
-        #restartButton.image = self.img['reload']
+        #restartButton.image = self.erl2context['img']['reload']
         ttk.Label(restartFrame, text='Restart ERL2', font='Arial 16'
             #, relief='solid', borderwidth=1
             ).grid(row=0, column=1, padx='2 2', sticky='w')
@@ -315,7 +315,7 @@ class Erl2Tank:
         exitFrame = ttk.Frame(self.__frames['Settings'][1][0], padding='2 2', relief='solid', borderwidth=0)
         exitFrame.grid(row=2, column=0, padx='2', pady='2', sticky='nwse')
         exitButton = tk.Button(exitFrame,
-                               image=self.img['shutdown'],
+                               image=self.erl2context['img']['shutdown'],
                                height=40,
                                width=40,
                                bd=0,
@@ -323,7 +323,7 @@ class Erl2Tank:
                                activebackground='#DBDBDB',
                                command=self.exitPrototype)
         exitButton.grid(row=0, column=0, padx='2 2', sticky='w')
-        #exitButton.image = self.img['shutdown']
+        #exitButton.image = self.erl2context['img']['shutdown']
         ttk.Label(exitFrame, text='Shut down ERL2', font='Arial 16'
             #, relief='solid', borderwidth=1
             ).grid(row=0, column=1, padx='2 2', sticky='w')
@@ -333,39 +333,35 @@ class Erl2Tank:
         exitFrame.columnconfigure(1,weight=1)
 
         # readout displays for the current temperature (real or virtual)
-        if self.erl2conf['virtualtemp']['enabled']:
+        if self.erl2context['conf']['virtualtemp']['enabled']:
             self.sensors['temperature'] = Erl2VirtualTemp(
                 parent=self,
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
                 statusLocs=tempStatusLocs,
                 correctionLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
-                erl2conf=self.erl2conf,
-                img=self.img)
+                erl2context=self.erl2context)
         else:
             self.sensors['temperature'] = Erl2Temperature(
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
                 statusLocs=tempStatusLocs,
                 correctionLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
-                erl2conf=self.erl2conf,
-                img=self.img)
+                erl2context=self.erl2context)
 
         # readout and control widgets for the Heater relay
         self.controls['heater'] = Erl2Heater(
             displayLocs=[{'parent':self.__frames['Data'][0][1],'row':0,'column':0},
                          {'parent':self.__frames['Temp'][0][1],'row':0,'column':0}],
             buttonLocs=[{'parent':self.__frames['Temp'][1][1],'row':2,'column':0}],
-            erl2conf=self.erl2conf,
-            img=self.img)
+            erl2context=self.erl2context)
 
         # readout and control widgets for the Chiller solenoid
         self.controls['chiller'] = Erl2Chiller(
             displayLocs=[{'parent':self.__frames['Data'][0][1],'row':1,'column':0},
                          {'parent':self.__frames['Temp'][0][1],'row':1,'column':0}],
             buttonLocs=[{'parent':self.__frames['Temp'][1][1],'row':3,'column':0}],
-            erl2conf=self.erl2conf,
-            img=self.img)
+            erl2context=self.erl2context)
 
         # and the logic that implements the overarching temperature subsystem (and its controls)
         self.systems['temperature'] = Erl2SubSystem(
@@ -382,12 +378,11 @@ class Erl2Tank:
             sensors={'temperature':self.sensors['temperature']},
             controls={'heater':self.controls['heater'],
                       'chiller':self.controls['chiller']},
-            erl2conf=self.erl2conf,
-            img=self.img)
+            erl2context=self.erl2context)
 
         # label is different for virtual sensor
         tempLabel = u'Temperature (\u00B0C)'
-        if self.erl2conf['virtualtemp']['enabled']:
+        if self.erl2context['conf']['virtualtemp']['enabled']:
             tempLabel = u'Virtual Temp (\u00B0C)'
 
         # temperature labels
@@ -425,7 +420,7 @@ class Erl2Tank:
             statusLocs=pHStatusLocs,
             correctionLoc={'parent':self.__frames['pH'][0][2],'row':1,'column':0},
             tempSensor=self.sensors['temperature'],
-            erl2conf=self.erl2conf)
+            erl2context=self.erl2context)
 
         # readout displays for the current DO, as reported by the pico-o2
         self.sensors['DO'] = Erl2Pyro(
@@ -435,7 +430,7 @@ class Erl2Tank:
             statusLocs=doStatusLocs,
             correctionLoc={'parent':self.__frames['DO'][0][2],'row':1,'column':0},
             tempSensor=self.sensors['temperature'],
-            erl2conf=self.erl2conf)
+            erl2context=self.erl2context)
 
         # temperature label spacing/weighting
         for f in [self.__frames['Data'][0][0], self.__frames['Temp'][0][0]]:

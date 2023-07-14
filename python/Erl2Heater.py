@@ -14,8 +14,7 @@ class Erl2Heater(Erl2Toggle):
                  buttonImages=['radio-off-red-30.png','radio-on-red-30.png'],
                  label='Heater',
                  channel=None,
-                 erl2conf=None,
-                 img=None):
+                 erl2context={}):
 
         # call the Erl2Toggle class's constructor
         super().__init__(type='heater',
@@ -24,8 +23,7 @@ class Erl2Heater(Erl2Toggle):
                          displayImages=displayImages,
                          buttonImages=buttonImages,
                          label=label,
-                         erl2conf=erl2conf,
-                         img=img)
+                         erl2context=erl2context)
 
         # private attributes specific to Erl2Heater
         self.__channel = channel
@@ -64,6 +62,7 @@ def main():
     root = tk.Tk()
     heater = Erl2Heater(displayLocs=[{'parent':root,'row':0,'column':0}],
                         buttonLocs=[{'parent':root,'row':1,'column':0}])
+    heater.setActive()
     root.mainloop()
 
 if __name__ == "__main__": main()

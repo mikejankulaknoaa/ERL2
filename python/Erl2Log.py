@@ -11,10 +11,10 @@ from Erl2Config import Erl2Config
 
 class Erl2Log():
 
-    def __init__(self, logType='system', logName='default', erl2conf=None):
+    def __init__(self, logType='system', logName='default', erl2context={}):
         self.__logType = logType
         self.__logName = logName
-        self.erl2conf = erl2conf
+        self.erl2context = erl2context
 
         # we'll keep a certain number of measurements resident in-memory for plotting
         self.history = []
@@ -28,14 +28,14 @@ class Erl2Log():
             raise
 
         # read in the system configuration file if needed
-        if self.erl2conf is None:
-            self.erl2conf = Erl2Config()
-            #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # determine location of main logging directory
         try:
-            self.__logDir = self.erl2conf['system']['logDir'] + '/' + self.__logType
+            self.__logDir = self.erl2context['conf']['system']['logDir'] + '/' + self.__logType
         except Exception as e:
             print (f"{self.__class__.__name__}: Error: Could not determine location of main logging directory: {e}")
             raise
@@ -45,8 +45,8 @@ class Erl2Log():
         self.__logData = self.__logDir + '/' + self.__logName + '.dat'
 
         # initial directories
-        if not path.isdir(self.erl2conf['system']['logDir']):
-            makedirs(self.erl2conf['system']['logDir'])
+        if not path.isdir(self.erl2context['conf']['system']['logDir']):
+            makedirs(self.erl2context['conf']['system']['logDir'])
         if not path.isdir(self.__logDir):
             makedirs(self.__logDir)
 
@@ -62,10 +62,10 @@ class Erl2Log():
                 self.history = list(r)
 
             # calculate the oldest timestamp that should be kept in memory
-            oldest = dt.now(tz=tz.utc).timestamp() - self.erl2conf['temperature']['memoryRetention']
+            oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
 
             # delete any historical data older than the retention timeframe
-            self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2conf['system']['dtFormat']).timestamp() > oldest ]
+            self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).timestamp() > oldest ]
 
         # # make a note if we've reloaded anything from memory
         # if len(self.history) > 0:
@@ -77,10 +77,10 @@ class Erl2Log():
         self.history.append(data)
 
         # calculate the oldest timestamp that should be kept in memory
-        oldest = dt.now(tz=tz.utc).timestamp() - self.erl2conf['temperature']['memoryRetention']
+        oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
 
         # delete any historical data older than the retention timeframe
-        self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2conf['system']['dtFormat']).timestamp() > oldest ]
+        self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).timestamp() > oldest ]
 
         # finally, write the new data point to the data file
         try:
@@ -119,8 +119,8 @@ class Erl2Log():
             clock = dt.now(tz=tz.utc)
 
             # create a list starting with the current timestamp
-            writeList = [clock.strftime(self.erl2conf['system']['dtFormat']),
-                         clock.astimezone(self.erl2conf['system']['timezone']).strftime(self.erl2conf['system']['dtFormat']) ]
+            writeList = [clock.strftime(self.erl2context['conf']['system']['dtFormat']),
+                         clock.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat']) ]
 
             # add whatever parameters were passed
             if len(args) > 0:

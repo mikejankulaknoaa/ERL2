@@ -13,26 +13,24 @@ class Erl2Temperature(Erl2Sensor):
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
-                 erl2conf=None,
-                 img=None):
+                 erl2context={}):
 
         # call the Erl2Sensor class's constructor
         super().__init__(sensorType='temperature',
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
                          correctionLoc=correctionLoc,
-                         erl2conf=erl2conf,
-                         img=img)
+                         erl2context=erl2context)
 
         # read in the system configuration file if needed
-        if self.erl2conf is None:
-            self.erl2conf = Erl2Config()
-            #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # private attributes specific to Erl2Temperature
-        self.__stack = self.erl2conf[self.sensorType]['stackLevel']
-        self.__channel = self.erl2conf[self.sensorType]['inputChannel']
+        self.__stack = self.erl2context['conf'][self.sensorType]['stackLevel']
+        self.__channel = self.erl2context['conf'][self.sensorType]['inputChannel']
 
         # start up the timing loop to update the display widgets
         # (check first if this object is an Erl2Temperature or a child class)
@@ -78,7 +76,8 @@ def main():
 
     root = tk.Tk()
     temperature = Erl2Temperature(displayLocs=[{'parent':root,'row':0,'column':0}],
-                                  statusLocs=[{'parent':root,'row':1,'column':0}])
+                                  statusLocs=[{'parent':root,'row':1,'column':0}],
+                                  correctionLoc={'parent':root,'row':2,'column':0})
     root.mainloop()
 
 if __name__ == "__main__": main()

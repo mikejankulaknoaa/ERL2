@@ -27,8 +27,7 @@ class Erl2SubSystem():
                  radioImages=['radio-off-30.png','radio-on-30.png'],
                  sensors={},
                  controls={},
-                 erl2conf=None,
-                 img=None):
+                 erl2context={}):
 
         self.__radioLoc = radioLoc
         self.__staticLoc = staticLoc
@@ -41,26 +40,25 @@ class Erl2SubSystem():
         self.radioImages = radioImages
         self.__sensors = sensors
         self.__controls = controls
-        self.erl2conf = erl2conf
-        self.img = img
+        self.erl2context = erl2context
 
         # read in the system configuration file if needed
-        if self.erl2conf is None:
-            self.erl2conf = Erl2Config()
-            #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # if necessary, create an object to hold/remember image objects
-        if self.img is None:
-            self.img = Erl2Image(erl2conf=self.erl2conf)
+        if 'img' not in self.erl2context:
+            self.erl2context['img'] = Erl2Image(erl2context=self.erl2context)
 
         # load the associated images; just use the image name as the key
         for i in self.radioImages:
-            self.img.addImage(i,i)
+            self.erl2context['img'].addImage(i,i)
 
         # borrow the display settings from the temperature config
-        self.__parameter = self.erl2conf['temperature']['displayParameter']
-        self.__places = self.erl2conf['temperature']['displayDecimals']
+        self.__parameter = self.erl2context['conf']['temperature']['displayParameter']
+        self.__places = self.erl2context['conf']['temperature']['displayDecimals']
 
         # remember what widgets are active for this control
         self.__radioWidgets = []
@@ -77,7 +75,7 @@ class Erl2SubSystem():
         # the state of this subsystem is described by its mode and active setpoint
         self.__modeVar = tk.IntVar()
         self.__lastModeVar = None
-        self.__setpoint = self.erl2conf['temperature']['setpointDefault']
+        self.__setpoint = self.erl2context['conf']['temperature']['setpointDefault']
 
         # and here is the list of all possible modes
         self.__modeDict = {0:'Manual',
@@ -92,8 +90,8 @@ class Erl2SubSystem():
         for value , text in self.__modeDict.items():
             r = tk.Radiobutton(self.__radioLoc['parent'],
                                indicatoron=0,
-                               image=self.img[self.radioImages[0]],
-                               selectimage=self.img[self.radioImages[1]],
+                               image=self.erl2context['img'][self.radioImages[0]],
+                               selectimage=self.erl2context['img'][self.radioImages[1]],
                                compound='left',
                                font='Arial 16',
                                bd=0,
@@ -118,7 +116,7 @@ class Erl2SubSystem():
 
         # create the entry field for the auto static setpoint
         e = ttk.Entry(f, width=4, font='Arial 20',justify='right')
-        e.insert(tk.END, self.erl2conf['temperature']['setpointDefault'])
+        e.insert(tk.END, self.erl2context['conf']['temperature']['setpointDefault'])
         e.grid(row=0,column=1, sticky='e')
         #e.bind('<FocusIn>', self.numpadEntry)
         #e.selection_range(0,0)
@@ -140,7 +138,7 @@ class Erl2SubSystem():
 
         # add offset entry field
         e = ttk.Entry(f, width=4, font='Arial 20',justify='right')
-        e.insert(tk.END, self.erl2conf['temperature']['hysteresisDefault'])
+        e.insert(tk.END, self.erl2context['conf']['temperature']['hysteresisDefault'])
         e.grid(row=0,column=1, sticky='s')
         #e.bind('<FocusIn>', self.numpadEntry)
         e.selection_range(0,0)
@@ -163,7 +161,7 @@ class Erl2SubSystem():
         f.grid(row=self.__dynamicLoc['row'], column=self.__dynamicLoc['column'], padx='2', pady='2', sticky='nwse')
 
         hourNum = 0
-        for hourVal in self.erl2conf['temperature']['dynamicDefault']:
+        for hourVal in self.erl2context['conf']['temperature']['dynamicDefault']:
 
             # try them in two rows?
             if hourNum < 12:

@@ -15,8 +15,7 @@ class Erl2Chiller(Erl2Toggle):
                  label='Chiller',
                  stack=0,
                  channel=None,
-                 erl2conf=None,
-                 img=None):
+                 erl2context={}):
 
         # call the Erl2Toggle class's constructor
         super().__init__(type='chiller',
@@ -25,8 +24,7 @@ class Erl2Chiller(Erl2Toggle):
                          displayImages=displayImages,
                          buttonImages=buttonImages,
                          label=label,
-                         erl2conf=erl2conf,
-                         img=img)
+                         erl2context=erl2context)
 
         # private attributes specific to Erl2Chiller
         self.__stack = stack
@@ -58,6 +56,7 @@ def main():
     root = tk.Tk()
     chiller = Erl2Chiller(displayLocs=[{'parent':root,'row':0,'column':0}],
                           buttonLocs=[{'parent':root,'row':1,'column':0}])
+    chiller.setActive()
     root.mainloop()
 
 if __name__ == "__main__": main()

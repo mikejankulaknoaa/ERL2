@@ -15,8 +15,7 @@ class Erl2Entry():
                  displayDecimals=1,
                  validRange=None,
                  initValue=0.,
-                 erl2conf=None,
-                 img=None):
+                 erl2context={}):
 
         # save the Erl2Entry-specific parameters in attributes
         self.__entryLoc = entryLoc
@@ -26,8 +25,7 @@ class Erl2Entry():
         self.__displayDecimals = displayDecimals
         self.__validRange = validRange
         self.__initValue = initValue
-        self.erl2conf = erl2conf
-        self.img = img
+        self.erl2context = erl2context
 
         ## create the Frame that will hold the Entry field and its (optional) Label
         #super().__init__(self.__entryLoc['parent'], padding='0 0', relief='solid', borderwidth=0)
@@ -77,7 +75,7 @@ class Erl2Entry():
             #print (f"{self.__class__.__name__}: Debug: validate() float is [{newFloat}]")
 
             if self.__validRange is not None and (newFloat < self.__validRange[0] or newFloat > self.__validRange[1]):
-                mb.showerror(message=f"Range error: value [{newFloat}] is not in range [{self.__validRange[0]}] - [{self.__validRange[1]}]")
+                mb.showerror(title='Range Error', message=f"Value [{newFloat}] is not in the range [{self.__validRange[0]}] - [{self.__validRange[1]}]")
                 #print (f"{self.__class__.__name__}: Debug: validate() float [{newFloat}] out of range [{self.__validRange[0]},{self.__validRange[1]}]")
                 return False
 
@@ -104,8 +102,7 @@ class Erl2Entry():
 
     def numpadPopup(self, event):
 
-        #Erl2NumPad(parent=None, entryField=event.widget, erl2conf=self.erl2conf, img=self.img)
-        Erl2NumPad.openPopup(event.widget, erl2conf=self.erl2conf, img=self.img)
+        Erl2NumPad.openPopup(event.widget, erl2context=self.erl2context)
 
 def main():
 

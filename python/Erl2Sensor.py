@@ -16,14 +16,13 @@ class Erl2Sensor():
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
-                 erl2conf=None,
-                 img=None):
+                 erl2context={}):
 
         self.sensorType = sensorType
         self.__displayLocs = displayLocs
         self.__statusLocs = statusLocs
         self.__correctionLoc = correctionLoc
-        self.erl2conf = erl2conf
+        self.erl2context = erl2context
 
         # remember what widgets are active for this sensor
         self.__displayWidgets = []
@@ -40,10 +39,10 @@ class Erl2Sensor():
         self.__nextFileTime = None
 
         # read in the system configuration file if needed
-        if self.erl2conf is None:
-            self.erl2conf = Erl2Config()
-            #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # if this gets instantiated somehow as 'generic', these parameters aren't in the config
         self.__sampleFrequency = 5
@@ -54,15 +53,15 @@ class Erl2Sensor():
 
         # but for real sensors, load them from Erl2Config
         if self.sensorType != 'generic':
-            self.__sampleFrequency = self.erl2conf[self.sensorType]['sampleFrequency']
-            self.__loggingFrequency = self.erl2conf[self.sensorType]['loggingFrequency']
-            self.__displayParameter = self.erl2conf[self.sensorType]['displayParameter']
-            self.__displayDecimals = self.erl2conf[self.sensorType]['displayDecimals']
-            self.__offsetDefault = self.erl2conf[self.sensorType]['offsetDefault']
+            self.__sampleFrequency = self.erl2context['conf'][self.sensorType]['sampleFrequency']
+            self.__loggingFrequency = self.erl2context['conf'][self.sensorType]['loggingFrequency']
+            self.__displayParameter = self.erl2context['conf'][self.sensorType]['displayParameter']
+            self.__displayDecimals = self.erl2context['conf'][self.sensorType]['displayDecimals']
+            self.__offsetDefault = self.erl2context['conf'][self.sensorType]['offsetDefault']
 
         # start a data/log file for the sensor
-        if not self.erl2conf['system']['disableFileLogging']:
-            self.dataLog = Erl2Log(logType='sensor', logName=self.sensorType, erl2conf=self.erl2conf)
+        if not self.erl2context['conf']['system']['disableFileLogging']:
+            self.dataLog = Erl2Log(logType='sensor', logName=self.sensorType, erl2context=self.erl2context)
         else:
             self.dataLog = None
 
@@ -105,9 +104,8 @@ class Erl2Sensor():
                       width=4,
                       displayDecimals=1,
                       #validRange=,
-                      initValue=self.erl2conf[self.sensorType]['offsetDefault'],
-                      erl2conf=self.erl2conf,
-                      img=img)
+                      initValue=self.__offsetDefault,
+                      erl2context=self.erl2context)
 
         # add a Label widget to show the raw sensor value
         l = ttk.Label(f, text='--', font='Arial 16', justify='right')
@@ -169,7 +167,7 @@ class Erl2Sensor():
         self.__displayWidgets[0].after(delay, self.readSensor)
 
         # is this one of the data values that should be written to the log file?
-        if not self.erl2conf['system']['disableFileLogging']:
+        if not self.erl2context['conf']['system']['disableFileLogging']:
 
             # if we've passed the next file-writing interval time, write it
             if self.__nextFileTime is not None and currentTime.timestamp() > self.__nextFileTime:
@@ -227,7 +225,7 @@ class Erl2Sensor():
 
         # the status message conveys information about how current the reading is and on/offline status
         if self.lastValid is not None:
-            upd = self.lastValid.astimezone(self.erl2conf['system']['timezone']).strftime(self.erl2conf['system']['dtFormat'])
+            upd = self.lastValid.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat'])
         else:
             upd = 'never'
 
@@ -253,8 +251,8 @@ class Erl2Sensor():
         currentTime = dt.now(tz=tz.utc)
 
         # add timestamps to a template measurement dict
-        m = {'Timestamp.UTC': currentTime.strftime(self.erl2conf['system']['dtFormat']),
-             'Timestamp.Local': currentTime.astimezone(self.erl2conf['system']['timezone']).strftime(self.erl2conf['system']['dtFormat'])}
+        m = {'Timestamp.UTC': currentTime.strftime(self.erl2context['conf']['system']['dtFormat']),
+             'Timestamp.Local': currentTime.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat'])}
 
         return currentTime, m
 

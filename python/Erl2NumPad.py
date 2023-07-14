@@ -20,29 +20,26 @@ class Erl2NumPad(tk.Toplevel):
     # list of buttons (in order of appearance, 4x4 grid)
     BUTTONS = ['7', '8', '9', 'Del', '4', '5', '6', 'Clear', '1', '2', '3', 'Cancel', '0', 'Dot', 'Minus', 'Done']
 
-    def __init__(self,
-                 erl2conf=None,
-                 img=None):
+    def __init__(self, erl2context={}):
 
         super().__init__()
 
-        self.erl2conf = erl2conf
-        self.img = img
+        self.erl2context = erl2context
 
         # read in the system configuration file if needed
-        if self.erl2conf is None:
-            self.erl2conf = Erl2Config()
-            #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # if necessary, create an object to hold/remember image objects
-        if self.img is None:
-            self.img = Erl2Image(erl2conf=self.erl2conf)
+        if 'img' not in self.erl2context:
+            self.erl2context['img'] = Erl2Image(erl2context=self.erl2context)
 
         # load the associated images
         for i in self.BUTTONS:
             name = f"key{i}.png"
-            self.img.addImage(i,name)
+            self.erl2context['img'].addImage(i,name)
 
         # validate input by typing, if external keyboard is available
         vcmd = self.register(self.validate)
@@ -83,7 +80,7 @@ class Erl2NumPad(tk.Toplevel):
             label = self.BUTTONS[n]
 
             cur = ttk.Button(self.__f, #text=label,
-                image=self.img[label],
+                image=self.erl2context['img'][label],
                 command=lambda x=label: self.click(x))
             
             cur.grid(row=floor(n/4)+1, column=(n%4))
@@ -177,8 +174,7 @@ class Erl2NumPad(tk.Toplevel):
     @classmethod
     def openPopup(cls,
                   entryWidget,
-                  erl2conf=None,
-                  img=None):
+                  erl2context={}):
 
         cls.entryWidget = entryWidget
 
@@ -189,7 +185,7 @@ class Erl2NumPad(tk.Toplevel):
             cls.numPad.lift()
         else:
             #print (f"{__name__}: Debug: openPopup({cls.__name__}): new popup")
-            cls.numPad = Erl2NumPad(erl2conf=erl2conf,img=img)
+            cls.numPad = Erl2NumPad(erl2context=erl2context)
 
 def testPopup(event):
 

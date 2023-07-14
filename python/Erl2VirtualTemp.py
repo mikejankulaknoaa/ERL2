@@ -16,16 +16,14 @@ class Erl2VirtualTemp(Erl2Sensor):
                  correctionLoc={},
                  stack=0,
                  channel=1,
-                 erl2conf=None,
-                 img=None):
+                 erl2context={}):
 
         # call the Erl2Sensor class's constructor
         super().__init__(sensorType='virtualtemp',
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
                          correctionLoc=correctionLoc,
-                         erl2conf=erl2conf,
-                         img=img)
+                         erl2context=erl2context)
 
         # private attributes specific to Erl2VirtualTemp
         self.__parent = parent

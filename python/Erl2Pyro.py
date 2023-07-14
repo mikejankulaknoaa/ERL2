@@ -6,6 +6,7 @@ from os import devnull
 from pyrolib import PyroDevice
 import tkinter as tk
 from tkinter import ttk
+from Erl2Config import Erl2Config
 from Erl2Sensor import Erl2Sensor
 from Erl2Temperature import Erl2Temperature
 
@@ -28,30 +29,28 @@ class Erl2Pyro(Erl2Sensor):
                  statusLocs=[],
                  correctionLoc={},
                  tempSensor=None,
-                 erl2conf=None,
-                 img=None):
+                 erl2context={}):
 
         # call the Erl2Sensor class's constructor
         super().__init__(sensorType=sensorType,
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
                          correctionLoc=correctionLoc,
-                         erl2conf=erl2conf,
-                         img=img)
+                         erl2context=erl2context)
 
         # read in the system configuration file if needed
-        if self.erl2conf is None:
-            self.erl2conf = Erl2Config()
-            #if 'tank' in self.erl2conf.sections() and 'id' in self.erl2conf['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2conf['tank']['id']}]")
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # private attributes specific to Erl2Pyro
-        self.__port = self.erl2conf[self.sensorType]['serialPort']
-        self.__baud = self.erl2conf[self.sensorType]['baudRate']
+        self.__port = self.erl2context['conf'][self.sensorType]['serialPort']
+        self.__baud = self.erl2context['conf'][self.sensorType]['baudRate']
 
         # pH sensor needs to be told what the current temperature and salinity are
         self.__tempSensor = tempSensor
-        self.__tempParameter = self.erl2conf['temperature']['displayParameter']
+        self.__tempParameter = self.erl2context['conf']['temperature']['displayParameter']
         self.__salinity = 35
 
         # try connecting to the pH sensor
@@ -132,7 +131,7 @@ class Erl2Pyro(Erl2Sensor):
         # prevent the pyrolibs code from spamming stdout
         with self.suppress_stdout():
 
-            # tell the pico-H what the current temperature and salinity are
+            # tell the pico-pH or pico-o2 what the current temperature and salinity are
             if self.__tempSensor.online:
                 self.__sensor[1].settings['temp'] = self.__tempSensor.value[self.__tempParameter]
             self.__sensor[1].settings['salinity'] = self.__salinity
@@ -151,10 +150,17 @@ def main():
                                   statusLocs=[{'parent':root,'row':1,'column':0}],
                                   correctionLoc={'parent':root,'row':2,'column':0})
     ph = Erl2Pyro(sensorType='pH',
-                  displayLocs=[{'parent':root,'row':3,'column':0}],
-                  statusLocs=[{'parent':root,'row':4,'column':0}],
-                  correctionLoc={'parent':root,'row':5,'column':0},
+                  displayLocs=[{'parent':root,'row':0,'column':1}],
+                  statusLocs=[{'parent':root,'row':1,'column':1}],
+                  correctionLoc={'parent':root,'row':2,'column':1},
                   tempSensor=temperature)
+
+    o2 = Erl2Pyro(sensorType='DO',
+                  displayLocs=[{'parent':root,'row':0,'column':2}],
+                  statusLocs=[{'parent':root,'row':1,'column':2}],
+                  correctionLoc={'parent':root,'row':2,'column':2},
+                  tempSensor=temperature)
+
     root.mainloop()
 
 if __name__ == "__main__": main()
