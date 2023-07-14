@@ -6,6 +6,7 @@ from random import random as random
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
+from Erl2Entry import Erl2Entry
 from Erl2Log import Erl2Log
 
 class Erl2Sensor():
@@ -98,19 +99,15 @@ class Erl2Sensor():
         f.grid(row=self.__correctionLoc['row'], column=self.__correctionLoc['column'], padx='2', pady='0', sticky='nw')
 
         # create the entry field for the correction offset
-        e = ttk.Entry(f, width=4, font='Arial 20',justify='right')
-        e.insert(tk.END, self.__offsetDefault)
-        e.grid(row=0,column=1, sticky='e')
-        #e.bind('<FocusIn>', self.numpadEntry)
-        #e.selection_range(0,0)
-        e.config(state='disabled')
-
-        # this is the Label shown beside the entry widget
-        ttk.Label(f, text='Offset', font='Arial 14'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, padx='2 2', sticky='w')
-
-        #self.__correctionWidgets.append(e)
+        e = Erl2Entry(entryLoc={'parent':f,'row':0,'column':1},
+                      labelLoc={'parent':f,'row':0,'column':0},
+                      label='Offset',
+                      width=4,
+                      displayDecimals=1,
+                      #validRange=,
+                      initValue=self.erl2conf[self.sensorType]['offsetDefault'],
+                      erl2conf=self.erl2conf,
+                      img=img)
 
         # add a Label widget to show the raw sensor value
         l = ttk.Label(f, text='--', font='Arial 16', justify='right')
