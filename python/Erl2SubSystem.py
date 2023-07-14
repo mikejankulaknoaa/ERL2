@@ -76,6 +76,7 @@ class Erl2SubSystem():
 
         # the state of this subsystem is described by its mode and active setpoint
         self.__modeVar = tk.IntVar()
+        self.__lastModeVar = None
         self.__setpoint = self.erl2conf['temperature']['setpointDefault']
 
         # and here is the list of all possible modes
@@ -242,6 +243,10 @@ class Erl2SubSystem():
         # read the current mode of the system
         var = self.__modeVar.get()
 
+        # if we've just re-clicked the already-active mode, disregard
+        if self.__lastModeVar is not None and self.__lastModeVar == var:
+            return
+
         # enable/disable this subsystem's associated controls as appropriate
         for c in self.__controls.values():
             c.setActive(int(var==0))
@@ -274,6 +279,9 @@ class Erl2SubSystem():
 
         # disable "Child" mode for now
         self.__radioWidgets[1].config(state='disabled')
+
+        # remember the last known mode
+        self.__lastModeVar = var
 
         # update display widgets to show to current mode and setpoint
         self.updateDisplays()
@@ -420,7 +428,8 @@ def main():
     dynamicFrame.grid(row=4, column=0, columnspan=5, padx='2', pady='2', sticky='nesw')
 
     virtualtemp = Erl2VirtualTemp(displayLocs=[{'parent':tempFrame,'row':0,'column':0}],
-                                  statusLocs=[{'parent':tempFrame,'row':1,'column':0}])
+                                  statusLocs=[{'parent':tempFrame,'row':1,'column':0}],
+                                  correctionLoc={'parent':tempFrame,'row':2,'column':0})
 
     heater = Erl2Heater(displayLocs=[{'parent':root,'row':0,'column':1}],
                         buttonLocs=[{'parent':root,'row':2,'column':1}])
