@@ -12,7 +12,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.01b (2023-06-30)'
+    VERSION = '0.02b (2023-07-17)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'heater', 'chiller']
@@ -45,6 +45,7 @@ class Erl2Config():
         self.__default['temperature']['sampleFrequency'] = '5'
         self.__default['temperature']['memoryRetention'] = '86400'
         self.__default['temperature']['loggingFrequency'] = '300'
+        self.__default['temperature']['offsetParameter'] = 'temp.degC'
         self.__default['temperature']['offsetDefault'] = '0.0'
         self.__default['temperature']['validRange'] = '[10.0, 40.0]'
         self.__default['temperature']['setpointDefault'] = '25.0'
@@ -60,6 +61,7 @@ class Erl2Config():
         self.__default['pH']['sampleFrequency'] = '60'
         self.__default['pH']['memoryRetention'] = '86400'
         self.__default['pH']['loggingFrequency'] = '300'
+        self.__default['pH']['offsetParameter'] = 'pH'
         self.__default['pH']['offsetDefault'] = '0.00'
         self.__default['pH']['validRange'] = '[6.00, 9.00]'
         self.__default['pH']['setpointDefault'] = '7.80'
@@ -75,6 +77,7 @@ class Erl2Config():
         self.__default['DO']['sampleFrequency'] = '60'
         self.__default['DO']['memoryRetention'] = '86400'
         self.__default['DO']['loggingFrequency'] = '300'
+        self.__default['DO']['offsetParameter'] = 'uM'
         self.__default['DO']['offsetDefault'] = '0.'
         self.__default['DO']['validRange'] = '[100., 700.]'
         self.__default['DO']['setpointDefault'] = '300.'
@@ -310,6 +313,10 @@ class Erl2Config():
                     raise TypeError
             except:
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['loggingFrequency'] = [{self.__erl2conf[sensorType]['loggingFrequency']}] is not a positive integer")
+
+            if 'offsetParameter' not in in_conf[sensorType]:
+                in_conf[sensorType]['offsetParameter'] = self.__default[sensorType]['offsetParameter']
+            self.__erl2conf[sensorType]['offsetParameter'] = in_conf[sensorType]['offsetParameter']
 
             if 'offsetDefault' not in in_conf[sensorType]:
                 in_conf[sensorType]['offsetDefault'] = self.__default[sensorType]['offsetDefault']
