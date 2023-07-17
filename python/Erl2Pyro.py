@@ -4,13 +4,14 @@ from contextlib import contextmanager,redirect_stderr,redirect_stdout
 from multiprocessing import Process,Queue
 from os import devnull
 from pyrolib import PyroDevice
+from serial import Serial as ser
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
 from Erl2Sensor import Erl2Sensor
 from Erl2Temperature import Erl2Temperature
 
-# pyroscience pico-pH-sub and pico-o2-sub sensors
+# pyroscience pico-pH and pico-o2 sensors
 class Erl2Pyro(Erl2Sensor):
 
     # note: adapted this redirection code from something found at
@@ -24,7 +25,7 @@ class Erl2Pyro(Erl2Sensor):
                 yield (out)
 
     def __init__(self,
-                 sensorType='unknown', # pico-sub-pH uses 'pH', pico-o2-sub uses 'uM' (microMoles per Liter)
+                 sensorType='unknown', # pico-pH uses 'pH', pico-o2 uses 'uM' (microMoles per Liter)
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
@@ -47,13 +48,14 @@ class Erl2Pyro(Erl2Sensor):
         # private attributes specific to Erl2Pyro
         self.__port = self.erl2context['conf'][self.sensorType]['serialPort']
         self.__baud = self.erl2context['conf'][self.sensorType]['baudRate']
+        self.__device = None
 
-        # pH sensor needs to be told what the current temperature and salinity are
+        # PyroDevice needs to be told what the current temperature and salinity are
         self.__tempSensor = tempSensor
         self.__tempParameter = self.erl2context['conf']['temperature']['displayParameter']
         self.__salinity = 35
 
-        # try connecting to the pH sensor
+        # try connecting to the PyroDevice
         self.connect()
 
         # start up the timing loop to update the display widgets
@@ -63,31 +65,37 @@ class Erl2Pyro(Erl2Sensor):
 
     def connect(self):
 
-        # set up the sensor for taking measurements
-        try:
-            # prevent the pyrolibs code from spamming stdout
-            with self.suppress_stdout():
-                self.__sensor = PyroDevice(self.__port, self.__baud)
-                self.online = True
-                #print (f"{self.__class__.__name__}: Debug: PyroDevice connect() succeeded, pH sensor is online")
+        # before doing anything, try to verify that there's a PyroDevice connected
+        if self.testSerial():
 
-        except Exception as e:
+            # set up the sensor for taking measurements
+            try:
+                # prevent the pyrolibs code from spamming stdout
+                #with self.suppress_stdout():
+                    self.__device = PyroDevice(self.__port, self.__baud)
+                    self.online = True
+                    #print (f"{self.__class__.__name__}: Debug: PyroDevice connect() succeeded, [{self.sensorType}] sensor is online")
+
+            except Exception as e:
+                self.online = False
+                #print (f"{self.__class__.__name__}: Debug: PyroDevice connect() failed, [{self.sensorType}] sensor is offline [{e}]")
+
+        else:
             self.online = False
-            #print (f"{self.__class__.__name__}: Debug: PyroDevice connect() failed, pH sensor is offline [{e}]")
 
     def measure(self):
 
         # initialize the measurement result
         self.value = {}
 
-        # try to connect again if pico-pH is missing
+        # try to connect again if PyroDevice is missing
         if not self.online:
             self.connect()
 
         # another problem would be if the temperature sensor were offline
         if not self.__tempSensor.online:
             self.online = False
-            #print (f"{self.__class__.__name__}: Debug: setting pH sensor offline because temp sensor is offline")
+            #print (f"{self.__class__.__name__}: Debug: setting [{self.sensorType}] sensor offline because temp sensor is offline")
 
         # proceed only if we are connected
         if self.online:
@@ -131,17 +139,38 @@ class Erl2Pyro(Erl2Sensor):
         # prevent the pyrolibs code from spamming stdout
         with self.suppress_stdout():
 
-            # tell the pico-pH or pico-o2 what the current temperature and salinity are
+            # tell the PyroDevice what the current temperature and salinity are
             if self.__tempSensor.online:
-                self.__sensor[1].settings['temp'] = self.__tempSensor.value[self.__tempParameter]
-            self.__sensor[1].settings['salinity'] = self.__salinity
+                self.__device[1].settings['temp'] = self.__tempSensor.value[self.__tempParameter]
+            self.__device[1].settings['salinity'] = self.__salinity
 
-            # tell the pico-pH to take a measurement
-            m = self.__sensor.measure()
+            # tell the PyroDevice to take a measurement
+            m = self.__device.measure()
 
             # this sensor has only one channel: channel 1
             # (return this value -- a python dict -- via the process queue)
             q.put(m[1])
+
+    def testSerial(self):
+
+        # test if there's a PyroDevice connected on this port
+        # (waiting only 1 second for a reply)
+        conn = ser(self.__port, self.__baud, timeout=1)
+        conn.write(bytes('#VERS\r','utf8'))
+        ans = conn.read(5)
+
+        if ans == b'#VERS':
+
+            # consume the rest of the reply, in case it messes pyrolib up
+            limit=100
+            while limit and conn.read(1) != b'\r':
+                limit -= 1
+
+            # success!
+            return True
+
+        # otherwise, bad news
+        return False
 
 def main():
 
