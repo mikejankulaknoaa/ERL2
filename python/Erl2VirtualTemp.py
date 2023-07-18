@@ -103,6 +103,9 @@ class Erl2VirtualTemp(Erl2Sensor):
 
         #print (f"{self.__class__.__name__}: Debug: measure() before [{prevTemp}], offset [{delta}], after [{self.value['temp.degC']}]")
 
+        # apply the corrective offset
+        self.applyOffset(self.value, updateRaw=True)
+
         # return timestamp, measurement and status
         return t, self.value, self.online
 

@@ -32,9 +32,8 @@ class Erl2Entry():
         #self.grid(row=self.__entryLoc['row'], column=self.__entryLoc['column'], padx='2', pady='0', sticky='nesw')
 
         # attributes related to current/valid value of the Entry
-        self.__StringVar = tk.StringVar()
-        self.__StringVar.set(self.valToString(self.__initValue))
-        self.value = float(self.__StringVar.get())
+        self.stringVar = tk.StringVar(value=self.valToString(self.__initValue))
+        self.floatValue = float(self.stringVar.get())
 
         # a reference to the ttk.Entry widget
         self.widget = None
@@ -45,7 +44,7 @@ class Erl2Entry():
 
         # create the entry field
         self.widget = ttk.Entry(self.__entryLoc['parent'],
-                                textvariable=self.__StringVar,
+                                textvariable=self.stringVar,
                                 validate='focusout',
                                 validatecommand=(vcmd,'%P'),
                                 invalidcommand=(ivcmd,),
@@ -79,13 +78,14 @@ class Erl2Entry():
                 #print (f"{self.__class__.__name__}: Debug: validate() float [{newFloat}] out of range [{self.__validRange[0]},{self.__validRange[1]}]")
                 return False
 
-            # reformat String
-            self.__StringVar.set(self.valToString(newFloat))
-            #print (f"{self.__class__.__name__}: Debug: validate() new StringVal [{self.__StringVar.get()}]")
+            # reformat String (only if it changes anything)
+            if self.stringVar.get() != self.valToString(newFloat):
+                self.stringVar.set(self.valToString(newFloat))
+                #print (f"{self.__class__.__name__}: Debug: validate() new stringVal [{self.stringVar.get()}]")
 
             # save new value (rounded, if needed)
-            self.value = float(self.__StringVar.get())
-            #print (f"{self.__class__.__name__}: Debug: validate() new value [{self.value}]")
+            self.floatValue = float(self.stringVar.get())
+            #print (f"{self.__class__.__name__}: Debug: validate() new floatValue [{self.floatValue}]")
 
         except Exception as e:
             mb.showerror(message=f"Validation error")
@@ -98,7 +98,9 @@ class Erl2Entry():
 
     def revert(self):
 
-        self.__StringVar.set(self.valToString(self.value))
+        # take no action unless the revert-to value is different from what's there already
+        if self.stringVar.get() != self.valToString(self.floatValue):
+            self.stringVar.set(self.valToString(self.floatValue))
 
     def numpadPopup(self, event):
 

@@ -50,12 +50,8 @@ class Erl2Toggle():
             #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
-        # if this gets instantiated somehow as 'generic', this parameter isn't in the config
-        self.__loggingFrequency = 300
-
-        # but for real controls, load it from Erl2Config
-        if self.__controlType != 'generic':
-            self.__loggingFrequency = self.erl2context['conf'][self.__controlType]['loggingFrequency']
+        # read this useful parameter from Erl2Config
+        self.__loggingFrequency = self.erl2context['conf'][self.__controlType]['loggingFrequency']
 
         # if necessary, create an object to hold/remember image objects
         if 'img' not in self.erl2context:

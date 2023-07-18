@@ -12,10 +12,10 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.02b (2023-07-17)'
+    VERSION = '0.03b (2023-07-18)'
 
     # top-level categories in the erl2.conf file
-    CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'heater', 'chiller']
+    CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller']
 
     # valid baud rates (borrowed from the pyrolib code)
     BAUDS = [ 1200,  2400,   4800,   9600,  14400,  19200,  28800,  38400,  38400,
@@ -40,6 +40,7 @@ class Erl2Config():
         self.__default['temperature']['stackLevel'] = '0'
         self.__default['temperature']['inputChannel'] = '1'
         self.__default['temperature']['hysteresisDefault'] = '0.1'
+
         self.__default['temperature']['displayParameter'] = 'temp.degC'
         self.__default['temperature']['displayDecimals'] = '1'
         self.__default['temperature']['sampleFrequency'] = '5'
@@ -56,6 +57,7 @@ class Erl2Config():
 
         self.__default['pH']['serialPort'] = '/dev/ttyAMA1'
         self.__default['pH']['baudRate'] = '19200'
+
         self.__default['pH']['displayParameter'] = 'pH'
         self.__default['pH']['displayDecimals'] = '2'
         self.__default['pH']['sampleFrequency'] = '60'
@@ -72,6 +74,7 @@ class Erl2Config():
 
         self.__default['DO']['serialPort'] = '/dev/ttyAMA2'
         self.__default['DO']['baudRate'] = '19200'
+
         self.__default['DO']['displayParameter'] = 'uM'
         self.__default['DO']['displayDecimals'] = '0'
         self.__default['DO']['sampleFrequency'] = '60'
@@ -85,6 +88,20 @@ class Erl2Config():
                                                    '275., 276., 278., 282., 288., 294., '
                                                    '300., 306., 313., 318., 322., 324., '
                                                    '325., 324., 322., 318., 313., 306.]')
+
+        self.__default['generic']['displayParameter'] = 'generic'
+        self.__default['generic']['displayDecimals'] = '3'
+        self.__default['generic']['sampleFrequency'] = '5'
+        self.__default['generic']['memoryRetention'] = '86400'
+        self.__default['generic']['loggingFrequency'] = '300'
+        self.__default['generic']['offsetParameter'] = 'generic'
+        self.__default['generic']['offsetDefault'] = '0.000'
+        self.__default['generic']['validRange'] = '[-5.000, 5.000]'
+        self.__default['generic']['setpointDefault'] = '0.500'
+        self.__default['generic']['dynamicDefault'] = ('[0.500, 0.371, 0.250, 0.146, 0.067, 0.017, '
+                                                        '0.000, 0.017, 0.067, 0.146, 0.250, 0.371, '
+                                                        '0.500, 0.629, 0.750, 0.854, 0.933, 0.983, '
+                                                        '1.000, 0.983, 0.933, 0.854, 0.750, 0.629]')
 
         self.__default['heater']['loggingFrequency'] = '300'
         self.__default['heater']['memoryRetention'] = '86400'
@@ -272,7 +289,7 @@ class Erl2Config():
 
         # temperature, pH and DO share a lot of the same parameter logic
 
-        for sensorType in ['temperature', 'pH', 'DO']:
+        for sensorType in ['temperature', 'pH', 'DO', 'generic']:
 
             if 'displayParameter' not in in_conf[sensorType]:
                 in_conf[sensorType]['displayParameter'] = self.__default[sensorType]['displayParameter']

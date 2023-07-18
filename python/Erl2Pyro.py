@@ -25,7 +25,7 @@ class Erl2Pyro(Erl2Sensor):
                 yield (out)
 
     def __init__(self,
-                 sensorType='unknown', # pico-pH uses 'pH', pico-o2 uses 'uM' (microMoles per Liter)
+                 sensorType='generic', # pico-pH uses 'pH', pico-o2 uses 'uM' (microMoles per Liter)
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
@@ -130,6 +130,9 @@ class Erl2Pyro(Erl2Sensor):
             self.lastValid = t
 
         #print (f"{self.__class__.__name__}: Debug: measure() returning [{str(t)}][{str(self.value)}][{str(self.online)}]")
+
+        # apply the corrective offset
+        self.applyOffset(self.value, updateRaw=True)
 
         # return timestamp, measurement and status
         return t, self.value, self.online

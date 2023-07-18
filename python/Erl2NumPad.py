@@ -16,6 +16,7 @@ class Erl2NumPad(tk.Toplevel):
     # allow only one Erl2NumPad popup at a time
     numPad = None
     entryWidget = None
+    varName = None
 
     # list of buttons (in order of appearance, 4x4 grid)
     BUTTONS = ['7', '8', '9', 'Del', '4', '5', '6', 'Clear', '1', '2', '3', 'Cancel', '0', 'Dot', 'Minus', 'Done']
@@ -68,9 +69,9 @@ class Erl2NumPad(tk.Toplevel):
 
         # when first opening, copy the initial value from the field being edited
         self.displayVar.set('')
-        if Erl2NumPad.entryWidget is not None:
-            #print (f"{__name__}: Debug: entryWidget is !NOT! None [{Erl2NumPad.entryWidget.get()}]")
-            self.displayVar.set(Erl2NumPad.entryWidget.get())
+        if Erl2NumPad.entryWidget is not None and Erl2NumPad.varName is not None:
+            #print (f"{__name__}: Debug: entryWidget is !NOT! None [{Erl2NumPad.entryWidget.getvar(Erl2NumPad.varName)}]")
+            self.displayVar.set(Erl2NumPad.entryWidget.getvar(Erl2NumPad.varName))
         #else:
         #    print (f"{__name__}: Debug: entryWidget is None")
 
@@ -104,9 +105,11 @@ class Erl2NumPad(tk.Toplevel):
             self.ok()
 
         elif label == 'Done':
-            if Erl2NumPad.entryWidget is not None:
-                Erl2NumPad.entryWidget.delete(0,'end')
-                Erl2NumPad.entryWidget.insert(0,self.displayVar.get())
+            if Erl2NumPad.entryWidget is not None and Erl2NumPad.varName is not None:
+                # only if the value is really different (numerically)
+                if float(Erl2NumPad.entryWidget.getvar(Erl2NumPad.varName)) != float(self.displayVar.get()):
+                    #print (f"{__name__}: Debug: click('Done'): before [{float(Erl2NumPad.entryWidget.getvar(Erl2NumPad.varName))}], after [{float(self.displayVar.get())}]")
+                    Erl2NumPad.entryWidget.setvar(Erl2NumPad.varName,self.displayVar.get())
             self.ok()
 
         elif label == 'Dot':
@@ -177,8 +180,9 @@ class Erl2NumPad(tk.Toplevel):
                   erl2context={}):
 
         cls.entryWidget = entryWidget
+        cls.varName = cls.entryWidget['textvariable']
 
-        #print (f"{__name__}: Debug: openPopup(): value in entryWidget is {entryWidget.get()}")
+        #print (f"{__name__}: Debug: openPopup([{cls.entryWidget}]): value in [{cls.varName}] is {cls.entryWidget.getvar(cls.varName)}")
 
         if cls.numPad is not None and cls.numPad.winfo_exists():
             #print (f"{__name__}: Debug: openPopup({cls.__name__}): popup already open")

@@ -69,6 +69,9 @@ class Erl2Temperature(Erl2Sensor):
 
         #print (f"{self.__class__.__name__}: Debug: measure() returning [{str(t)}][{str(self.value)}][{str(self.online)}]")
 
+        # apply the corrective offset
+        self.applyOffset(self.value, updateRaw=True)
+
         # return timestamp, measurement and status
         return t, self.value, self.online
 
