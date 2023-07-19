@@ -178,19 +178,20 @@ class Erl2Pyro(Erl2Sensor):
 def main():
 
     root = tk.Tk()
-    temperature = Erl2Temperature(displayLocs=[{'parent':root,'row':0,'column':0}],
-                                  statusLocs=[{'parent':root,'row':1,'column':0}],
-                                  correctionLoc={'parent':root,'row':2,'column':0})
+    ttk.Label(root,text='Erl2Pyro').grid(row=0,column=0,columnspan=3)
+    temperature = Erl2Temperature(displayLocs=[{'parent':root,'row':1,'column':0}],
+                                  statusLocs=[{'parent':root,'row':2,'column':0}],
+                                  correctionLoc={'parent':root,'row':3,'column':0})
     ph = Erl2Pyro(sensorType='pH',
-                  displayLocs=[{'parent':root,'row':0,'column':1}],
-                  statusLocs=[{'parent':root,'row':1,'column':1}],
-                  correctionLoc={'parent':root,'row':2,'column':1},
+                  displayLocs=[{'parent':root,'row':1,'column':1}],
+                  statusLocs=[{'parent':root,'row':2,'column':1}],
+                  correctionLoc={'parent':root,'row':3,'column':1},
                   tempSensor=temperature)
 
     o2 = Erl2Pyro(sensorType='DO',
-                  displayLocs=[{'parent':root,'row':0,'column':2}],
-                  statusLocs=[{'parent':root,'row':1,'column':2}],
-                  correctionLoc={'parent':root,'row':2,'column':2},
+                  displayLocs=[{'parent':root,'row':1,'column':2}],
+                  statusLocs=[{'parent':root,'row':2,'column':2}],
+                  correctionLoc={'parent':root,'row':3,'column':2},
                   tempSensor=temperature)
 
     root.mainloop()

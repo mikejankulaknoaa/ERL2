@@ -43,7 +43,7 @@ class Erl2NumPad(tk.Toplevel):
             self.erl2context['img'].addImage(i,name)
 
         # validate input by typing, if external keyboard is available
-        vcmd = self.register(self.validate)
+        vcmd = self.register(self.validateNumPad)
 
         # create a Frame to hold everything
         self.__f = ttk.Frame(self, padding='2 2', relief='solid', borderwidth=5)
@@ -106,10 +106,24 @@ class Erl2NumPad(tk.Toplevel):
 
         elif label == 'Done':
             if Erl2NumPad.entryWidget is not None and Erl2NumPad.varName is not None:
-                # only if the value is really different (numerically)
-                if float(Erl2NumPad.entryWidget.getvar(Erl2NumPad.varName)) != float(self.displayVar.get()):
-                    #print (f"{__name__}: Debug: click('Done'): before [{float(Erl2NumPad.entryWidget.getvar(Erl2NumPad.varName))}], after [{float(self.displayVar.get())}]")
+
+                # it's okay if the old value cannot be interpreted as a float, but try
+                try:
+                    oldVal = float(Erl2NumPad.entryWidget.getvar(Erl2NumPad.varName))
+                except:
+                    oldVal = None
+
+                # even given the constraints, it's still possible to input invalid values (such as '-.')
+                try:
+                    newVal = float(self.displayVar.get())
+                except:
+                    newVal = None
+
+                # insist that newVal is a float, and oldVal is blank or different
+                if newVal is not None and (oldVal is None or oldVal != newVal):
+                    #print (f"{__name__}: Debug: click('Done'): before [{oldVal}], after [{newVal}]")
                     Erl2NumPad.entryWidget.setvar(Erl2NumPad.varName,self.displayVar.get())
+
             self.ok()
 
         elif label == 'Dot':
@@ -133,14 +147,19 @@ class Erl2NumPad(tk.Toplevel):
         if Erl2NumPad.entryWidget is not None:
             Erl2NumPad.entryWidget.event_generate("<FocusOut>")
 
-    def validate(self, d, i, s, S):
+    def validateNumPad(self, d, i, s, S):
 
         # %d = Type of action (1=insert, 0=delete, -1 for others)
         # %i = index of char string to be inserted/deleted, or -1
+        # %P = value of the entry if the edit is allowed
         # %s = value of entry prior to editing
         # %S = the text string being inserted or deleted, if any
+        # %v = the type of validation that is currently set
+        # %V = the type of validation that triggered the callback
+        #      (key, focusin, focusout, forced)
+        # %W = the tk name of the widget
 
-        #print (f"{__name__}: Debug: validate([{d}][{i}],[{s}],[{S}]) called")
+        #print (f"{__name__}: Debug: validateNumPad([{d}][{i}],[{s}],[{S}]) called")
 
         # only validate insertions
         if d != '1':
@@ -148,29 +167,29 @@ class Erl2NumPad(tk.Toplevel):
 
         # assume that new input is just one character
         if len(S) > 1:
-            #print (f"{__name__}: Debug: validate([{d}][{i}],[{s}],[{S}]) failed, too long")
+            #print (f"{__name__}: Debug: validateNumPad([{d}][{i}],[{s}],[{S}]) failed, too long")
             return False
 
         # require numeric input, . or -
         if S not in '0123456789.-':
-            #print (f"{__name__}: Debug: validate([{d}][{i}],[{s}],[{S}]) failed, bad char")
+            #print (f"{__name__}: Debug: validateNumPad([{d}][{i}],[{s}],[{S}]) failed, bad char")
             return False
 
         # minus can only be at the beginning
         elif S == '-' and i != '0':
-            #print (f"{__name__}: Debug: validate([{d}][{i}],[{s}],[{S}]) failed, minus in wrong place")
+            #print (f"{__name__}: Debug: validateNumPad([{d}][{i}],[{s}],[{S}]) failed, minus in wrong place")
             return False
 
         # can't have more than one decimal point
         elif S == '.' and '.' in s:
-            #print (f"{__name__}: Debug: validate([{d}][{i}],[{s}],[{S}]) failed, too many decimals")
+            #print (f"{__name__}: Debug: validateNumPad([{d}][{i}],[{s}],[{S}]) failed, too many decimals")
             return False
 
         # success
-        #print (f"{__name__}: Debug: validate([{d}][{i}],[{s}],[{S}]) succeeded")
+        #print (f"{__name__}: Debug: validateNumPad([{d}][{i}],[{s}],[{S}]) succeeded")
         return True
 
-    # rather than instantiate an new Erl2NumPad instance, and risk opening multiple
+    # rather than instantiate a new Erl2NumPad instance, and risk opening multiple
     # popups at once, provide this classmethod that reads a class attribute and
     # decides whether to instantiate anything (or just co-opt an already-open popup)
 
@@ -198,11 +217,11 @@ def testPopup(event):
 def main():
 
     root = tk.Tk()
+    ttk.Label(root,text='Erl2NumPad').grid(row=0,column=0)
 
     v = tk.StringVar()
-
-    e = ttk.Entry(root)
-    e.grid(row=0,column=0)
+    e = ttk.Entry(root,textvariable=v)
+    e.grid(row=2,column=0)
     e.bind('<Button-1>', testPopup)
 
     root.mainloop()

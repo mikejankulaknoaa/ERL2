@@ -11,10 +11,16 @@ from Erl2Config import Erl2Config
 
 class Erl2Log():
 
-    def __init__(self, logType='system', logName='default', erl2context={}):
+    # remember what kinds of logs have already been instantiated
+    logTypes = {}
+
+    def __init__(self, logType='generic', logName='generic', erl2context={}):
         self.__logType = logType
         self.__logName = logName
         self.erl2context = erl2context
+
+        # keep a global record of what kind of log types we've been asked to create
+        Erl2Log.logTypes[self.__logType] = True
 
         # we'll keep a certain number of measurements resident in-memory for plotting
         self.history = []
@@ -35,7 +41,12 @@ class Erl2Log():
 
         # determine location of main logging directory
         try:
-            self.__logDir = self.erl2context['conf']['system']['logDir'] + '/' + self.__logType
+            # if there's no system-level log, reroute to a debug directory
+            if 'system' not in Erl2Log.logTypes:
+                self.__logDir = self.erl2context['conf']['system']['logDir'] + '/zDebug/' + self.__logType
+            else:
+                self.__logDir = self.erl2context['conf']['system']['logDir'] + '/' + self.__logType
+
         except Exception as e:
             print (f"{self.__class__.__name__}: Error: Could not determine location of main logging directory: {e}")
             raise
@@ -135,10 +146,16 @@ class Erl2Log():
         except Exception as e:
             print (f'{self.__class__.__name__}: Error: __writeMessage({str(args)}): {str(e)}')
 
+    def logDir(self):
+
+        return self.__logDir
+
 def main():
 
     root = tk.Tk()
     log = Erl2Log()
+    ttk.Label(root,text='Erl2Log').grid(row=0,column=0)
+    ttk.Label(root,text=log.logDir()).grid(row=1,column=0)
     root.mainloop()
 
 if __name__ == "__main__": main()

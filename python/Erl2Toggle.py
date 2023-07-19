@@ -27,9 +27,13 @@ class Erl2Toggle():
         self.__label = label
         self.erl2context = erl2context
 
+        # placeholder for this control to be told what subsystem it's part of
+        self.subSystem = None
+
         # remember what widgets are active for this control
         self.__displayWidgets = []
         self.__buttonWidgets = []
+        self.__labelWidgets = []
 
         # and whether the buttons are allowed to be active or not
         self.enabled = 0
@@ -63,9 +67,9 @@ class Erl2Toggle():
 
         # start a data/log file for the control
         if not self.erl2context['conf']['system']['disableFileLogging']:
-            self.dataLog = Erl2Log(logType='control', logName=self.__controlType, erl2context=self.erl2context)
+            self.log = Erl2Log(logType='control', logName=self.__controlType, erl2context=self.erl2context)
         else:
-            self.dataLog = None
+            self.log = None
 
         # loop through the list of needed display widgets for this control
         for loc in self.__displayLocs:
@@ -109,16 +113,19 @@ class Erl2Toggle():
             b.grid(row=0, column=0, padx='2 2', sticky='w')
 
             # this is the (text) Label shown beside the (image) button widget
-            ttk.Label(f, text=self.__label, font='Arial 14'
+            l = ttk.Label(f, text=self.__label, font='Arial 14'
                 #, relief='solid', borderwidth=1
-                ).grid(row=0, column=1, padx='2 2', sticky='w')
+                )
+            l.grid(row=0, column=1, padx='2 2', sticky='w')
+            l.bind('<Button-1>', self.changeState)
 
             f.rowconfigure(0,weight=1)
             f.columnconfigure(0,weight=0)
             f.columnconfigure(1,weight=1)
 
-            # keep a list of button widgets for this control
+            # keep a list of button + label widgets for this control
             self.__buttonWidgets.append(b)
+            self.__labelWidgets.append(l)
 
         # now set each control's enabled state individually
         self.setActive(self.enabled)
@@ -178,8 +185,8 @@ class Erl2Toggle():
                      'State Last Changed (Local)': self.stateLastChanged.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat'])}
 
                 # send the new sensor data to the log (in dictionary form)
-                if self.dataLog is not None:
-                    self.dataLog.writeData(m)
+                if self.log is not None:
+                    self.log.writeData(m)
 
         # if the next file-writing interval time is empty or in the past, update it
         if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
@@ -203,23 +210,26 @@ class Erl2Toggle():
 
     def setActive(self, enabled=1):
 
-        # loop through all placements of this control's button widgets
-        wcount = 0
-        for w in self.__buttonWidgets:
+        # remember if controls are enabled or not
+        self.enabled = enabled
 
-            # remember if controls are enabled or not
-            self.enabled = enabled
+        # loop through all placements of this control's button widgets
+        for w in self.__buttonWidgets:
 
             # update the control's enabled state
             if self.enabled:
-                #w.config(command=self.changeState)
                 w.config(state='normal')
             else:
-                #w.config(command=False)
                 w.config(state='disabled')
 
-            # increment counter
-            wcount += 1
+        # loop through all placements of this control's button labels
+        for l in self.__labelWidgets:
+
+            # update the label's event binding
+            if self.enabled:
+                l.bind('<Button-1>', self.changeState)
+            else:
+                l.unbind('<Button-1>')
 
     def updateDisplays(self, displayWidgets, buttonWidgets):
 
@@ -239,7 +249,7 @@ class Erl2Toggle():
             # update the button
             w.config(image=self.erl2context['img'][self.buttonImages[imageInd]])
 
-    def changeState(self):
+    def changeState(self, event=None):
 
         # toggle state
         self.setState(1 - self.state)
@@ -293,8 +303,9 @@ class Erl2Toggle():
 def main():
 
     root = tk.Tk()
-    toggle = Erl2Toggle(displayLocs=[{'parent':root,'row':0,'column':0}],
-                        buttonLocs=[{'parent':root,'row':1,'column':0}])
+    ttk.Label(root,text='Erl2Toggle').grid(row=0,column=0)
+    toggle = Erl2Toggle(displayLocs=[{'parent':root,'row':1,'column':0}],
+                        buttonLocs=[{'parent':root,'row':2,'column':0}])
     toggle.setActive()
     root.mainloop()
 

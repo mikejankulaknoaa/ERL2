@@ -45,7 +45,7 @@ class Erl2Temperature(Erl2Sensor):
         # milliAmps are read from the input channel
         milliAmps = get4_20In(self.__stack, self.__channel)
 
-        # validate result: by definition this should be between 4 and 20 mA
+        # check result: by definition this should be between 4 and 20 mA
         if milliAmps >= 4. and milliAmps <= 20.:
 
             # add milliAmps to the results
@@ -78,9 +78,10 @@ class Erl2Temperature(Erl2Sensor):
 def main():
 
     root = tk.Tk()
-    temperature = Erl2Temperature(displayLocs=[{'parent':root,'row':0,'column':0}],
-                                  statusLocs=[{'parent':root,'row':1,'column':0}],
-                                  correctionLoc={'parent':root,'row':2,'column':0})
+    ttk.Label(root,text='Erl2Temperature').grid(row=0,column=0)
+    temperature = Erl2Temperature(displayLocs=[{'parent':root,'row':1,'column':0}],
+                                  statusLocs=[{'parent':root,'row':2,'column':0}],
+                                  correctionLoc={'parent':root,'row':3,'column':0})
     root.mainloop()
 
 if __name__ == "__main__": main()

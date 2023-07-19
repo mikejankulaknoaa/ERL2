@@ -54,8 +54,9 @@ class Erl2Chiller(Erl2Toggle):
 def main():
 
     root = tk.Tk()
-    chiller = Erl2Chiller(displayLocs=[{'parent':root,'row':0,'column':0}],
-                          buttonLocs=[{'parent':root,'row':1,'column':0}])
+    ttk.Label(root,text='Erl2Chiller').grid(row=0,column=0)
+    chiller = Erl2Chiller(displayLocs=[{'parent':root,'row':1,'column':0}],
+                          buttonLocs=[{'parent':root,'row':2,'column':0}])
     chiller.setActive()
     root.mainloop()
 

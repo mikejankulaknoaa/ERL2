@@ -12,7 +12,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.03b (2023-07-18)'
+    VERSION = '0.04b (2023-07-19)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller']
@@ -427,6 +427,8 @@ def main():
 
     root = tk.Tk()
     config = Erl2Config()
+    ttk.Label(root,text='Erl2Config').grid(row=0,column=0)
+    ttk.Label(root,text=config['system']['version']).grid(row=1,column=0)
     root.mainloop()
 
 if __name__ == "__main__": main()

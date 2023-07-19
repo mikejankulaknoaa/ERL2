@@ -67,7 +67,8 @@ class Erl2Clock():
 def main():
 
     root = tk.Tk()
-    clock = Erl2Clock({'parent':root,'row':0,'column':0})
+    ttk.Label(root,text='Erl2Clock').grid(row=0,column=0)
+    clock = Erl2Clock({'parent':root,'row':1,'column':0})
     root.mainloop()
 
 if __name__ == "__main__": main()

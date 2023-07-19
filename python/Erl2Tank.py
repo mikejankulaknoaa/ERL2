@@ -4,6 +4,7 @@ from os import execl
 from sys import argv,executable
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox as mb
 from Erl2Chiller import Erl2Chiller
 from Erl2Clock import Erl2Clock
 from Erl2Config import Erl2Config
@@ -11,6 +12,7 @@ from Erl2Heater import Erl2Heater
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
 from Erl2Pyro import Erl2Pyro
+from Erl2State import Erl2State
 from Erl2SubSystem import Erl2SubSystem
 from Erl2Temperature import Erl2Temperature
 from Erl2VirtualTemp import Erl2VirtualTemp
@@ -30,6 +32,10 @@ class Erl2Tank:
         # start a system log
         self.__systemLog = Erl2Log(logType='system', logName='Erl2Tank', erl2context=self.erl2context)
         self.__systemLog.writeMessage('Erl2Tank system startup')
+
+        # load any saved info about the application state
+        if 'state' not in self.erl2context:
+            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
 
         # if necessary, create an object to hold/remember image objects
         if 'img' not in self.erl2context:
@@ -56,7 +62,11 @@ class Erl2Tank:
 
         # we have a checkbox for changing between fullscreen and back
         self.__fullscreenVar = tk.IntVar()
-        self.__fullscreenVar.set(1)
+        self.__fullscreenVar.set(self.erl2context['state'].get('system','fullscreen',1))
+
+        # another checkbox is for enabling / disabling the Erl2NumPad popups
+        self.__numPadVar = tk.IntVar()
+        self.__numPadVar.set(self.erl2context['state'].get('system','numPad',1))
 
         # the top-level element is a notebook (tabbed screens)
         self.__mainTabs = ttk.Notebook(self.__parent,padding='5 5 5 2')
@@ -265,8 +275,9 @@ class Erl2Tank:
         self.__frames['Settings'][0][1].columnconfigure(1,weight=1)
 
         # add a control to set / unset fullscreen mode
+        r = 1
         fullscreenFrame = ttk.Frame(self.__frames['Settings'][0][0], padding='2 2', relief='solid', borderwidth=0)
-        fullscreenFrame.grid(row=1, column=0, padx='2', pady='2', sticky='nwse')
+        fullscreenFrame.grid(row=r, column=0, padx='2', pady='2', sticky='nwse')
         fullscreenCheckbutton = tk.Checkbutton(fullscreenFrame,
                                                indicatoron=0,
                                                image=self.erl2context['img']['checkOff'],
@@ -282,13 +293,44 @@ class Erl2Tank:
                                                selectcolor='#DBDBDB',
                                                command=self.setFullscreen)
         fullscreenCheckbutton.grid(row=0, column=0, padx='2 2', sticky='w')
-        ttk.Label(fullscreenFrame, text='Fullscreen', font='Arial 16'
+        l = ttk.Label(fullscreenFrame, text='Fullscreen', font='Arial 16'
             #, relief='solid', borderwidth=1
-            ).grid(row=0, column=1, padx='2 2', sticky='w')
+            )
+        l.grid(row=0, column=1, padx='2 2', sticky='w')
+        l.bind('<Button-1>', self.setFullscreen)
 
         fullscreenFrame.rowconfigure(0,weight=1)
         fullscreenFrame.columnconfigure(0,weight=0)
         fullscreenFrame.columnconfigure(1,weight=1)
+
+        # add a control to enable / disable the Erl2NumPad popups
+        r += 1
+        numPadFrame = ttk.Frame(self.__frames['Settings'][0][0], padding='2 2', relief='solid', borderwidth=0)
+        numPadFrame.grid(row=r, column=0, padx='2', pady='2', sticky='nwse')
+        numPadCheckbutton = tk.Checkbutton(numPadFrame,
+                                               indicatoron=0,
+                                               image=self.erl2context['img']['checkOff'],
+                                               selectimage=self.erl2context['img']['checkOn'],
+                                               variable=self.__numPadVar,
+                                               height=40,
+                                               width=40,
+                                               bd=0,
+                                               highlightthickness=0,
+                                               highlightcolor='#DBDBDB',
+                                               highlightbackground='#DBDBDB',
+                                               #bg='#DBDBDB',
+                                               selectcolor='#DBDBDB',
+                                               command=self.setNumPad)
+        numPadCheckbutton.grid(row=0, column=0, padx='2 2', sticky='w')
+        l = ttk.Label(numPadFrame, text='NumPad Popup', font='Arial 16'
+            #, relief='solid', borderwidth=1
+            )
+        l.grid(row=0, column=1, padx='2 2', sticky='w')
+        l.bind('<Button-1>', self.setNumPad)
+
+        numPadFrame.rowconfigure(0,weight=1)
+        numPadFrame.columnconfigure(0,weight=0)
+        numPadFrame.columnconfigure(1,weight=1)
 
         # restart the app
         restartFrame = ttk.Frame(self.__frames['Settings'][1][0], padding='2 2', relief='solid', borderwidth=0)
@@ -300,12 +342,14 @@ class Erl2Tank:
                                   bd=0,
                                   highlightthickness=0,
                                   activebackground='#DBDBDB',
-                                  command=self.restartPrototype)
+                                  command=self.restartApp)
         restartButton.grid(row=0, column=0, padx='2 2', sticky='w')
         #restartButton.image = self.erl2context['img']['reload']
-        ttk.Label(restartFrame, text='Restart ERL2', font='Arial 16'
+        l = ttk.Label(restartFrame, text='Restart ERL2', font='Arial 16'
             #, relief='solid', borderwidth=1
-            ).grid(row=0, column=1, padx='2 2', sticky='w')
+            )
+        l.grid(row=0, column=1, padx='2 2', sticky='w')
+        l.bind('<Button-1>', self.restartApp)
 
         restartFrame.rowconfigure(0,weight=1)
         restartFrame.columnconfigure(0,weight=0)
@@ -321,12 +365,13 @@ class Erl2Tank:
                                bd=0,
                                highlightthickness=0,
                                activebackground='#DBDBDB',
-                               command=self.exitPrototype)
+                               command=self.exitApp)
         exitButton.grid(row=0, column=0, padx='2 2', sticky='w')
-        #exitButton.image = self.erl2context['img']['shutdown']
-        ttk.Label(exitFrame, text='Shut down ERL2', font='Arial 16'
+        l = ttk.Label(exitFrame, text='Shut down ERL2', font='Arial 16'
             #, relief='solid', borderwidth=1
-            ).grid(row=0, column=1, padx='2 2', sticky='w')
+            )
+        l.grid(row=0, column=1, padx='2 2', sticky='w')
+        l.bind('<Button-1>', self.exitApp)
 
         exitFrame.rowconfigure(0,weight=1)
         exitFrame.columnconfigure(0,weight=0)
@@ -366,14 +411,14 @@ class Erl2Tank:
         # and the logic that implements the overarching temperature subsystem (and its controls)
         self.systems['temperature'] = Erl2SubSystem(
             radioLoc={'parent':self.__frames['Temp'][1][0],'row':0,'column':0},
-            staticLoc={'parent':self.__frames['Temp'][1][2],'row':1,'column':0},
-            offsetLoc={'parent':self.__frames['Temp'][1][2],'row':2,'column':0},
-            dynamicLoc={'parent':self.__frames['Temp'][2][0],'row':1,'column':0},
+            staticSetpointLoc={'parent':self.__frames['Temp'][1][2],'row':1,'column':0},
+            hysteresisLoc={'parent':self.__frames['Temp'][1][2],'row':2,'column':0},
+            dynamicSetpointsLoc={'parent':self.__frames['Temp'][2][0],'row':1,'column':0},
 
-            setpointLocs=[{'parent':self.__frames['Data'][0][0],'row':3,'column':0},
-                          {'parent':self.__frames['Temp'][0][0],'row':3,'column':0}],
-            modeLocs=[{'parent':self.__frames['Data'][0][0],'row':4,'column':0},
-                      {'parent':self.__frames['Temp'][0][0],'row':4,'column':0}],
+            setpointDisplayLocs=[{'parent':self.__frames['Data'][0][0],'row':3,'column':0},
+                                 {'parent':self.__frames['Temp'][0][0],'row':3,'column':0}],
+            modeDisplayLocs=[{'parent':self.__frames['Data'][0][0],'row':4,'column':0},
+                             {'parent':self.__frames['Temp'][0][0],'row':4,'column':0}],
 
             sensors={'temperature':self.sensors['temperature']},
             controls={'heater':self.controls['heater'],
@@ -470,44 +515,73 @@ class Erl2Tank:
         #print (f"{self.__class__.__name__}: Debug: tab changed to [{p}]")
 
         # set focus to an arbitrary frame to avoid seeing focus on entry or button widgets
-        #self.__frames[p][1][0].focus()
+        self.__frames[p][0][0].focus()
 
-    # temporary: an exit button for convenience while coding
-    def setFullscreen(self):
+        # explicitly deselect the sensor's firstEntry field
+        for s in self.sensors.values():
+            s.firstEntry.widget.select_clear()
 
-        if self.__fullscreenVar.get() == 1:
-            self.__parent.attributes('-fullscreen', True)
-        else:
-            self.__parent.attributes('-fullscreen', False)
+    # a method to toggle between fullscreen and regular window modes
+    def setFullscreen(self, event=None):
 
-    # restart the prototype
-    def restartPrototype(self):
+        # first: if an event was passed, manually change the checkbox value
+        if event is not None:
+            self.__fullscreenVar.set(1-self.__fullscreenVar.get())
 
-        # mention this in the log
-        self.__systemLog.writeMessage('Erl2Tank system restart requested by GUI user')
+        # read the current state from the IntVar
+        val = self.__fullscreenVar.get()
 
-        # terminate the current system and start it up again
-        python = executable
-        execl(python, python, * argv)
+        # save the current state
+        self.erl2context['state'].set('system','fullscreen',val)
 
-    # an exit button for convenience while coding
-    def exitPrototype(self):
+        # apply requested state to window
+        self.__parent.attributes('-fullscreen', bool(val))
 
-        # mention this in the log
-        self.__systemLog.writeMessage('Erl2Tank system exit requested by GUI user')
+    # a method to enable / disable the Erl2NumPad popups
+    def setNumPad(self, event=None):
 
-        # terminate the system
-        self.__parent.destroy()
+        # first: if an event was passed, manually change the checkbox value
+        if event is not None:
+            self.__numPadVar.set(1-self.__numPadVar.get())
+
+        # update the state variable that controls whether Erl2NumPad opens
+        self.erl2context['state'].set('system','numPad',self.__numPadVar.get())
+
+    # restart the App
+    def restartApp(self, event=None):
+
+        # ask for confirmation
+        if mb.askyesno('Restart Confirmation','Are you sure you want to restart the ERL2 App now?'):
+
+            # mention this in the log
+            self.__systemLog.writeMessage('Erl2Tank system restart requested by GUI user')
+
+            # terminate the current system and start it up again
+            python = executable
+            execl(python, python, * argv)
+
+    # shut down the App
+    def exitApp(self, event=None):
+
+        # ask for confirmation
+        if mb.askyesno('Shut Down Confirmation','Are you sure you want to shut down the ERL2 App now?'):
+
+            # mention this in the log
+            self.__systemLog.writeMessage('Erl2Tank system exit requested by GUI user')
+
+            # terminate the system
+            self.__parent.destroy()
 
 def main():
 
     root = tk.Tk()
-    #root.configure(bg='grey')
-    root.attributes('-fullscreen', True)
+    #root.attributes('-fullscreen', True)
+    root.attributes('-topmost', True)
     root.rowconfigure(0,weight=1)
     root.columnconfigure(0,weight=1)
 
     tank = Erl2Tank(root)
+    tank.setFullscreen()
     root.mainloop()
 
 if __name__ == "__main__": main()

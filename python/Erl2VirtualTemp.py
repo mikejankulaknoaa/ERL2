@@ -112,9 +112,10 @@ class Erl2VirtualTemp(Erl2Sensor):
 def main():
 
     root = tk.Tk()
-    virtualtemp = Erl2VirtualTemp(displayLocs=[{'parent':root,'row':0,'column':0}],
-                                  statusLocs=[{'parent':root,'row':1,'column':0}],
-                                  correctionLoc={'parent':root,'row':2,'column':0})
+    ttk.Label(root,text='Erl2VirtualTemp').grid(row=0,column=0)
+    virtualtemp = Erl2VirtualTemp(displayLocs=[{'parent':root,'row':1,'column':0}],
+                                  statusLocs=[{'parent':root,'row':2,'column':0}],
+                                  correctionLoc={'parent':root,'row':3,'column':0})
     root.mainloop()
 
 if __name__ == "__main__": main()

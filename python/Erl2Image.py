@@ -39,9 +39,10 @@ class Erl2Image():
 def main():
 
     root = tk.Tk()
+    ttk.Label(root,text='Erl2Image').grid(row=0,column=0)
     img = Erl2Image()
     img.addImage('sample-image','x-25.png')
-    ttk.Label(root, image=img['sample-image'],padding='50 50').grid(row=0,column=0)
+    ttk.Label(root, image=img['sample-image'],padding='50 50').grid(row=1,column=0)
 
     root.mainloop()
 

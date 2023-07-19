@@ -60,8 +60,9 @@ class Erl2Heater(Erl2Toggle):
 def main():
 
     root = tk.Tk()
-    heater = Erl2Heater(displayLocs=[{'parent':root,'row':0,'column':0}],
-                        buttonLocs=[{'parent':root,'row':1,'column':0}])
+    ttk.Label(root,text='Erl2Heater').grid(row=0,column=0)
+    heater = Erl2Heater(displayLocs=[{'parent':root,'row':1,'column':0}],
+                        buttonLocs=[{'parent':root,'row':2,'column':0}])
     heater.setActive()
     root.mainloop()
 

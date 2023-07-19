@@ -8,6 +8,7 @@ from tkinter import ttk
 from Erl2Config import Erl2Config
 from Erl2Entry import Erl2Entry
 from Erl2Log import Erl2Log
+from Erl2State import Erl2State
 
 class Erl2Sensor():
 
@@ -31,6 +32,7 @@ class Erl2Sensor():
         self.__statusWidgets = []
         self.__correctionWidgets = []
         self.__offsetEntry = None
+        self.firstEntry = None
 
         # for a sensor, we track current value and last valid update time
         # (be careful to update these values only in the measure() method)
@@ -47,6 +49,16 @@ class Erl2Sensor():
             #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
+        # load any saved info about the application state
+        if 'state' not in self.erl2context:
+            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
+
+        # start a data/log file for the sensor
+        if not self.erl2context['conf']['system']['disableFileLogging']:
+            self.log = Erl2Log(logType='sensor', logName=self.sensorType, erl2context=self.erl2context)
+        else:
+            self.log = None
+
         # read these useful parameters from Erl2Config
         self.__sampleFrequency = self.erl2context['conf'][self.sensorType]['sampleFrequency']
         self.__loggingFrequency = self.erl2context['conf'][self.sensorType]['loggingFrequency']
@@ -55,14 +67,14 @@ class Erl2Sensor():
         self.__offsetParameter = self.erl2context['conf'][self.sensorType]['offsetParameter']
         self.__offsetDefault = self.erl2context['conf'][self.sensorType]['offsetDefault']
 
-        # we also keep track of what the active offset parameter is
-        self.__offsetFloat = self.__offsetDefault
+        # and also these system-level Erl2Config parameters
+        self.__disableFileLogging = self.erl2context['conf']['system']['disableFileLogging']
+        self.__timezone = self.erl2context['conf']['system']['timezone']
+        self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
 
-        # start a data/log file for the sensor
-        if not self.erl2context['conf']['system']['disableFileLogging']:
-            self.dataLog = Erl2Log(logType='sensor', logName=self.sensorType, erl2context=self.erl2context)
-        else:
-            self.dataLog = None
+        # we also keep track of what the active offset parameter is
+        # (try to read one back from saved system state)
+        self.__offsetFloat = self.erl2context['state'].get(self.sensorType,'offset',self.__offsetDefault)
 
         # loop through the list of needed display widgets for this sensor
         for loc in self.__displayLocs:
@@ -104,10 +116,11 @@ class Erl2Sensor():
                                        displayDecimals=self.__displayDecimals,
                                        #validRange=,
                                        initValue=self.__offsetFloat,
+                                       onChange=self.changeOffset,
                                        erl2context=self.erl2context)
 
-        # call a function whenever the value of the offset Entry changes
-        self.__offsetEntry.stringVar.trace("w", self.offsetChange)
+        # right now the offset Entry is the first Entry field in all tabs
+        self.firstEntry = self.__offsetEntry
 
         # add a Label widget to show the raw sensor value
         l = ttk.Label(f, text='--', font='Arial 16', justify='right')
@@ -172,14 +185,14 @@ class Erl2Sensor():
         self.__displayWidgets[0].after(delay, self.readSensor)
 
         # is this one of the data values that should be written to the log file?
-        if not self.erl2context['conf']['system']['disableFileLogging']:
+        if not self.__disableFileLogging:
 
             # if we've passed the next file-writing interval time, write it
             if self.__nextFileTime is not None and currentTime.timestamp() > self.__nextFileTime:
 
                 # send the new sensor data to the log (in dictionary form)
-                if self.dataLog is not None:
-                    self.dataLog.writeData(measurement)
+                if self.log is not None:
+                    self.log.writeData(measurement)
 
             # if the next file-writing interval time is empty or in the past, update it
             if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
@@ -241,7 +254,7 @@ class Erl2Sensor():
 
         # the status message conveys information about how current the reading is and on/offline status
         if self.lastValid is not None:
-            upd = self.lastValid.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat'])
+            upd = self.lastValid.astimezone(self.__timezone).strftime(self.__dtFormat)
         else:
             upd = 'never'
 
@@ -267,8 +280,8 @@ class Erl2Sensor():
         currentTime = dt.now(tz=tz.utc)
 
         # add timestamps to a template measurement dict
-        m = {'Timestamp.UTC': currentTime.strftime(self.erl2context['conf']['system']['dtFormat']),
-             'Timestamp.Local': currentTime.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat'])}
+        m = {'Timestamp.UTC': currentTime.strftime(self.__dtFormat),
+             'Timestamp.Local': currentTime.astimezone(self.__timezone).strftime(self.__dtFormat)}
 
         return currentTime, m
 
@@ -317,12 +330,16 @@ class Erl2Sensor():
         elif updateRaw:
             measurement['raw.value'] = float('nan')
 
-    def offsetChange(self, name, index, mode):
+    def changeOffset(self):
 
         # check if this represents an actual change in value, or just formatting
         if float(self.__offsetEntry.stringVar.get()) != self.__offsetFloat:
-            #print (f"{self.__class__.__name__}: Debug: offsetChange({self.sensorType}) called: [{name}][{index}][{mode}]")
-            #print (f"{self.__class__.__name__}: Debug: offsetChange({self.sensorType}) before [{self.__offsetFloat}], after [{float(self.__offsetEntry.stringVar.get())}]")
+
+            #print (f"{self.__class__.__name__}: Debug: changeOffset({self.sensorType}): change detected: before [{self.__offsetFloat}], after [{float(self.__offsetEntry.stringVar.get())}]")
+
+            # make a note in the log about this change
+            if self.log is not None:
+                self.log.writeMessage(f"offset value changed from [{self.__offsetFloat}] to [{float(self.__offsetEntry.stringVar.get())}]")
 
             # update the offset (float) value
             self.__offsetFloat = float(self.__offsetEntry.stringVar.get())
@@ -331,17 +348,21 @@ class Erl2Sensor():
             self.value['offset.value'] = self.__offsetFloat
             if self.__offsetParameter in self.value and 'raw.value' in self.value:
                 self.value[self.__offsetParameter] = self.value['raw.value'] + self.value['offset.value']
-                #print (f"{self.__class__.__name__}: Debug: offsetChange({self.sensorType}|{self.__offsetParameter}) new value is [{self.value[self.__offsetParameter]}]")
+                #print (f"{self.__class__.__name__}: Debug: changeOffset({self.sensorType}|{self.__offsetParameter}) new value is [{self.value[self.__offsetParameter]}]")
 
             # redraw the app's displays immediately
             self.updateDisplays(self.__displayWidgets,self.__statusWidgets,self.__correctionWidgets)
 
+            # notify application that its state has changed
+            self.erl2context['state'].set(self.sensorType,'offset',self.__offsetFloat)
+
 def main():
 
     root = tk.Tk()
-    sensor = Erl2Sensor(displayLocs=[{'parent':root,'row':0,'column':0}],
-                        statusLocs=[{'parent':root,'row':1,'column':0}],
-                        correctionLoc={'parent':root,'row':2,'column':0},
+    ttk.Label(root,text='Erl2Sensor').grid(row=0,column=0)
+    sensor = Erl2Sensor(displayLocs=[{'parent':root,'row':1,'column':0}],
+                        statusLocs=[{'parent':root,'row':2,'column':0}],
+                        correctionLoc={'parent':root,'row':3,'column':0},
                         correctionWidth=8)
     root.mainloop()
 
