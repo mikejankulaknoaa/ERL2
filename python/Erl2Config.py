@@ -109,17 +109,17 @@ class Erl2Config():
         self.__default['chiller']['loggingFrequency'] = '300'
         self.__default['chiller']['memoryRetention'] = '86400'
 
-        self.__default['air']['flowRateRange'= = '[0., 5000.]'
+        self.__default['air']['flowRateRange'] = '[0., 5000.]'
         self.__default['air']['displayDecimals'] = '0'
         self.__default['air']['loggingFrequency'] = '300'
         self.__default['air']['memoryRetention'] = '86400'
 
-        self.__default['co2']['flowRateRange'= = '[0.0, 20.0]'
+        self.__default['co2']['flowRateRange'] = '[0.0, 20.0]'
         self.__default['co2']['displayDecimals'] = '1'
         self.__default['co2']['loggingFrequency'] = '300'
         self.__default['co2']['memoryRetention'] = '86400'
 
-        self.__default['n2']['flowRateRange'= = '[0., 5000.]'
+        self.__default['n2']['flowRateRange'] = '[0., 5000.]'
         self.__default['n2']['displayDecimals'] = '0'
         self.__default['n2']['loggingFrequency'] = '300'
         self.__default['n2']['memoryRetention'] = '86400'
@@ -444,13 +444,12 @@ class Erl2Config():
                 self.__erl2conf[controlType]['flowRateRange'] = [ float(x) if type(x) is int else x for x in self.__erl2conf[controlType]['flowRateRange'] ]
                 if len([ x for x in self.__erl2conf[controlType]['flowRateRange'] if type(x) is not float ]) > 1:
                     raise
-                # check values against min/max in valid temperature range
-                if len([ x for x in self.__erl2conf[controlType]['flowRateRange']
-                         if x < self.__erl2conf[controlType]['validRange'][0]
-                         or x > self.__erl2conf[controlType]['validRange'][1] ]) > 1:
+                # enforce strictly positive and increasing values for min+max
+                if (self.__erl2conf[controlType]['flowRateRange'][0] < 0
+                    or self.__erl2conf[controlType]['flowRateRange'][1] < self.__erl2conf[controlType]['flowRateRange'][0]):
                     raise
             except:
-                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['flowRateRange'] = [{in_conf[controlType]['flowRateRange']}] is not a list of 24 floats within the valid range for this sensor")
+                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['flowRateRange'] = [{in_conf[controlType]['flowRateRange']}] does not define a consistent and positive range of floats")
 
             if 'displayDecimals' not in in_conf[controlType]:
                 in_conf[controlType]['displayDecimals'] = self.__default[controlType]['displayDecimals']
