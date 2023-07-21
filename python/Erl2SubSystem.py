@@ -267,6 +267,12 @@ class Erl2SubSystem():
         # call applyMode here to initialize button (in)activeness
         self.applyMode()
 
+        # inform the controls about what subsystem they are part of
+        if 'chiller' in self.__controls:
+            self.__controls['chiller'].subSystem = self
+        if 'heater' in self.__controls:
+            self.__controls['heater'].subSystem = self
+
         # set the focus to the first radio button
         self.__radioWidgets[0].focus()
 
@@ -526,6 +532,17 @@ class Erl2SubSystem():
                 self.erl2context['state'].set(self.subSystemType,param,floatList)
             else:
                 self.erl2context['state'].set(self.subSystemType,param,floatValue)
+
+    def controlsLog(self, message):
+
+        # nothing to do if logging isn't enabled
+        if self.log is not None:
+
+            # only act if this is Manual mode
+            if self.__modeVar.get() == 0:
+
+                # send the control's update to the subsystem log
+                self.log.writeMessage(message)
 
 def main():
 

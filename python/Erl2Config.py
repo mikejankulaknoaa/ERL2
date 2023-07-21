@@ -12,10 +12,10 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.04b (2023-07-19)'
+    VERSION = '0.05b (2023-07-21)'
 
     # top-level categories in the erl2.conf file
-    CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller']
+    CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'air', 'co2', 'n2']
 
     # valid baud rates (borrowed from the pyrolib code)
     BAUDS = [ 1200,  2400,   4800,   9600,  14400,  19200,  28800,  38400,  38400,
@@ -108,6 +108,21 @@ class Erl2Config():
 
         self.__default['chiller']['loggingFrequency'] = '300'
         self.__default['chiller']['memoryRetention'] = '86400'
+
+        self.__default['air']['flowRateRange'= = '[0., 5000.]'
+        self.__default['air']['displayDecimals'] = '0'
+        self.__default['air']['loggingFrequency'] = '300'
+        self.__default['air']['memoryRetention'] = '86400'
+
+        self.__default['co2']['flowRateRange'= = '[0.0, 20.0]'
+        self.__default['co2']['displayDecimals'] = '1'
+        self.__default['co2']['loggingFrequency'] = '300'
+        self.__default['co2']['memoryRetention'] = '86400'
+
+        self.__default['n2']['flowRateRange'= = '[0., 5000.]'
+        self.__default['n2']['displayDecimals'] = '0'
+        self.__default['n2']['loggingFrequency'] = '300'
+        self.__default['n2']['memoryRetention'] = '86400'
 
     def __init__(self):
 
@@ -394,9 +409,9 @@ class Erl2Config():
         #if self.__erl2conf['virtualtemp']['enabled']:
         self.__erl2conf['virtualtemp'] = {**self.__erl2conf['virtualtemp'], **self.__erl2conf['temperature']}
 
-        # heater and chiller share a lot of the same parameter logic
+        # controls (heater, chiller, air, co2, n2) share a lot of the same parameter logic
 
-        for controlType in ['heater', 'chiller']:
+        for controlType in ['heater', 'chiller', 'air', 'co2', 'n2']:
             if 'loggingFrequency' not in in_conf[controlType]:
                 in_conf[controlType]['loggingFrequency'] = self.__default[controlType]['loggingFrequency']
             try:
@@ -414,6 +429,37 @@ class Erl2Config():
                     raise TypeError
             except:
                 raise TypeError(f"{self.__class__.__name__}: [{controlType}]['memoryRetention'] = [{self.__erl2conf[controlType]['memoryRetention']}] is not a positive integer")
+
+        # MFCs (air, co2, n2) share some parameter logic
+
+        for controlType in ['air', 'co2', 'n2']:
+            if 'flowRateRange' not in in_conf[controlType]:
+                in_conf[controlType]['flowRateRange'] = self.__default[controlType]['flowRateRange']
+            try:
+                self.__erl2conf[controlType]['flowRateRange'] = literal_eval(in_conf[controlType]['flowRateRange'])
+                if (type(self.__erl2conf[controlType]['flowRateRange']) is not list
+                        or len (self.__erl2conf[controlType]['flowRateRange']) != 2):
+                    raise
+                # explicitly convert integers to floats
+                self.__erl2conf[controlType]['flowRateRange'] = [ float(x) if type(x) is int else x for x in self.__erl2conf[controlType]['flowRateRange'] ]
+                if len([ x for x in self.__erl2conf[controlType]['flowRateRange'] if type(x) is not float ]) > 1:
+                    raise
+                # check values against min/max in valid temperature range
+                if len([ x for x in self.__erl2conf[controlType]['flowRateRange']
+                         if x < self.__erl2conf[controlType]['validRange'][0]
+                         or x > self.__erl2conf[controlType]['validRange'][1] ]) > 1:
+                    raise
+            except:
+                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['flowRateRange'] = [{in_conf[controlType]['flowRateRange']}] is not a list of 24 floats within the valid range for this sensor")
+
+            if 'displayDecimals' not in in_conf[controlType]:
+                in_conf[controlType]['displayDecimals'] = self.__default[controlType]['displayDecimals']
+            try:
+                self.__erl2conf[controlType]['displayDecimals'] = int(in_conf[controlType]['displayDecimals'])
+                if self.__erl2conf[controlType]['displayDecimals'] < 0:
+                    raise TypeError
+            except:
+                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['displayDecimals'] = [{self.__erl2conf[controlType]['displayDecimals']}] is not a positive integer")
 
     # override [] syntax to return dictionaries of parameter values
     def __getitem__(self, key):

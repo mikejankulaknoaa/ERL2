@@ -161,7 +161,7 @@ dynamicDefault = [300., 294., 288., 282., 278., 276., 275., 276., 278., 282., 28
 [heater]
 
 # logging: frequency (seconds)
-# controls how often heater metrics are saved in memory and written to log files
+# controls how often metrics from the heater are saved in memory and written to log files
 loggingFrequency = 300
 
 # sampling: retention (seconds)
@@ -172,10 +172,61 @@ memoryRetention = 86400
 [chiller]
 
 # logging: frequency (seconds)
-# controls how often chiller metrics are saved in memory and written to log files
+# controls how often metrics from the chiller are saved in memory and written to log files
 loggingFrequency = 300
 
 # sampling: retention (seconds)
 # how long metrics from the chiller are held in memory; 86400s is one day
+memoryRetention = 86400
+
+
+[air]
+
+# the minimum and maximum flow rates in mL/min for this MFC
+flowRateRange = [0., 5000.]
+
+# how many decimal places to show for flow rate in the app
+displayDecimals = 0
+
+# logging: frequency (seconds)
+# controls how often metrics from the air MFC are saved in memory and written to log files
+loggingFrequency = 300
+
+# sampling: retention (seconds)
+# how long metrics from the air MFC are held in memory; 86400s is one day
+memoryRetention = 86400
+
+
+[co2]
+
+# the minimum and maximum flow rates in mL/min for this MFC
+flowRateRange = [0.0, 20.0]
+
+# how many decimal places to show for flow rate in the app
+displayDecimals = 1
+
+# logging: frequency (seconds)
+# controls how often metrics from the carbon dioxide MFC are saved in memory and written to log files
+loggingFrequency = 300
+
+# sampling: retention (seconds)
+# how long metrics from the carbon dioxide MFC are held in memory; 86400s is one day
+memoryRetention = 86400
+
+
+[n2]
+
+# the minimum and maximum flow rates in mL/min for this MFC
+flowRateRange = [0., 5000.]
+
+# how many decimal places to show for flow rate in the app
+displayDecimals = 0
+
+# logging: frequency (seconds)
+# controls how often metrics from the nitrogen MFC are saved in memory and written to log files
+loggingFrequency = 300
+
+# sampling: retention (seconds)
+# how long metrics from the nitrogen MFC are held in memory; 86400s is one day
 memoryRetention = 86400
 

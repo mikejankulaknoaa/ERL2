@@ -19,7 +19,7 @@ class Erl2Toggle():
                  label='Generic',
                  erl2context={}):
 
-        self.__controlType = type
+        self.controlType = type
         self.__displayLocs = displayLocs
         self.__buttonLocs = buttonLocs
         self.displayImages = displayImages
@@ -55,7 +55,7 @@ class Erl2Toggle():
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # read this useful parameter from Erl2Config
-        self.__loggingFrequency = self.erl2context['conf'][self.__controlType]['loggingFrequency']
+        self.__loggingFrequency = self.erl2context['conf'][self.controlType]['loggingFrequency']
 
         # if necessary, create an object to hold/remember image objects
         if 'img' not in self.erl2context:
@@ -67,7 +67,7 @@ class Erl2Toggle():
 
         # start a data/log file for the control
         if not self.erl2context['conf']['system']['disableFileLogging']:
-            self.log = Erl2Log(logType='control', logName=self.__controlType, erl2context=self.erl2context)
+            self.log = Erl2Log(logType='control', logName=self.controlType, erl2context=self.erl2context)
         else:
             self.log = None
 
@@ -147,7 +147,7 @@ class Erl2Toggle():
             timing = 0
             self.stateLastChanged = currentTime
 
-        # otheewise calculate how long has the system been in its current state
+        # otherwise calculate how long has the system been in its current state
         # (limited to the current logging interval)
         else:
             timing = currentTime.timestamp() - self.stateLastChanged.timestamp()
@@ -253,6 +253,12 @@ class Erl2Toggle():
 
         # toggle state
         self.setState(1 - self.state)
+
+        # if this control has a subsystem, notify it of this change
+        if self.subSystem is not None:
+
+            # the subsystem will only log this change if it's made in Manual mode
+            self.subSystem.controlsLog(f"{self.controlType} state was manually changed to {self.state}")
 
     def setState(self, newState=0):
 
