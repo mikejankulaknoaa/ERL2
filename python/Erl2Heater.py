@@ -9,30 +9,31 @@ class Erl2Heater(Erl2Toggle):
 
     def __init__(self,
                  displayLocs=[],
-                 buttonLocs=[],
+                 buttonLoc={},
                  displayImages=['button-grey-30.png','button-red-30.png'],
                  buttonImages=['radio-off-red-30.png','radio-on-red-30.png'],
                  label='Heater',
-                 channel=None,
                  erl2context={}):
 
         # call the Erl2Toggle class's constructor
-        super().__init__(type='heater',
+        super().__init__(controlType='heater',
                          displayLocs=displayLocs,
-                         buttonLocs=buttonLocs,
+                         buttonLoc=buttonLoc,
                          displayImages=displayImages,
                          buttonImages=buttonImages,
                          label=label,
                          erl2context=erl2context)
 
-        # private attributes specific to Erl2Heater
-        self.__channel = channel
+        # read in the system configuration file if needed
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
+
+        # read this useful parameter from Erl2Config
+        self.__gpioChannel = self.erl2context['conf'][self.controlType]['gpioChannel']
 
         # set up the heater relay hardware...
-
-        # the default channel for the ERL2 heater is 23 (pin #16, and we use pin #14 as ground)
-        if self.__channel is None:
-            self.__channel = 23
 
         # we're using GPIO.BCM (channel numbers) not GPIO.BOARD (pin numbers on the pi)
         GPIO.setmode(GPIO.BCM)
@@ -41,10 +42,10 @@ class Erl2Heater(Erl2Toggle):
         GPIO.setwarnings(False)
 
         # set up the heater relay channel for output
-        GPIO.setup(self.__channel, GPIO.OUT)
+        GPIO.setup(self.__gpioChannel, GPIO.OUT)
 
         # set the channel's state explicitly, to match our logical state
-        GPIO.output(self.__channel, self.state)
+        GPIO.output(self.__gpioChannel, self.state)
 
         # start up the timing loop to log control metrics to a log file
         # (check first if this object is an Erl2Heater or a child class)
@@ -54,15 +55,15 @@ class Erl2Heater(Erl2Toggle):
     def changeHardwareState(self):
 
         # apply the new state to the relay hardware
-        #print (f"{self.__class__.__name__}: Debug: changing to state [{self.state}] on channel [{self.__channel}]")
-        GPIO.output(self.__channel, self.state)
+        #print (f"{self.__class__.__name__}: Debug: changing to state [{self.state}] on GPIO channel [{self.__gpioChannel}]")
+        GPIO.output(self.__gpioChannel, self.state)
 
 def main():
 
     root = tk.Tk()
     ttk.Label(root,text='Erl2Heater').grid(row=0,column=0)
     heater = Erl2Heater(displayLocs=[{'parent':root,'row':1,'column':0}],
-                        buttonLocs=[{'parent':root,'row':2,'column':0}])
+                        buttonLoc={'parent':root,'row':2,'column':0})
     heater.setActive()
     root.mainloop()
 

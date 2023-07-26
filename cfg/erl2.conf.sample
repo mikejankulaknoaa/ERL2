@@ -31,7 +31,7 @@ enabled = False
 # sequent microsystems stack level (usually 0, can be up to 7)
 stackLevel = 0
 
-# sequent microsystems input channel number
+# sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
 inputChannel = 1
 
 # default temperature hysteresis (degrees Celsius)
@@ -160,6 +160,10 @@ dynamicDefault = [300., 294., 288., 282., 278., 276., 275., 276., 278., 282., 28
 
 [heater]
 
+# Raspberry Pi GPIO channel number (can be 1 - 27), writes 0 or 1, GPIO.LOW or GPIO.HIGH, True or False;
+# ERL2 uses GPIO 23 (pin 16), by default, to avoid conflicts with other Raspberry Pi wiring
+gpioChannel = 23
+
 # logging: frequency (seconds)
 # controls how often metrics from the heater are saved in memory and written to log files
 loggingFrequency = 300
@@ -171,6 +175,12 @@ memoryRetention = 86400
 
 [chiller]
 
+# sequent microsystems stack level (usually 0, can be up to 7)
+stackLevel = 0
+
+# sequent microsystems Open-Drain / PWM output channel number (can be 1 - 4), writes 0-100%
+outputPwmChannel = 1
+
 # logging: frequency (seconds)
 # controls how often metrics from the chiller are saved in memory and written to log files
 loggingFrequency = 300
@@ -180,7 +190,16 @@ loggingFrequency = 300
 memoryRetention = 86400
 
 
-[air]
+[mfc.air]
+
+# sequent microsystems stack level (usually 0, can be up to 7)
+stackLevel = 0
+
+# sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
+inputChannel = 2
+
+# sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
+outputChannel = 1
 
 # the minimum and maximum flow rates in mL/min for this MFC
 flowRateRange = [0., 5000.]
@@ -188,16 +207,29 @@ flowRateRange = [0., 5000.]
 # how many decimal places to show for flow rate in the app
 displayDecimals = 0
 
+# sampling: frequency (seconds)
+# how often the MFC is asked for its current setting; not all values may be saved in memory/files
+sampleFrequency = 5
+
+# sampling: retention (seconds)
+# how long data from the MFC are held in memory; 86400s is one day
+memoryRetention = 86400
+
 # logging: frequency (seconds)
 # controls how often metrics from the air MFC are saved in memory and written to log files
 loggingFrequency = 300
 
-# sampling: retention (seconds)
-# how long metrics from the air MFC are held in memory; 86400s is one day
-memoryRetention = 86400
 
+[mfc.co2]
 
-[co2]
+# sequent microsystems stack level (usually 0, can be up to 7)
+stackLevel = 0
+
+# sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
+inputChannel = 3
+
+# sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
+outputChannel = 2
 
 # the minimum and maximum flow rates in mL/min for this MFC
 flowRateRange = [0.0, 20.0]
@@ -205,16 +237,29 @@ flowRateRange = [0.0, 20.0]
 # how many decimal places to show for flow rate in the app
 displayDecimals = 1
 
+# sampling: frequency (seconds)
+# how often the MFC is asked for its current setting; not all values may be saved in memory/files
+sampleFrequency = 5
+
+# sampling: retention (seconds)
+# how long data from the MFC are held in memory; 86400s is one day
+memoryRetention = 86400
+
 # logging: frequency (seconds)
 # controls how often metrics from the carbon dioxide MFC are saved in memory and written to log files
 loggingFrequency = 300
 
-# sampling: retention (seconds)
-# how long metrics from the carbon dioxide MFC are held in memory; 86400s is one day
-memoryRetention = 86400
 
+[mfc.n2]
 
-[n2]
+# sequent microsystems stack level (usually 0, can be up to 7)
+stackLevel = 0
+
+# sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
+inputChannel = 4
+
+# sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
+outputChannel = 3
 
 # the minimum and maximum flow rates in mL/min for this MFC
 flowRateRange = [0., 5000.]
@@ -222,11 +267,15 @@ flowRateRange = [0., 5000.]
 # how many decimal places to show for flow rate in the app
 displayDecimals = 0
 
+# sampling: frequency (seconds)
+# how often the MFC is asked for its current setting; not all values may be saved in memory/files
+sampleFrequency = 5
+
+# sampling: retention (seconds)
+# how long data from the MFC are held in memory; 86400s is one day
+memoryRetention = 86400
+
 # logging: frequency (seconds)
 # controls how often metrics from the nitrogen MFC are saved in memory and written to log files
 loggingFrequency = 300
-
-# sampling: retention (seconds)
-# how long metrics from the nitrogen MFC are held in memory; 86400s is one day
-memoryRetention = 86400
 

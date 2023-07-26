@@ -83,7 +83,7 @@ class Erl2NumPad(tk.Toplevel):
             cur = ttk.Button(self.__f, #text=label,
                 image=self.erl2context['img'][label],
                 command=lambda x=label: self.click(x))
-            
+
             cur.grid(row=floor(n/4)+1, column=(n%4))
 
         # this is meant to disallow clicks on any other window but the popup

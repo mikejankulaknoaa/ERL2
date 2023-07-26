@@ -11,6 +11,7 @@ from Erl2Config import Erl2Config
 from Erl2Heater import Erl2Heater
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
+from Erl2Mfc import Erl2Mfc
 from Erl2Pyro import Erl2Pyro
 from Erl2State import Erl2State
 from Erl2SubSystem import Erl2SubSystem
@@ -124,6 +125,10 @@ class Erl2Tank:
             # ...and column weights
             for c in range(4):
                self.__tabs[p].columnconfigure(c, weight=1)
+
+        # but afterwards, overwrite column weights in the Data tab to squeeze the first two columns
+        self.__tabs['Data'].columnconfigure(0,weight=0)
+        self.__tabs['Data'].columnconfigure(1,weight=0)
 
         # for Settings, just create three frames for now
         self.__frames['Settings'] = {}
@@ -394,22 +399,67 @@ class Erl2Tank:
                 correctionLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
                 erl2context=self.erl2context)
 
+        # readout displays for the current pH, as reported by the pico-pH
+        self.sensors['pH'] = Erl2Pyro(
+            sensorType='pH',
+            displayLocs=[{'parent':self.__frames['Data'][1][0],'row':1,'column':0},
+                         {'parent':self.__frames['pH'][0][0],'row':1,'column':0}],
+            statusLocs=pHStatusLocs,
+            correctionLoc={'parent':self.__frames['pH'][0][2],'row':1,'column':0},
+            tempSensor=self.sensors['temperature'],
+            erl2context=self.erl2context)
+
+        # readout displays for the current DO, as reported by the pico-o2
+        self.sensors['DO'] = Erl2Pyro(
+            sensorType='DO',
+            displayLocs=[{'parent':self.__frames['Data'][2][0],'row':1,'column':0},
+                         {'parent':self.__frames['DO'][0][0],'row':1,'column':0}],
+            statusLocs=doStatusLocs,
+            correctionLoc={'parent':self.__frames['DO'][0][2],'row':1,'column':0},
+            tempSensor=self.sensors['temperature'],
+            erl2context=self.erl2context)
+
         # readout and control widgets for the Heater relay
         self.controls['heater'] = Erl2Heater(
             displayLocs=[{'parent':self.__frames['Data'][0][1],'row':0,'column':0},
                          {'parent':self.__frames['Temp'][0][1],'row':0,'column':0}],
-            buttonLocs=[{'parent':self.__frames['Temp'][1][1],'row':2,'column':0}],
+            buttonLoc={'parent':self.__frames['Temp'][1][1],'row':1,'column':0},
             erl2context=self.erl2context)
 
         # readout and control widgets for the Chiller solenoid
         self.controls['chiller'] = Erl2Chiller(
             displayLocs=[{'parent':self.__frames['Data'][0][1],'row':1,'column':0},
                          {'parent':self.__frames['Temp'][0][1],'row':1,'column':0}],
-            buttonLocs=[{'parent':self.__frames['Temp'][1][1],'row':3,'column':0}],
+            buttonLoc={'parent':self.__frames['Temp'][1][1],'row':2,'column':0},
             erl2context=self.erl2context)
 
-        # and the logic that implements the overarching temperature subsystem (and its controls)
+        # readout and control widgets for the Air MFC
+        self.controls['mfc.air'] = Erl2Mfc(
+            controlType='mfc.air',
+            settingDisplayLocs=[{'parent':self.__frames['Data'][1][1],'row':1,'column':0},
+                         {'parent':self.__frames['pH'][0][1],'row':1,'column':0}],
+            entryLoc={'parent':self.__frames['pH'][1][1],'row':1,'column':0},
+            erl2context=self.erl2context)
+
+        # readout and control widgets for the CO2 MFC
+        self.controls['mfc.co2'] = Erl2Mfc(
+            controlType='mfc.co2',
+            settingDisplayLocs=[{'parent':self.__frames['Data'][1][1],'row':2,'column':0},
+                         {'parent':self.__frames['pH'][0][1],'row':2,'column':0}],
+            entryLoc={'parent':self.__frames['pH'][1][1],'row':2,'column':0},
+            erl2context=self.erl2context)
+
+        # readout and control widgets for the N2 MFC
+        self.controls['mfc.n2'] = Erl2Mfc(
+            controlType='mfc.n2',
+            settingDisplayLocs=[{'parent':self.__frames['Data'][2][1],'row':1,'column':0},
+                         {'parent':self.__frames['DO'][0][1],'row':1,'column':0}],
+            entryLoc={'parent':self.__frames['DO'][1][1],'row':1,'column':0},
+            erl2context=self.erl2context)
+
+        # the logic that implements the overarching temperature subsystem (and its controls)
         self.systems['temperature'] = Erl2SubSystem(
+            subSystemType='temperature',
             radioLoc={'parent':self.__frames['Temp'][1][0],'row':0,'column':0},
             staticSetpointLoc={'parent':self.__frames['Temp'][1][2],'row':1,'column':0},
             hysteresisLoc={'parent':self.__frames['Temp'][1][2],'row':2,'column':0},
@@ -423,6 +473,41 @@ class Erl2Tank:
             sensors={'temperature':self.sensors['temperature']},
             controls={'heater':self.controls['heater'],
                       'chiller':self.controls['chiller']},
+            erl2context=self.erl2context)
+
+        # the logic that implements the overarching pH subsystem (and its controls)
+        self.systems['pH'] = Erl2SubSystem(
+            subSystemType='pH',
+            radioLoc={'parent':self.__frames['pH'][1][0],'row':0,'column':0},
+            staticSetpointLoc={'parent':self.__frames['pH'][1][2],'row':1,'column':0},
+            #hysteresisLoc={'parent':self.__frames['pH'][1][2],'row':2,'column':0},
+            dynamicSetpointsLoc={'parent':self.__frames['pH'][2][0],'row':1,'column':0},
+
+            setpointDisplayLocs=[{'parent':self.__frames['Data'][1][0],'row':3,'column':0},
+                                 {'parent':self.__frames['pH'][0][0],'row':3,'column':0}],
+            modeDisplayLocs=[{'parent':self.__frames['Data'][1][0],'row':4,'column':0},
+                             {'parent':self.__frames['pH'][0][0],'row':4,'column':0}],
+
+            sensors={'pH':self.sensors['pH']},
+            controls={'mfc.air':self.controls['mfc.air'],
+                      'mfc.co2':self.controls['mfc.co2']},
+            erl2context=self.erl2context)
+
+        # the logic that implements the overarching DO subsystem (and its controls)
+        self.systems['DO'] = Erl2SubSystem(
+            subSystemType='DO',
+            radioLoc={'parent':self.__frames['DO'][1][0],'row':0,'column':0},
+            staticSetpointLoc={'parent':self.__frames['DO'][1][2],'row':1,'column':0},
+            #hysteresisLoc={'parent':self.__frames['DO'][1][2],'row':2,'column':0},
+            dynamicSetpointsLoc={'parent':self.__frames['DO'][2][0],'row':1,'column':0},
+
+            setpointDisplayLocs=[{'parent':self.__frames['Data'][2][0],'row':3,'column':0},
+                                 {'parent':self.__frames['DO'][0][0],'row':3,'column':0}],
+            modeDisplayLocs=[{'parent':self.__frames['Data'][2][0],'row':4,'column':0},
+                             {'parent':self.__frames['DO'][0][0],'row':4,'column':0}],
+
+            sensors={'DO':self.sensors['DO']},
+            controls={'mfc.n2':self.controls['mfc.n2']},
             erl2context=self.erl2context)
 
         # label is different for virtual sensor
@@ -457,26 +542,6 @@ class Erl2Tank:
                 #, relief='solid', borderwidth=1
                 ).grid(row=1, column=0, sticky='nw')
 
-        # readout displays for the current pH, as reported by the pico-pH
-        self.sensors['pH'] = Erl2Pyro(
-            sensorType='pH',
-            displayLocs=[{'parent':self.__frames['Data'][1][0],'row':1,'column':0},
-                         {'parent':self.__frames['pH'][0][0],'row':1,'column':0}],
-            statusLocs=pHStatusLocs,
-            correctionLoc={'parent':self.__frames['pH'][0][2],'row':1,'column':0},
-            tempSensor=self.sensors['temperature'],
-            erl2context=self.erl2context)
-
-        # readout displays for the current DO, as reported by the pico-o2
-        self.sensors['DO'] = Erl2Pyro(
-            sensorType='DO',
-            displayLocs=[{'parent':self.__frames['Data'][2][0],'row':1,'column':0},
-                         {'parent':self.__frames['DO'][0][0],'row':1,'column':0}],
-            statusLocs=doStatusLocs,
-            correctionLoc={'parent':self.__frames['DO'][0][2],'row':1,'column':0},
-            tempSensor=self.sensors['temperature'],
-            erl2context=self.erl2context)
-
         # temperature label spacing/weighting
         for f in [self.__frames['Data'][0][0], self.__frames['Temp'][0][0]]:
             for r in range(4):
@@ -488,24 +553,20 @@ class Erl2Tank:
             ttk.Label(f, text='pH (Total Scale)', font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
-            ttk.Label(f, text='7.80', font='Arial 20', foreground='#A93226'
+        for f in [self.__frames['Data'][1][1], self.__frames['pH'][0][1]]:
+            ttk.Label(f, text=u'Gas Flow\n(mL min\u207B\u00B9)', font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
-                ).grid(row=2, column=0, sticky='n')
-            ttk.Label(f, text='Auto static pH mode', font='Arial 10 bold italic', foreground='#A93226'
-                #, relief='solid', borderwidth=1
-                ).grid(row=3, column=0, sticky='n')
+                ).grid(row=0, column=0, sticky='nw')
 
         # DO labels
         for f in [self.__frames['Data'][2][0], self.__frames['DO'][0][0]]:
             ttk.Label(f, text=u'DO (\u00B5mol L\u207B\u00B9)', font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
-            ttk.Label(f, text='300', font='Arial 20', foreground='#A93226'
+        for f in [self.__frames['Data'][2][1], self.__frames['DO'][0][1]]:
+            ttk.Label(f, text=u'Gas Flow\n(mL min\u207B\u00B9)', font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
-                ).grid(row=2, column=0, sticky='n')
-            ttk.Label(f, text='Auto static DO mode', font='Arial 10 bold italic', foreground='#A93226'
-                #, relief='solid', borderwidth=1
-                ).grid(row=3, column=0, sticky='n')
+                ).grid(row=0, column=0, sticky='nw')
 
     # a method to call whenever we detect a tab change
     def changeTabs(self, event):

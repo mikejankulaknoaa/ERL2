@@ -15,12 +15,12 @@ from Erl2VirtualTemp import Erl2VirtualTemp
 class Erl2SubSystem():
 
     def __init__(self,
-                 subSystemType='temperature',
+                 subSystemType='generic',
 
                  # these controls are unique and aren't cloned to more than one frame
                  radioLoc={},
                  staticSetpointLoc={},
-                 hysteresisLoc={},
+                 hysteresisLoc=None,
                  dynamicSetpointsLoc={},
 
                  # these displays may be cloned to multiple tabs/frames
@@ -77,19 +77,22 @@ class Erl2SubSystem():
 
         # other useful parameters from Erl2Config
         self.__setpointDefault = self.erl2context['conf'][self.subSystemType]['setpointDefault']
-        self.__hysteresisDefault = self.erl2context['conf'][self.subSystemType]['hysteresisDefault']
         self.__dynamicDefault = self.erl2context['conf'][self.subSystemType]['dynamicDefault']
+        if self.__hysteresisLoc is not None:
+            self.__hysteresisDefault = self.erl2context['conf'][self.subSystemType]['hysteresisDefault']
 
         # also keep a float-valued record of the current values of these parameters
         self.staticSetpointFloat = self.erl2context['state'].get(self.subSystemType,'staticSetpoint',self.__setpointDefault)
-        self.hysteresisFloat = self.erl2context['state'].get(self.subSystemType,'hysteresis',self.__hysteresisDefault)
         self.dynamicSetpointsFloat = self.erl2context['state'].get(self.subSystemType,'dynamicSetpoints',self.__dynamicDefault)
+        if self.__hysteresisLoc is not None:
+            self.hysteresisFloat = self.erl2context['state'].get(self.subSystemType,'hysteresis',self.__hysteresisDefault)
 
         # remember what radio widgets and entry fields are active for this control
         self.__radioWidgets = []
         self.staticSetpointEntry = None
-        self.hysteresisEntry = None
         self.dynamicSetpointsEntry = []
+        if self.__hysteresisLoc is not None:
+            self.hysteresisEntry = None
 
         # also keep track of display-only widgets
         self.__setpointDisplayWidgets = []
@@ -156,24 +159,27 @@ class Erl2SubSystem():
                                              onChange=self.changeStaticSetpoint,
                                              erl2context=self.erl2context)
 
-        # create the hysteresis entry widget's base frame as a child of its parent
-        f = ttk.Frame(self.__hysteresisLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
-        f.grid(row=self.__hysteresisLoc['row'], column=self.__hysteresisLoc['column'], padx='2', pady='0', sticky='nwse')
+        # hysteresis is only used in certain subsystems
+        if self.__hysteresisLoc is not None:
 
-        f.rowconfigure(0,weight=1)
-        f.columnconfigure(0,weight=1)
-        f.columnconfigure(2,weight=0)
+            # create the hysteresis entry widget's base frame as a child of its parent
+            f = ttk.Frame(self.__hysteresisLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
+            f.grid(row=self.__hysteresisLoc['row'], column=self.__hysteresisLoc['column'], padx='2', pady='0', sticky='nwse')
 
-        # create the entry field for the hysteresis parameter
-        self.hysteresisEntry = Erl2Entry(entryLoc={'parent':f,'row':0,'column':1},
-                                         labelLoc={'parent':f,'row':0,'column':0},
-                                         label='Hysteresis',
-                                         width=4,
-                                         displayDecimals=self.__displayDecimals,
-                                         validRange=[0., None],
-                                         initValue=self.hysteresisFloat,
-                                         onChange=self.changeHysteresis,
-                                         erl2context=self.erl2context)
+            f.rowconfigure(0,weight=1)
+            f.columnconfigure(0,weight=1)
+            f.columnconfigure(2,weight=0)
+
+            # create the entry field for the hysteresis parameter
+            self.hysteresisEntry = Erl2Entry(entryLoc={'parent':f,'row':0,'column':1},
+                                             labelLoc={'parent':f,'row':0,'column':0},
+                                             label='Hysteresis',
+                                             width=4,
+                                             displayDecimals=self.__displayDecimals,
+                                             validRange=[0., None],
+                                             initValue=self.hysteresisFloat,
+                                             onChange=self.changeHysteresis,
+                                             erl2context=self.erl2context)
 
         # add dynamic setpoint entry fields
 
@@ -268,10 +274,8 @@ class Erl2SubSystem():
         self.applyMode()
 
         # inform the controls about what subsystem they are part of
-        if 'chiller' in self.__controls:
-            self.__controls['chiller'].subSystem = self
-        if 'heater' in self.__controls:
-            self.__controls['heater'].subSystem = self
+        for ctl in self.__controls.values():
+            ctl.subSystem = self
 
         # set the focus to the first radio button
         self.__radioWidgets[0].focus()
@@ -284,6 +288,12 @@ class Erl2SubSystem():
 
         # read the current mode of the system
         var = self.__modeVar.get()
+
+        # work in progress: pH and DO subsystems can only do Manual mode for now
+        if self.subSystemType != 'temperature':
+            var = 0
+            for r in range(1,len(self.__radioWidgets)):
+                self.__radioWidgets[r].config(state='disabled')
 
         # if we've just re-clicked the already-active mode, disregard
         if self.__lastModeVar is not None and self.__lastModeVar == var:
@@ -301,7 +311,7 @@ class Erl2SubSystem():
                 self.staticSetpointEntry.setActive(0)
 
         # enable/disable the hysteresis entry field as appropriate
-        if self.hysteresisEntry is not None:
+        if self.__hysteresisLoc is not None and self.hysteresisEntry is not None:
             if var!=0:
                 self.hysteresisEntry.setActive(1)
             else:
@@ -317,7 +327,7 @@ class Erl2SubSystem():
         # if in Manual mode, force all hardware controls to off
         if var==0:
             for c in self.__controls.values():
-                c.setState(0)
+                c.setControl(0)
 
         # disable "Child" mode for now
         self.__radioWidgets[1].config(state='disabled')
@@ -414,7 +424,7 @@ class Erl2SubSystem():
                 temp = float('nan')
 
             # what is the hysteresis -- the allowable drift from the targeted setpoint?
-            if self.hysteresisEntry is not None:
+            if self.__hysteresisLoc is not None and self.hysteresisEntry is not None:
                 hysteresis = float(self.hysteresisEntry.stringVar.get())
             else:
                 hysteresis = float('nan')
@@ -426,20 +436,20 @@ class Erl2SubSystem():
             if temp < self.__activeSetpoint-hysteresis:
                 action='HEATER'
                 if 'heater' in self.__controls:
-                    self.__controls['heater'].setState(1)
+                    self.__controls['heater'].setControl(1)
                 if 'chiller' in self.__controls:
-                    self.__controls['chiller'].setState(0)
+                    self.__controls['chiller'].setControl(0)
             elif temp > self.__activeSetpoint+hysteresis:
                 action='CHILLER'
                 if 'heater' in self.__controls:
-                    self.__controls['heater'].setState(0)
+                    self.__controls['heater'].setControl(0)
                 if 'chiller' in self.__controls:
-                    self.__controls['chiller'].setState(1)
+                    self.__controls['chiller'].setControl(1)
             else:
                 if 'heater' in self.__controls:
-                    self.__controls['heater'].setState(0)
+                    self.__controls['heater'].setControl(0)
                 if 'chiller' in self.__controls:
-                    self.__controls['chiller'].setState(0)
+                    self.__controls['chiller'].setControl(0)
 
             #print(f"{self.__class__.__name__}: Debug: mode [{self.__modeDict[var]}], hour [{hour}], active setpoint [{self.__activeSetpoint}], hysteresis [{hysteresis}] temp [{temp}] action [{action}]")
 
@@ -563,9 +573,9 @@ def main():
                                   correctionLoc={'parent':tempFrame,'row':3,'column':0})
 
     heater = Erl2Heater(displayLocs=[{'parent':root,'row':1,'column':1}],
-                        buttonLocs=[{'parent':root,'row':3,'column':1}])
+                        buttonLoc={'parent':root,'row':3,'column':1})
     chiller = Erl2Chiller(displayLocs=[{'parent':root,'row':2,'column':1}],
-                          buttonLocs=[{'parent':root,'row':4,'column':1}])
+                          buttonLoc={'parent':root,'row':4,'column':1})
 
     subsystem = Erl2SubSystem(radioLoc={'parent':radioFrame,'row':1,'column':0},
                               staticSetpointLoc={'parent':root,'row':1,'column':4},

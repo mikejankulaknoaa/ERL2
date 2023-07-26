@@ -12,10 +12,10 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.05b (2023-07-21)'
+    VERSION = '0.06b (2023-07-26)'
 
     # top-level categories in the erl2.conf file
-    CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'air', 'co2', 'n2']
+    CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
 
     # valid baud rates (borrowed from the pyrolib code)
     BAUDS = [ 1200,  2400,   4800,   9600,  14400,  19200,  28800,  38400,  38400,
@@ -103,31 +103,49 @@ class Erl2Config():
                                                         '0.500, 0.629, 0.750, 0.854, 0.933, 0.983, '
                                                         '1.000, 0.983, 0.933, 0.854, 0.750, 0.629]')
 
+        self.__default['heater']['gpioChannel'] = '23'
         self.__default['heater']['loggingFrequency'] = '300'
         self.__default['heater']['memoryRetention'] = '86400'
 
+        self.__default['chiller']['stackLevel'] = '0'
+        self.__default['chiller']['outputPwmChannel'] = '1'
         self.__default['chiller']['loggingFrequency'] = '300'
         self.__default['chiller']['memoryRetention'] = '86400'
 
-        self.__default['air']['flowRateRange'] = '[0., 5000.]'
-        self.__default['air']['displayDecimals'] = '0'
-        self.__default['air']['loggingFrequency'] = '300'
-        self.__default['air']['memoryRetention'] = '86400'
+        self.__default['mfc.air']['stackLevel'] = '0'
+        self.__default['mfc.air']['inputChannel'] = '2'
+        self.__default['mfc.air']['outputChannel'] = '1'
+        self.__default['mfc.air']['flowRateRange'] = '[0., 5000.]'
+        self.__default['mfc.air']['displayDecimals'] = '0'
+        self.__default['mfc.air']['sampleFrequency'] = '5'
+        self.__default['mfc.air']['memoryRetention'] = '86400'
+        self.__default['mfc.air']['loggingFrequency'] = '300'
+        self.__default['mfc.air']['memoryRetention'] = '86400'
 
-        self.__default['co2']['flowRateRange'] = '[0.0, 20.0]'
-        self.__default['co2']['displayDecimals'] = '1'
-        self.__default['co2']['loggingFrequency'] = '300'
-        self.__default['co2']['memoryRetention'] = '86400'
+        self.__default['mfc.co2']['stackLevel'] = '0'
+        self.__default['mfc.co2']['inputChannel'] = '3'
+        self.__default['mfc.co2']['outputChannel'] = '2'
+        self.__default['mfc.co2']['flowRateRange'] = '[0.0, 20.0]'
+        self.__default['mfc.co2']['displayDecimals'] = '1'
+        self.__default['mfc.co2']['sampleFrequency'] = '5'
+        self.__default['mfc.co2']['memoryRetention'] = '86400'
+        self.__default['mfc.co2']['loggingFrequency'] = '300'
+        self.__default['mfc.co2']['memoryRetention'] = '86400'
 
-        self.__default['n2']['flowRateRange'] = '[0., 5000.]'
-        self.__default['n2']['displayDecimals'] = '0'
-        self.__default['n2']['loggingFrequency'] = '300'
-        self.__default['n2']['memoryRetention'] = '86400'
+        self.__default['mfc.n2']['stackLevel'] = '0'
+        self.__default['mfc.n2']['inputChannel'] = '4'
+        self.__default['mfc.n2']['outputChannel'] = '3'
+        self.__default['mfc.n2']['flowRateRange'] = '[0., 5000.]'
+        self.__default['mfc.n2']['displayDecimals'] = '0'
+        self.__default['mfc.n2']['sampleFrequency'] = '5'
+        self.__default['mfc.n2']['memoryRetention'] = '86400'
+        self.__default['mfc.n2']['loggingFrequency'] = '300'
+        self.__default['mfc.n2']['memoryRetention'] = '86400'
 
     def __init__(self):
 
         # initialize configuration object that reads in erl2.conf parameters
-        in_conf = ConfigParser()
+        self.in_conf = ConfigParser()
 
         # initialize internal parameter dictionary
         self.__erl2conf = {}
@@ -135,8 +153,8 @@ class Erl2Config():
             self.__erl2conf[c] = {}
 
             # there's no guarantee the file will mention all the categories
-            if c not in in_conf:
-                in_conf[c] = {}
+            if c not in self.in_conf:
+                self.in_conf[c] = {}
 
         # the python source file that is currently executing
         thisFile = path.realpath(__file__)
@@ -149,7 +167,7 @@ class Erl2Config():
         while (True):
 
             # found a file named erl2.conf !
-            if path.exists(parent + '/erl2.conf'): 
+            if path.exists(parent + '/erl2.conf'):
                 self.__erl2conf['system']['rootDir'] = parent
                 self.__erl2conf['system']['confFile'] = parent + '/erl2.conf'
                 #print (f"{self.__class__.__name__}: Debug: found root directory {self.__erl2conf['system']['rootDir']}")
@@ -172,7 +190,7 @@ class Erl2Config():
         if 'confFile' in self.__erl2conf['system']:
 
             # read and parse the config file
-            in_conf.read(self.__erl2conf['system']['confFile'])
+            self.in_conf.read(self.__erl2conf['system']['confFile'])
 
         # otherwise we couldn't find a config
         else:
@@ -192,14 +210,14 @@ class Erl2Config():
         self.__erl2conf['system']['dtFormat'] = '%Y-%m-%d %H:%M:%S'
 
         # special logic for setting the main log and img directories
-        if 'logDir' not in in_conf['system']:
+        if 'logDir' not in self.in_conf['system']:
             self.__erl2conf['system']['logDir'] = self.__erl2conf['system']['rootDir'] + '/log'
         else:
-            self.__erl2conf['system']['logDir'] = in_conf['system']['logDir']
-        if 'imgDir' not in in_conf['system']:
+            self.__erl2conf['system']['logDir'] = self.in_conf['system']['logDir']
+        if 'imgDir' not in self.in_conf['system']:
             self.__erl2conf['system']['imgDir'] = self.__erl2conf['system']['rootDir'] + '/img'
         else:
-            self.__erl2conf['system']['imgDir'] = in_conf['system']['imgDir']
+            self.__erl2conf['system']['imgDir'] = self.in_conf['system']['imgDir']
 
         # we must insist that the parent of the specified log directory already exists, at least
         if not path.isdir(path.dirname(self.__erl2conf['system']['logDir'])):
@@ -217,248 +235,192 @@ class Erl2Config():
         self.__setDefaults()
 
         # system
-
-        if 'project' not in in_conf['system']:
-            in_conf['system']['project'] = self.__default['system']['project']
-        self.__erl2conf['system']['project'] = in_conf['system']['project']
-
-        for val in ['disableFileLogging', 'clockWithSeconds', 'clockTwoLines']:
-            if val not in in_conf['system']:
-                in_conf['system'][val] = self.__default['system'][val]
-            try:
-                self.__erl2conf['system'][val] = in_conf.getboolean('system',val)
-            except:
-                raise TypeError(f"{self.__class__.__name__}: ['system'][val] = [{in_conf['system'][val]}] is not boolean")
+        self.validate(str,  'system', 'project')
+        self.validate(bool, 'system', 'disableFileLogging')
+        self.validate(bool, 'system', 'clockWithSeconds')
+        self.validate(bool, 'system', 'clockTwoLines')
 
         # tank
-
-        if 'id' not in in_conf['tank']:
-            in_conf['tank']['id'] = self.__default['tank']['id']
-        self.__erl2conf['tank']['id'] = in_conf['tank']['id']
-
-        if 'location' not in in_conf['tank']:
-            in_conf['tank']['location'] = self.__default['tank']['location']
-        self.__erl2conf['tank']['location'] = in_conf['tank']['location']
+        self.validate(str, 'tank', 'id')
+        self.validate(str, 'tank', 'location')
 
         # whether to use a 'virtual' temperature sensor...
-
-        if 'enabled' not in in_conf['virtualtemp']:
-            in_conf['virtualtemp']['enabled'] = self.__default['virtualtemp']['enabled']
-        try:
-            self.__erl2conf['virtualtemp']['enabled'] = in_conf.getboolean('virtualtemp','enabled')
-        except:
-            raise TypeError(f"{self.__class__.__name__}: ['virtualtemp']['enabled'] = [{in_conf['virtualtemp']['enabled']}] is not boolean")
+        self.validate(bool, 'virtualtemp', 'enabled')
 
         # temperature parameters
+        self.validate(int,   'temperature', 'stackLevel',        min=0, max=7)
+        self.validate(int,   'temperature', 'inputChannel',      min=1, max=4)
+        self.validate(float, 'temperature', 'hysteresisDefault', min=0.)
 
-        if 'stackLevel' not in in_conf['temperature']:
-            in_conf['temperature']['stackLevel'] = self.__default['temperature']['stackLevel']
-        try:
-            self.__erl2conf['temperature']['stackLevel'] = int(in_conf['temperature']['stackLevel'])
-            if self.__erl2conf['temperature']['stackLevel'] not in range(8):
-                raise TypeError
-        except:
-            raise TypeError(f"{self.__class__.__name__}: [{'temperature'}]['stackLevel'] = [{self.__erl2conf['temperature']['stackLevel']}] is not an integer between 0 and 7")
-
-        if 'inputChannel' not in in_conf['temperature']:
-            in_conf['temperature']['inputChannel'] = self.__default['temperature']['inputChannel']
-        try:
-            self.__erl2conf['temperature']['inputChannel'] = int(in_conf['temperature']['inputChannel'])
-            if self.__erl2conf['temperature']['inputChannel'] not in range(1,5):
-                raise TypeError
-        except:
-            raise TypeError(f"{self.__class__.__name__}: [{'temperature'}]['inputChannel'] = [{self.__erl2conf['temperature']['inputChannel']}] is not an integer between 1 and 4")
-
-        if 'hysteresisDefault' not in in_conf['temperature']:
-            in_conf['temperature']['hysteresisDefault'] = self.__default['temperature']['hysteresisDefault']
-        try:
-            self.__erl2conf['temperature']['hysteresisDefault'] = float(in_conf['temperature']['hysteresisDefault'])
-            if self.__erl2conf['temperature']['hysteresisDefault'] <= 0.:
-                raise
-        except:
-            raise TypeError(f"{self.__class__.__name__}: [{'temperature'}]['hysteresisDefault'] = [{in_conf['temperature']['hysteresisDefault']}] is not a positive float")
-
-        # pH and DO parameters (not temperature)
-
+        # pH and DO comms parameters (serial port and baud rate)
         for sensorType in ['pH', 'DO']:
-            if 'serialPort' not in in_conf[sensorType]:
-                in_conf[sensorType]['serialPort'] = self.__default[sensorType]['serialPort']
-            try:
-                self.__erl2conf[sensorType]['serialPort'] = in_conf[sensorType]['serialPort']
-                if self.__erl2conf[sensorType]['serialPort'] == 'None':
-                    self.__erl2conf[sensorType]['serialPort'] = None
-                else:
-                    if not path.exists(self.__erl2conf[sensorType]['serialPort']):
-                        raise
-            except:
+            self.validate(str, sensorType, 'serialPort')
+            self.validate(int, sensorType, 'baudRate')
+
+            if (self.__erl2conf[sensorType]['serialPort'] is not None
+                and not path.exists(self.__erl2conf[sensorType]['serialPort'])):
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['serialPort'] = [{self.__erl2conf[sensorType]['serialPort']}] does not exist on this system")
 
-            if 'baudRate' not in in_conf[sensorType]:
-                in_conf[sensorType]['baudRate'] = self.__default[sensorType]['baudRate']
-            try:
-                self.__erl2conf[sensorType]['baudRate'] = int(in_conf[sensorType]['baudRate'])
-                if self.__erl2conf[sensorType]['baudRate'] not in self.BAUDS:
-                    raise TypeError
-            except:
+            if (self.__erl2conf[sensorType]['baudRate'] is not None
+                and self.__erl2conf[sensorType]['baudRate'] not in self.BAUDS):
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['baudRate'] = [{self.__erl2conf[sensorType]['baudRate']}] is not a valid baud rate.\nValid baud rates are [{self.BAUDS}].")
 
         # temperature, pH and DO share a lot of the same parameter logic
-
         for sensorType in ['temperature', 'pH', 'DO', 'generic']:
 
-            if 'displayParameter' not in in_conf[sensorType]:
-                in_conf[sensorType]['displayParameter'] = self.__default[sensorType]['displayParameter']
-            self.__erl2conf[sensorType]['displayParameter'] = in_conf[sensorType]['displayParameter']
+            # validRange has some extra logic (non-decreasing order)
+            self.validateList(float, sensorType, 'validRange', 2)
+            if (self.__erl2conf[sensorType]['validRange'] is not None
+                and self.__erl2conf[sensorType]['validRange'][0] > self.__erl2conf[sensorType]['validRange'][1]):
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['validRange'] = {self.__erl2conf[sensorType]['validRange']} must specified in increasing order")
 
-            if 'displayDecimals' not in in_conf[sensorType]:
-                in_conf[sensorType]['displayDecimals'] = self.__default[sensorType]['displayDecimals']
-            try:
-                self.__erl2conf[sensorType]['displayDecimals'] = int(in_conf[sensorType]['displayDecimals'])
-                if self.__erl2conf[sensorType]['displayDecimals'] < 0:
-                    raise TypeError
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['displayDecimals'] = [{self.__erl2conf[sensorType]['displayDecimals']}] is not a positive integer")
+            self.validate(str,   sensorType, 'displayParameter')
+            self.validate(int,   sensorType, 'displayDecimals',  min=0)
+            self.validate(int,   sensorType, 'sampleFrequency',  min=0)
+            self.validate(int,   sensorType, 'memoryRetention',  min=0)
+            self.validate(int,   sensorType, 'loggingFrequency', min=0)
+            self.validate(str,   sensorType, 'offsetParameter')
+            self.validate(float, sensorType, 'offsetDefault')
 
-            if 'sampleFrequency' not in in_conf[sensorType]:
-                in_conf[sensorType]['sampleFrequency'] = self.__default[sensorType]['sampleFrequency']
-            try:
-                self.__erl2conf[sensorType]['sampleFrequency'] = int(in_conf[sensorType]['sampleFrequency'])
-                if self.__erl2conf[sensorType]['sampleFrequency'] <= 0:
-                    raise TypeError
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['sampleFrequency'] = [{self.__erl2conf[sensorType]['sampleFrequency']}] is not a positive integer")
-
-            if 'memoryRetention' not in in_conf[sensorType]:
-                in_conf[sensorType]['memoryRetention'] = self.__default[sensorType]['memoryRetention']
-            try:
-                self.__erl2conf[sensorType]['memoryRetention'] = int(in_conf[sensorType]['memoryRetention'])
-                if self.__erl2conf[sensorType]['memoryRetention'] <= 0:
-                    raise TypeError
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['memoryRetention'] = [{self.__erl2conf[sensorType]['memoryRetention']}] is not a positive integer")
-
-            if 'loggingFrequency' not in in_conf[sensorType]:
-                in_conf[sensorType]['loggingFrequency'] = self.__default[sensorType]['loggingFrequency']
-            try:
-                self.__erl2conf[sensorType]['loggingFrequency'] = int(in_conf[sensorType]['loggingFrequency'])
-                if self.__erl2conf[sensorType]['loggingFrequency'] <= 0:
-                    raise TypeError
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['loggingFrequency'] = [{self.__erl2conf[sensorType]['loggingFrequency']}] is not a positive integer")
-
-            if 'offsetParameter' not in in_conf[sensorType]:
-                in_conf[sensorType]['offsetParameter'] = self.__default[sensorType]['offsetParameter']
-            self.__erl2conf[sensorType]['offsetParameter'] = in_conf[sensorType]['offsetParameter']
-
-            if 'offsetDefault' not in in_conf[sensorType]:
-                in_conf[sensorType]['offsetDefault'] = self.__default[sensorType]['offsetDefault']
-            try:
-                self.__erl2conf[sensorType]['offsetDefault'] = float(in_conf[sensorType]['offsetDefault'])
-                #if self.__erl2conf[sensorType]['offsetDefault'] <= 0.:
-                #    raise
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['offsetDefault'] = [{in_conf[sensorType]['offsetDefault']}] is not a positive float")
-
-            if 'validRange' not in in_conf[sensorType]:
-                in_conf[sensorType]['validRange'] = self.__default[sensorType]['validRange']
-            try:
-                # convert a string that looks like a Python list into an actual Python list
-                self.__erl2conf[sensorType]['validRange'] = literal_eval(in_conf[sensorType]['validRange'])
-                if (type(self.__erl2conf[sensorType]['validRange']) is not list
-                        or len (self.__erl2conf[sensorType]['validRange']) != 2):
-                    raise
-                # explicitly convert integers to floats
-                self.__erl2conf[sensorType]['validRange'] = [ float(x) if type(x) is int else x for x in self.__erl2conf[sensorType]['validRange'] ]
-                if len([ x for x in self.__erl2conf[sensorType]['validRange'] if type(x) is not float ]) > 1:
-                    raise
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['validRange'] = [{in_conf[sensorType]['validRange']}] is not a list of 2 floats")
-
-            if 'setpointDefault' not in in_conf[sensorType]:
-                in_conf[sensorType]['setpointDefault'] = self.__default[sensorType]['setpointDefault']
-            try:
-                self.__erl2conf[sensorType]['setpointDefault'] = float(in_conf[sensorType]['setpointDefault'])
-                # check value against min/max in valid temperature range
-                if (self.__erl2conf[sensorType]['setpointDefault'] < self.__erl2conf[sensorType]['validRange'][0]
-                        or self.__erl2conf[sensorType]['setpointDefault'] > self.__erl2conf[sensorType]['validRange'][1]):
-                    raise
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['setpointDefault'] = [{in_conf[sensorType]['setpointDefault']}] is not a float within the valid range for this sensor")
-
-            if 'dynamicDefault' not in in_conf[sensorType]:
-                in_conf[sensorType]['dynamicDefault'] = self.__default[sensorType]['dynamicDefault']
-            try:
-                self.__erl2conf[sensorType]['dynamicDefault'] = literal_eval(in_conf[sensorType]['dynamicDefault'])
-                if (type(self.__erl2conf[sensorType]['dynamicDefault']) is not list
-                        or len (self.__erl2conf[sensorType]['dynamicDefault']) != 24):
-                    raise
-                # explicitly convert integers to floats
-                self.__erl2conf[sensorType]['dynamicDefault'] = [ float(x) if type(x) is int else x for x in self.__erl2conf[sensorType]['dynamicDefault'] ]
-                if len([ x for x in self.__erl2conf[sensorType]['dynamicDefault'] if type(x) is not float ]) > 1:
-                    raise
-                # check values against min/max in valid temperature range
-                if len([ x for x in self.__erl2conf[sensorType]['dynamicDefault']
-                         if x < self.__erl2conf[sensorType]['validRange'][0]
-                         or x > self.__erl2conf[sensorType]['validRange'][1] ]) > 1:
-                    raise
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['dynamicDefault'] = [{in_conf[sensorType]['dynamicDefault']}] is not a list of 24 floats within the valid range for this sensor")
+            # these are required to fall within the validRange for the sensor
+            self.validate    (float, sensorType, 'setpointDefault',    min=self.__erl2conf[sensorType]['validRange'][0], max=self.__erl2conf[sensorType]['validRange'][1])
+            self.validateList(float, sensorType, 'dynamicDefault', 24, min=self.__erl2conf[sensorType]['validRange'][0], max=self.__erl2conf[sensorType]['validRange'][1])
 
         # the virtual temperature sensor might be required even if not explicitly enabled
-
-        #if self.__erl2conf['virtualtemp']['enabled']:
         self.__erl2conf['virtualtemp'] = {**self.__erl2conf['virtualtemp'], **self.__erl2conf['temperature']}
 
-        # controls (heater, chiller, air, co2, n2) share a lot of the same parameter logic
+        # individual heater/chiller parameters
+        self.validate(int, 'heater',  'gpioChannel',      min=1, max=27)
+        self.validate(int, 'chiller', 'stackLevel',       min=0, max=7)
+        self.validate(int, 'chiller', 'outputPwmChannel', min=1, max=4)
 
-        for controlType in ['heater', 'chiller', 'air', 'co2', 'n2']:
-            if 'loggingFrequency' not in in_conf[controlType]:
-                in_conf[controlType]['loggingFrequency'] = self.__default[controlType]['loggingFrequency']
-            try:
-                self.__erl2conf[controlType]['loggingFrequency'] = int(in_conf[controlType]['loggingFrequency'])
-                if self.__erl2conf[controlType]['loggingFrequency'] <= 0:
-                    raise TypeError
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['loggingFrequency'] = [{self.__erl2conf[controlType]['loggingFrequency']}] is not a positive integer")
+        # controls (heater, chiller, mfc.air, mfc.co2, mfc.n2) share some parameter logic
+        for controlType in ['heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']:
+            self.validate(int, controlType, 'loggingFrequency', min=0)
+            self.validate(int, controlType, 'memoryRetention',  min=0)
 
-            if 'memoryRetention' not in in_conf[controlType]:
-                in_conf[controlType]['memoryRetention'] = self.__default[controlType]['memoryRetention']
-            try:
-                self.__erl2conf[controlType]['memoryRetention'] = int(in_conf[controlType]['memoryRetention'])
-                if self.__erl2conf[controlType]['memoryRetention'] <= 0:
-                    raise TypeError
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['memoryRetention'] = [{self.__erl2conf[controlType]['memoryRetention']}] is not a positive integer")
+        # MFCs (mfc.air, mfc.co2, mfc.n2) share some parameter logic
+        for controlType in ['mfc.air', 'mfc.co2', 'mfc.n2']:
 
-        # MFCs (air, co2, n2) share some parameter logic
+            # flowRateRange has some extra logic (non-decreasing order)
+            self.validateList(float, controlType, 'flowRateRange', 2, min=0.)
+            if (self.__erl2conf[controlType]['flowRateRange'] is not None
+                and self.__erl2conf[controlType]['flowRateRange'][0] > self.__erl2conf[controlType]['flowRateRange'][1]):
+                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['flowRateRange'] = {self.__erl2conf[controlType]['flowRateRange']} must specified in increasing order")
 
-        for controlType in ['air', 'co2', 'n2']:
-            if 'flowRateRange' not in in_conf[controlType]:
-                in_conf[controlType]['flowRateRange'] = self.__default[controlType]['flowRateRange']
-            try:
-                self.__erl2conf[controlType]['flowRateRange'] = literal_eval(in_conf[controlType]['flowRateRange'])
-                if (type(self.__erl2conf[controlType]['flowRateRange']) is not list
-                        or len (self.__erl2conf[controlType]['flowRateRange']) != 2):
-                    raise
-                # explicitly convert integers to floats
-                self.__erl2conf[controlType]['flowRateRange'] = [ float(x) if type(x) is int else x for x in self.__erl2conf[controlType]['flowRateRange'] ]
-                if len([ x for x in self.__erl2conf[controlType]['flowRateRange'] if type(x) is not float ]) > 1:
-                    raise
-                # enforce strictly positive and increasing values for min+max
-                if (self.__erl2conf[controlType]['flowRateRange'][0] < 0
-                    or self.__erl2conf[controlType]['flowRateRange'][1] < self.__erl2conf[controlType]['flowRateRange'][0]):
-                    raise
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['flowRateRange'] = [{in_conf[controlType]['flowRateRange']}] does not define a consistent and positive range of floats")
+            self.validate(int, controlType, 'stackLevel',      min=0, max=7)
+            self.validate(int, controlType, 'inputChannel',    min=1, max=4)
+            self.validate(int, controlType, 'outputChannel',   min=1, max=4)
+            self.validate(int, controlType, 'displayDecimals', min=0)
+            self.validate(int, controlType, 'sampleFrequency', min=0)
 
-            if 'displayDecimals' not in in_conf[controlType]:
-                in_conf[controlType]['displayDecimals'] = self.__default[controlType]['displayDecimals']
-            try:
-                self.__erl2conf[controlType]['displayDecimals'] = int(in_conf[controlType]['displayDecimals'])
-                if self.__erl2conf[controlType]['displayDecimals'] < 0:
-                    raise TypeError
-            except:
-                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['displayDecimals'] = [{self.__erl2conf[controlType]['displayDecimals']}] is not a positive integer")
+    def validate(self, cl, cat, param, min=None, max=None):
+
+        #print (f"{self.__class__.__name__}: Debug: validate({cl.__name__},{cat},{param},{min},{max})")
+
+        # pull value from system defaults if missing from the erl2.conf file
+        if param not in self.in_conf[cat]:
+            self.in_conf[cat][param] = self.__default[cat][param]
+
+        # special case: None
+        if self.in_conf[cat][param] == 'None':
+            self.__erl2conf[cat][param] = None
+            return
+
+        # attempt the conversion to the requested class
+        try:
+            # special handling for booleans
+            if cl == bool:
+                self.__erl2conf[cat][param] = self.in_conf.getboolean(cat,param)
+            else:
+                self.__erl2conf[cat][param] = cl(self.in_conf[cat][param])
+
+            # if bounds are specified, check them
+            if (   (min is not None and self.__erl2conf[cat][param] < min)
+                or (max is not None and self.__erl2conf[cat][param] > max)):
+                raise TypeError
+
+        except:
+            # prettify the type name if possible
+            if cl is str:
+                tp = 'a string'
+            elif cl is int:
+                tp = 'an integer'
+            elif cl is bool:
+                tp = 'a boolean'
+            elif cl is float:
+                tp = 'a float'
+            else:
+                tp = f"of class [{cl.__name__}]"
+
+            # add optional error info about min/max requirements
+            msg = ''
+            if min is not None and max is not None:
+                msg = f" between [{min}] and [{max}]"
+            elif min is not None:
+                msg = f" greater than [{min}]"
+            elif max is not None:
+                msg = f" less than [{max}]"
+
+            raise TypeError(f"{self.__class__.__name__}: [{cat}][{param}] = [{self.in_conf[cat][param]}] is not {tp}{msg}") #from None
+
+
+    def validateList(self, cl, cat, param, cnt, min=None, max=None):
+
+        #print (f"{self.__class__.__name__}: Debug: validateList({cl.__name__},{cat},{param},{cnt},{min},{max})")
+
+        # pull value from system defaults if missing from the erl2.conf file
+        if param not in self.in_conf[cat]:
+            self.in_conf[cat][param] = self.__default[cat][param]
+
+        # special case: None
+        if self.in_conf[cat][param] == 'None':
+            self.__erl2conf[cat][param] = None
+            return
+
+        # attempt the conversion to the requested class
+        try:
+            # convert a string that looks like a Python list into an actual Python list
+            self.__erl2conf[cat][param] = literal_eval(self.in_conf[cat][param])
+
+            # is it a list? is it the expected length?
+            if (   type(self.__erl2conf[cat][param]) is not list
+                or len(self.__erl2conf[cat][param]) != cnt):
+                raise
+
+            # explicitly convert values to requested class
+            self.__erl2conf[cat][param] = [ cl(x) if type(x) is not cl else x for x in self.__erl2conf[cat][param] ]
+            if len([ x for x in self.__erl2conf[cat][param] if type(x) is not cl ]) > 0:
+                raise
+
+            # if bounds are specified, check them
+            if (   (min is not None and len([ x for x in self.__erl2conf[cat][param] if x < min ]) > 0)
+                or (max is not None and len([ x for x in self.__erl2conf[cat][param] if x > max ]) > 0)):
+                raise TypeError
+
+        except:
+            # prettify the type name if possible
+            if cl is str:
+                tp = 'strings'
+            elif cl is int:
+                tp = 'integers'
+            elif cl is bool:
+                tp = 'booleans'
+            elif cl is float:
+                tp = 'floats'
+            else:
+                tp = f"instances of class [{cl.__name__}]"
+
+            # add optional error info about min/max requirements
+            msg = ''
+            if min is not None and max is not None:
+                msg = f" between [{min}] and [{max}]"
+            elif min is not None:
+                msg = f" greater than [{min}]"
+            elif max is not None:
+                msg = f" less than [{max}]"
+
+            raise TypeError(f"{self.__class__.__name__}: [{cat}][{param}] = {self.in_conf[cat][param]} is not a list of {tp}{msg}") from None
 
     # override [] syntax to return dictionaries of parameter values
     def __getitem__(self, key):

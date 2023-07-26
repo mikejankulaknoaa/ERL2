@@ -7,7 +7,7 @@ from Erl2Config import Erl2Config
 class Erl2Image():
 
     def __init__(self, erl2context={}):
- 
+
         self.erl2context = erl2context
 
         # read in the system configuration file if needed
@@ -23,14 +23,14 @@ class Erl2Image():
         self.__img = {}
 
     def addImage(self, key, file):
- 
+
         # don't reload the image if it's already there
         if key not in self.__img:
             self.__img[key] = tk.PhotoImage(file=self.__imgDir + '/' + file)
 
     # override [] syntax to return PhotoImage objects
     def __getitem__(self, key):
- 
+
         if key in self.__img:
             return self.__img[key]
         else:

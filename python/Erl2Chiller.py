@@ -9,30 +9,30 @@ class Erl2Chiller(Erl2Toggle):
 
     def __init__(self,
                  displayLocs=[],
-                 buttonLocs=[],
+                 buttonLoc={},
                  displayImages=['button-grey-30.png','button-blue-30.png'],
                  buttonImages=['radio-off-blue-30.png','radio-on-blue-30.png'],
                  label='Chiller',
-                 stack=0,
-                 channel=None,
                  erl2context={}):
 
         # call the Erl2Toggle class's constructor
-        super().__init__(type='chiller',
+        super().__init__(controlType='chiller',
                          displayLocs=displayLocs,
-                         buttonLocs=buttonLocs,
+                         buttonLoc=buttonLoc,
                          displayImages=displayImages,
                          buttonImages=buttonImages,
                          label=label,
                          erl2context=erl2context)
 
-        # private attributes specific to Erl2Chiller
-        self.__stack = stack
-        self.__channel = channel
+        # read in the system configuration file if needed
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
-        # the default output channel for the ERL2 chiller solenoid is 1
-        if self.__channel is None:
-            self.__channel = 1
+        # read these useful parameters from Erl2Config
+        self.__stackLevel = self.erl2context['conf'][self.controlType]['stackLevel']
+        self.__outputPwmChannel = self.erl2context['conf'][self.controlType]['outputPwmChannel']
 
         # start up the timing loop to log control metrics to a log file
         # (check first if this object is an Erl2Chiller or a child class)
@@ -42,21 +42,21 @@ class Erl2Chiller(Erl2Toggle):
     def changeHardwareState(self):
 
         # apply the new state to the chiller solenoid hardware
-        #print (f"{self.__class__.__name__}: Debug: changing to state [{self.state}] on channel [{self.__channel}]")
+        #print (f"{self.__class__.__name__}: Debug: changing to state [{self.state}] on Open-Drain / PWM output channel [{self.__outputPwmChannel}]")
 
         if self.state:
             # turn on chiller -- set to 100%
-            setOdPWM(self.__stack,self.__channel,100)
+            setOdPWM(self.__stackLevel,self.__outputPwmChannel,100)
         else:
             # turn off chiller -- set to 0%
-            setOdPWM(self.__stack,self.__channel,0)
+            setOdPWM(self.__stackLevel,self.__outputPwmChannel,0)
 
 def main():
 
     root = tk.Tk()
     ttk.Label(root,text='Erl2Chiller').grid(row=0,column=0)
     chiller = Erl2Chiller(displayLocs=[{'parent':root,'row':1,'column':0}],
-                          buttonLocs=[{'parent':root,'row':2,'column':0}])
+                          buttonLoc={'parent':root,'row':2,'column':0})
     chiller.setActive()
     root.mainloop()
 

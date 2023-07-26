@@ -95,20 +95,20 @@ class Erl2Entry():
                 msg = None
 
                 # defined range -- both minimum and maximum
-                if (    0 in self.__validRange and self.__validRange[0] is not None
-                    and 1 in self.__validRange and self.__validRange[1] is not None
+                if (    self.__validRange[0] is not None
+                    and self.__validRange[1] is not None
                     and (newFloat < self.__validRange[0] or newFloat > self.__validRange[1])):
 
                     msg = f"Value [{newFloat}] is not in the range [{self.__validRange[0]}] - [{self.__validRange[1]}]"
 
                 # defined minimum only
-                elif (    0 in self.__validRange and self.__validRange[0] is not None
+                elif (    self.__validRange[0] is not None
                       and newFloat < self.__validRange[0]):
 
                     msg = f"Value [{newFloat}] is not greater than or equal to [{self.__validRange[0]}]"
 
                 # defined maximum only
-                elif (    1 in self.__validRange and self.__validRange[1] is not None
+                elif (    self.__validRange[1] is not None
                       and newFloat > self.__validRange[1]):
 
                     msg = f"Value [{newFloat}] is not less than or equal to [{self.__validRange[1]}]"
