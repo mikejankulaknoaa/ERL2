@@ -138,7 +138,7 @@ def main():
 
     root = tk.Tk()
     state = Erl2State()
-    ttk.Label(root,text='Erl2State').grid(row=0,column=0)
+    ttk.Label(root,text='Erl2State',font='Arial 30 bold').grid(row=0,column=0)
     ttk.Label(root,text=state.get('system','fullscreen',1)).grid(row=1,column=0)
     root.mainloop()
 

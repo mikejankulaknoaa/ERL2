@@ -12,7 +12,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.06b (2023-07-26)'
+    VERSION = '0.07b (2023-08-03)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -39,7 +39,8 @@ class Erl2Config():
 
         self.__default['temperature']['stackLevel'] = '0'
         self.__default['temperature']['inputChannel'] = '1'
-        self.__default['temperature']['hysteresisDefault'] = '0.1'
+        self.__default['temperature']['parameterName'] = 'temp.degC'
+        self.__default['temperature']['hardwareRange'] = '[0.0, 100.0]'
 
         self.__default['temperature']['displayParameter'] = 'temp.degC'
         self.__default['temperature']['displayDecimals'] = '1'
@@ -49,6 +50,8 @@ class Erl2Config():
         self.__default['temperature']['offsetParameter'] = 'temp.degC'
         self.__default['temperature']['offsetDefault'] = '0.0'
         self.__default['temperature']['validRange'] = '[10.0, 40.0]'
+
+        self.__default['temperature']['hysteresisDefault'] = '0.1'
         self.__default['temperature']['setpointDefault'] = '25.0'
         self.__default['temperature']['dynamicDefault'] = ('[27.0, 26.5, 26.0, 25.6, 25.3, 25.1, '
                                                             '25.0, 25.1, 25.3, 25.6, 26.0, 26.5, '
@@ -66,6 +69,7 @@ class Erl2Config():
         self.__default['pH']['offsetParameter'] = 'pH'
         self.__default['pH']['offsetDefault'] = '0.00'
         self.__default['pH']['validRange'] = '[6.00, 9.00]'
+
         self.__default['pH']['setpointDefault'] = '7.80'
         self.__default['pH']['dynamicDefault'] = ('[8.00, 7.99, 7.98, 7.96, 7.96, 7.95, '
                                                    '7.95, 7.95, 7.96, 7.96, 7.98, 7.99, '
@@ -83,6 +87,7 @@ class Erl2Config():
         self.__default['DO']['offsetParameter'] = 'uM'
         self.__default['DO']['offsetDefault'] = '0.'
         self.__default['DO']['validRange'] = '[100., 700.]'
+
         self.__default['DO']['setpointDefault'] = '300.'
         self.__default['DO']['dynamicDefault'] = ('[300., 294., 288., 282., 278., 276., '
                                                    '275., 276., 278., 282., 288., 294., '
@@ -97,6 +102,7 @@ class Erl2Config():
         self.__default['generic']['offsetParameter'] = 'generic'
         self.__default['generic']['offsetDefault'] = '0.000'
         self.__default['generic']['validRange'] = '[-5.000, 5.000]'
+
         self.__default['generic']['setpointDefault'] = '0.500'
         self.__default['generic']['dynamicDefault'] = ('[0.500, 0.371, 0.250, 0.146, 0.067, 0.017, '
                                                         '0.000, 0.017, 0.067, 0.146, 0.250, 0.371, '
@@ -114,33 +120,48 @@ class Erl2Config():
 
         self.__default['mfc.air']['stackLevel'] = '0'
         self.__default['mfc.air']['inputChannel'] = '2'
-        self.__default['mfc.air']['outputChannel'] = '1'
-        self.__default['mfc.air']['flowRateRange'] = '[0., 5000.]'
+        self.__default['mfc.air']['parameterName'] = 'flow.mLperMin'
+        self.__default['mfc.air']['hardwareRange'] = '[0., 5000.]'
+        self.__default['mfc.air']['displayParameter'] = 'flow.mLperMin'
         self.__default['mfc.air']['displayDecimals'] = '0'
         self.__default['mfc.air']['sampleFrequency'] = '5'
         self.__default['mfc.air']['memoryRetention'] = '86400'
         self.__default['mfc.air']['loggingFrequency'] = '300'
-        self.__default['mfc.air']['memoryRetention'] = '86400'
+        self.__default['mfc.air']['offsetParameter'] = 'flow.mLperMin'
+        self.__default['mfc.air']['offsetDefault'] = '0.'
+        self.__default['mfc.air']['validRange'] = '[0., 5000.]'
+        self.__default['mfc.air']['outputChannel'] = '1'
+        self.__default['mfc.air']['flowRateRange'] = '[0., 5000.]'
 
         self.__default['mfc.co2']['stackLevel'] = '0'
         self.__default['mfc.co2']['inputChannel'] = '3'
-        self.__default['mfc.co2']['outputChannel'] = '2'
-        self.__default['mfc.co2']['flowRateRange'] = '[0.0, 20.0]'
+        self.__default['mfc.co2']['parameterName'] = 'flow.mLperMin'
+        self.__default['mfc.co2']['hardwareRange'] = '[0.0, 20.0]'
+        self.__default['mfc.co2']['displayParameter'] = 'flow.mLperMin'
         self.__default['mfc.co2']['displayDecimals'] = '1'
         self.__default['mfc.co2']['sampleFrequency'] = '5'
         self.__default['mfc.co2']['memoryRetention'] = '86400'
         self.__default['mfc.co2']['loggingFrequency'] = '300'
-        self.__default['mfc.co2']['memoryRetention'] = '86400'
+        self.__default['mfc.co2']['offsetParameter'] = 'flow.mLperMin'
+        self.__default['mfc.co2']['offsetDefault'] = '0.0'
+        self.__default['mfc.co2']['validRange'] = '[0.0, 20.0]'
+        self.__default['mfc.co2']['outputChannel'] = '2'
+        self.__default['mfc.co2']['flowRateRange'] = '[0.0, 20.0]'
 
         self.__default['mfc.n2']['stackLevel'] = '0'
         self.__default['mfc.n2']['inputChannel'] = '4'
-        self.__default['mfc.n2']['outputChannel'] = '3'
-        self.__default['mfc.n2']['flowRateRange'] = '[0., 5000.]'
+        self.__default['mfc.n2']['parameterName'] = 'flow.mLperMin'
+        self.__default['mfc.n2']['hardwareRange'] = '[0., 5000.]'
+        self.__default['mfc.n2']['displayParameter'] = 'flow.mLperMin'
         self.__default['mfc.n2']['displayDecimals'] = '0'
         self.__default['mfc.n2']['sampleFrequency'] = '5'
         self.__default['mfc.n2']['memoryRetention'] = '86400'
         self.__default['mfc.n2']['loggingFrequency'] = '300'
-        self.__default['mfc.n2']['memoryRetention'] = '86400'
+        self.__default['mfc.n2']['offsetParameter'] = 'flow.mLperMin'
+        self.__default['mfc.n2']['offsetDefault'] = '0.'
+        self.__default['mfc.n2']['validRange'] = '[0., 5000.]'
+        self.__default['mfc.n2']['outputChannel'] = '3'
+        self.__default['mfc.n2']['flowRateRange'] = '[0., 5000.]'
 
     def __init__(self):
 
@@ -247,10 +268,20 @@ class Erl2Config():
         # whether to use a 'virtual' temperature sensor...
         self.validate(bool, 'virtualtemp', 'enabled')
 
-        # temperature parameters
-        self.validate(int,   'temperature', 'stackLevel',        min=0, max=7)
-        self.validate(int,   'temperature', 'inputChannel',      min=1, max=4)
+        # temperature is the only category that has hysteresis
         self.validate(float, 'temperature', 'hysteresisDefault', min=0.)
+
+        # any Input4_20 sensor (temperature, MFCs) have these parameters
+        for sensorType in ['temperature', 'mfc.air', 'mfc.co2', 'mfc.n2']:
+            self.validate(int, sensorType, 'stackLevel',   min=0, max=7)
+            self.validate(int, sensorType, 'inputChannel', min=1, max=4)
+            self.validate(str, sensorType, 'parameterName')
+
+            # hardwareRange has some extra logic (non-decreasing order)
+            self.validateList(float, sensorType, 'hardwareRange', 2)
+            if (self.__erl2conf[sensorType]['hardwareRange'] is not None
+                and self.__erl2conf[sensorType]['hardwareRange'][0] > self.__erl2conf[sensorType]['hardwareRange'][1]):
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['hardwareRange'] = {self.__erl2conf[sensorType]['hardwareRange']} must specified in increasing order")
 
         # pH and DO comms parameters (serial port and baud rate)
         for sensorType in ['pH', 'DO']:
@@ -265,11 +296,19 @@ class Erl2Config():
                 and self.__erl2conf[sensorType]['baudRate'] not in self.BAUDS):
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['baudRate'] = [{self.__erl2conf[sensorType]['baudRate']}] is not a valid baud rate.\nValid baud rates are [{self.BAUDS}].")
 
-        # temperature, pH and DO share a lot of the same parameter logic
-        for sensorType in ['temperature', 'pH', 'DO', 'generic']:
+        # temperature, pH, DO and the MFCs share a lot of the same parameter logic
+        for sensorType in ['temperature', 'pH', 'DO', 'mfc.air', 'mfc.co2', 'mfc.n2', 'generic']:
+
+            # some sensors have hardwareRange as well as validRange
+            if 'hardwareRange' in self.__erl2conf[sensorType]:
+                minVal = self.__erl2conf[sensorType]['hardwareRange'][0]
+                maxVal = self.__erl2conf[sensorType]['hardwareRange'][1]
+            else:
+                minVal = None
+                maxVal = None
 
             # validRange has some extra logic (non-decreasing order)
-            self.validateList(float, sensorType, 'validRange', 2)
+            self.validateList(float, sensorType, 'validRange', 2, min=minVal, max=maxVal)
             if (self.__erl2conf[sensorType]['validRange'] is not None
                 and self.__erl2conf[sensorType]['validRange'][0] > self.__erl2conf[sensorType]['validRange'][1]):
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['validRange'] = {self.__erl2conf[sensorType]['validRange']} must specified in increasing order")
@@ -281,6 +320,9 @@ class Erl2Config():
             self.validate(int,   sensorType, 'loggingFrequency', min=0)
             self.validate(str,   sensorType, 'offsetParameter')
             self.validate(float, sensorType, 'offsetDefault')
+
+        # temperature, pH, and DO share the setpoint-related logic
+        for sensorType in ['temperature', 'pH', 'DO', 'generic']:
 
             # these are required to fall within the validRange for the sensor
             self.validate    (float, sensorType, 'setpointDefault',    min=self.__erl2conf[sensorType]['validRange'][0], max=self.__erl2conf[sensorType]['validRange'][1])
@@ -303,16 +345,12 @@ class Erl2Config():
         for controlType in ['mfc.air', 'mfc.co2', 'mfc.n2']:
 
             # flowRateRange has some extra logic (non-decreasing order)
-            self.validateList(float, controlType, 'flowRateRange', 2, min=0.)
+            self.validateList(float, controlType, 'flowRateRange', 2, min=self.__erl2conf[controlType]['hardwareRange'][0], max=self.__erl2conf[controlType]['hardwareRange'][1])
             if (self.__erl2conf[controlType]['flowRateRange'] is not None
                 and self.__erl2conf[controlType]['flowRateRange'][0] > self.__erl2conf[controlType]['flowRateRange'][1]):
                 raise TypeError(f"{self.__class__.__name__}: [{controlType}]['flowRateRange'] = {self.__erl2conf[controlType]['flowRateRange']} must specified in increasing order")
 
-            self.validate(int, controlType, 'stackLevel',      min=0, max=7)
-            self.validate(int, controlType, 'inputChannel',    min=1, max=4)
-            self.validate(int, controlType, 'outputChannel',   min=1, max=4)
-            self.validate(int, controlType, 'displayDecimals', min=0)
-            self.validate(int, controlType, 'sampleFrequency', min=0)
+            self.validate(int, controlType, 'outputChannel', min=1, max=4)
 
     def validate(self, cl, cat, param, min=None, max=None):
 
@@ -434,7 +472,7 @@ def main():
 
     root = tk.Tk()
     config = Erl2Config()
-    ttk.Label(root,text='Erl2Config').grid(row=0,column=0)
+    ttk.Label(root,text='Erl2Config',font='Arial 30 bold').grid(row=0,column=0)
     ttk.Label(root,text=config['system']['version']).grid(row=1,column=0)
     root.mainloop()
 

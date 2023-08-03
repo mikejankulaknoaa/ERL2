@@ -14,6 +14,7 @@ class Erl2Entry():
                  label=None,
                  width=4,
                  font='Arial 20',
+                 labelFont='Arial 14',
                  displayDecimals=1,
                  validRange=None,
                  initValue=0.,
@@ -27,6 +28,7 @@ class Erl2Entry():
         self.__label = label
         self.__width = width
         self.__font = font
+        self.__labelFont = labelFont
         self.__displayDecimals = displayDecimals
         self.__validRange = validRange
         self.__initValue = initValue
@@ -66,7 +68,7 @@ class Erl2Entry():
 
         # this is the Label shown beside the entry widget
         if 'parent' in self.__labelLoc and label is not None:
-            ttk.Label(self.__labelLoc['parent'], text=self.__label, font='Arial 14'
+            ttk.Label(self.__labelLoc['parent'], text=self.__label, font=self.__labelFont
                 #, relief='solid', borderwidth=1
                 ).grid(row=self.__labelLoc['row'], column=self.__labelLoc['column'], padx='2 2', sticky='w')
 
@@ -175,7 +177,7 @@ class Erl2Entry():
 def main():
 
     root = tk.Tk()
-    ttk.Label(root,text='Erl2Entry').grid(row=0,column=0)
+    ttk.Label(root,text='Erl2Entry',font='Arial 30 bold').grid(row=0,column=0)
 
     f = ttk.Frame(root)
     f.grid(row=1,column=0,sticky='nesw')

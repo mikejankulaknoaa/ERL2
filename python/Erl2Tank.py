@@ -10,12 +10,12 @@ from Erl2Clock import Erl2Clock
 from Erl2Config import Erl2Config
 from Erl2Heater import Erl2Heater
 from Erl2Image import Erl2Image
+from Erl2Input4_20 import Erl2Input4_20
 from Erl2Log import Erl2Log
 from Erl2Mfc import Erl2Mfc
 from Erl2Pyro import Erl2Pyro
 from Erl2State import Erl2State
 from Erl2SubSystem import Erl2SubSystem
-from Erl2Temperature import Erl2Temperature
 from Erl2VirtualTemp import Erl2VirtualTemp
 
 class Erl2Tank:
@@ -267,6 +267,24 @@ class Erl2Tank:
             ).grid(row=r, column=0, sticky='ne')
         doStatusLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
 
+        r += 1
+        ttk.Label(self.__frames['Settings'][0][1], text='Air MFC Last Read:  ', font=fontleft, justify='right'
+            #, relief='solid', borderwidth=1
+            ).grid(row=r, column=0, sticky='ne')
+        airMfcStatusLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
+
+        r += 1
+        ttk.Label(self.__frames['Settings'][0][1], text='CO2 MFC Last Read:  ', font=fontleft, justify='right'
+            #, relief='solid', borderwidth=1
+            ).grid(row=r, column=0, sticky='ne')
+        co2MfcStatusLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
+
+        r += 1
+        ttk.Label(self.__frames['Settings'][0][1], text='N2 MFC Last Read:  ', font=fontleft, justify='right'
+            #, relief='solid', borderwidth=1
+            ).grid(row=r, column=0, sticky='ne')
+        n2MfcStatusLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
+
         # dummy row
         r += 1
         ttk.Label(self.__frames['Settings'][0][1], text='this space intentionally left blank', font='Arial 12'
@@ -392,7 +410,8 @@ class Erl2Tank:
                 correctionLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
                 erl2context=self.erl2context)
         else:
-            self.sensors['temperature'] = Erl2Temperature(
+            self.sensors['temperature'] = Erl2Input4_20(
+                sensorType='temperature',
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
                 statusLocs=tempStatusLocs,
@@ -419,6 +438,33 @@ class Erl2Tank:
             tempSensor=self.sensors['temperature'],
             erl2context=self.erl2context)
 
+        # readout displays for the current Air MFC flow rate
+        self.sensors['mfc.air'] = Erl2Input4_20(
+            sensorType='mfc.air',
+            displayLocs=[{'parent':self.__frames['Data'][1][1],'row':1,'column':0},
+                         {'parent':self.__frames['pH'][0][1],'row':1,'column':0}],
+            statusLocs=airMfcStatusLocs,
+            label='Air',
+            erl2context=self.erl2context)
+
+        # readout displays for the current CO2 MFC flow rate
+        self.sensors['mfc.co2'] = Erl2Input4_20(
+            sensorType='mfc.co2',
+            displayLocs=[{'parent':self.__frames['Data'][1][1],'row':3,'column':0},
+                         {'parent':self.__frames['pH'][0][1],'row':3,'column':0}],
+            statusLocs=co2MfcStatusLocs,
+            label=u'CO\u2082',
+            erl2context=self.erl2context)
+
+        # readout displays for the current N2 MFC flow rate
+        self.sensors['mfc.n2'] = Erl2Input4_20(
+            sensorType='mfc.n2',
+            displayLocs=[{'parent':self.__frames['Data'][2][1],'row':1,'column':0},
+                         {'parent':self.__frames['DO'][0][1],'row':1,'column':0}],
+            statusLocs=n2MfcStatusLocs,
+            label=u'N\u2082',
+            erl2context=self.erl2context)
+
         # readout and control widgets for the Heater relay
         self.controls['heater'] = Erl2Heater(
             displayLocs=[{'parent':self.__frames['Data'][0][1],'row':0,'column':0},
@@ -436,24 +482,24 @@ class Erl2Tank:
         # readout and control widgets for the Air MFC
         self.controls['mfc.air'] = Erl2Mfc(
             controlType='mfc.air',
-            settingDisplayLocs=[{'parent':self.__frames['Data'][1][1],'row':1,'column':0},
-                         {'parent':self.__frames['pH'][0][1],'row':1,'column':0}],
+            settingDisplayLocs=[{'parent':self.__frames['Data'][1][1],'row':2,'column':0},
+                                {'parent':self.__frames['pH'][0][1],'row':2,'column':0}],
             entryLoc={'parent':self.__frames['pH'][1][1],'row':1,'column':0},
             erl2context=self.erl2context)
 
         # readout and control widgets for the CO2 MFC
         self.controls['mfc.co2'] = Erl2Mfc(
             controlType='mfc.co2',
-            settingDisplayLocs=[{'parent':self.__frames['Data'][1][1],'row':2,'column':0},
-                         {'parent':self.__frames['pH'][0][1],'row':2,'column':0}],
+            settingDisplayLocs=[{'parent':self.__frames['Data'][1][1],'row':4,'column':0},
+                                {'parent':self.__frames['pH'][0][1],'row':4,'column':0}],
             entryLoc={'parent':self.__frames['pH'][1][1],'row':2,'column':0},
             erl2context=self.erl2context)
 
         # readout and control widgets for the N2 MFC
         self.controls['mfc.n2'] = Erl2Mfc(
             controlType='mfc.n2',
-            settingDisplayLocs=[{'parent':self.__frames['Data'][2][1],'row':1,'column':0},
-                         {'parent':self.__frames['DO'][0][1],'row':1,'column':0}],
+            settingDisplayLocs=[{'parent':self.__frames['Data'][2][1],'row':2,'column':0},
+                                {'parent':self.__frames['DO'][0][1],'row':2,'column':0}],
             entryLoc={'parent':self.__frames['DO'][1][1],'row':1,'column':0},
             erl2context=self.erl2context)
 
@@ -510,17 +556,6 @@ class Erl2Tank:
             controls={'mfc.n2':self.controls['mfc.n2']},
             erl2context=self.erl2context)
 
-        # label is different for virtual sensor
-        tempLabel = u'Temperature (\u00B0C)'
-        if self.erl2context['conf']['virtualtemp']['enabled']:
-            tempLabel = u'Virtual Temp (\u00B0C)'
-
-        # temperature labels
-        for f in [self.__frames['Data'][0][0], self.__frames['Temp'][0][0]]:
-            ttk.Label(f, text=tempLabel, font='Arial 12 bold'
-                #, relief='solid', borderwidth=1
-                ).grid(row=0, column=0, sticky='n')
-
         # standardized labels for some Temp, pH and DO frames
         for name in ['Temp', 'pH', 'DO']:
             ttk.Label(self.__frames[name][0][2], text=name+' Correction', font='Arial 12 bold'
@@ -542,11 +577,16 @@ class Erl2Tank:
                 #, relief='solid', borderwidth=1
                 ).grid(row=1, column=0, sticky='nw')
 
-        # temperature label spacing/weighting
+        # label is different for virtual sensor
+        tempLabel = u'Temperature (\u00B0C)'
+        if self.erl2context['conf']['virtualtemp']['enabled']:
+            tempLabel = u'Virtual Temp (\u00B0C)'
+
+        # temperature labels
         for f in [self.__frames['Data'][0][0], self.__frames['Temp'][0][0]]:
-            for r in range(4):
-                f.rowconfigure(r, weight=1)
-            f.columnconfigure(0, weight=0)
+            ttk.Label(f, text=tempLabel, font='Arial 12 bold'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
 
         # pH labels
         for f in [self.__frames['Data'][1][0], self.__frames['pH'][0][0]]:
@@ -554,7 +594,7 @@ class Erl2Tank:
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
         for f in [self.__frames['Data'][1][1], self.__frames['pH'][0][1]]:
-            ttk.Label(f, text=u'Gas Flow\n(mL min\u207B\u00B9)', font='Arial 12 bold'
+            ttk.Label(f, text=u'Gas Flow (mL min\u207B\u00B9)', font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
 
@@ -564,9 +604,21 @@ class Erl2Tank:
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
         for f in [self.__frames['Data'][2][1], self.__frames['DO'][0][1]]:
-            ttk.Label(f, text=u'Gas Flow\n(mL min\u207B\u00B9)', font='Arial 12 bold'
+            ttk.Label(f, text=u'Gas Flow (mL min\u207B\u00B9)', font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
+
+        # misc spacing/weighting
+        for f in [self.__frames['Data'][0][0],
+                  self.__frames['Data'][1][0],
+                  self.__frames['Data'][2][0],
+                  self.__frames['Temp'][0][0],
+                  self.__frames['pH'][0][0],
+                  self.__frames['DO'][0][0],
+                 ]:
+            for r in range(4):
+                f.rowconfigure(r, weight=1)
+            f.columnconfigure(0, weight=1)
 
     # a method to call whenever we detect a tab change
     def changeTabs(self, event):
@@ -580,7 +632,8 @@ class Erl2Tank:
 
         # explicitly deselect the sensor's firstEntry field
         for s in self.sensors.values():
-            s.firstEntry.widget.select_clear()
+            if s.firstEntry is not None:
+                s.firstEntry.widget.select_clear()
 
     # a method to toggle between fullscreen and regular window modes
     def setFullscreen(self, event=None):

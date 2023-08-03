@@ -154,7 +154,7 @@ def main():
 
     root = tk.Tk()
     log = Erl2Log()
-    ttk.Label(root,text='Erl2Log').grid(row=0,column=0)
+    ttk.Label(root,text='Erl2Log',font='Arial 30 bold').grid(row=0,column=0)
     ttk.Label(root,text=log.logDir()).grid(row=1,column=0)
     root.mainloop()
 

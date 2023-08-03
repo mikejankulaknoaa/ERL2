@@ -112,7 +112,7 @@ class Erl2Toggle():
         b.grid(row=0, column=0, padx='2 2', sticky='w')
 
         # this is the (text) Label shown beside the (image) button widget
-        l = ttk.Label(f, text=self.__label, font='Arial 14'
+        l = ttk.Label(f, text=self.__label, font='Arial 16'
             #, relief='solid', borderwidth=1
             )
         l.grid(row=0, column=1, padx='2 2', sticky='w')
@@ -312,7 +312,7 @@ class Erl2Toggle():
 def main():
 
     root = tk.Tk()
-    ttk.Label(root,text='Erl2Toggle').grid(row=0,column=0)
+    ttk.Label(root,text='Erl2Toggle',font='Arial 30 bold').grid(row=0,column=0)
     toggle = Erl2Toggle(displayLocs=[{'parent':root,'row':1,'column':0}],
                         buttonLoc={'parent':root,'row':2,'column':0})
     toggle.setActive()

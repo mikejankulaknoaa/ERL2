@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
 from Erl2Entry import Erl2Entry
+from Erl2Input4_20 import Erl2Input4_20
 from Erl2Log import Erl2Log
 
 # MFC = Mass Flow Controllers (gas rates for Air, CO2, N2)
@@ -16,7 +17,6 @@ class Erl2Mfc():
     def __init__(self,
                  controlType='generic',
                  settingDisplayLocs=[],
-                 actualDisplayLocs=[],
                  entryLoc={},
                  label=None,
                  width=5,
@@ -24,7 +24,6 @@ class Erl2Mfc():
 
         self.controlType = controlType
         self.__settingDisplayLocs = settingDisplayLocs
-        self.__actualDisplayLocs = actualDisplayLocs
         self.__entryLoc = entryLoc
         self.__label = label
         self.__width = width
@@ -46,7 +45,6 @@ class Erl2Mfc():
 
         # remember what widgets are active for this MFC control
         self.__settingDisplayWidgets = []
-        self.__actualDisplayWidgets = []
         self.__entryWidget = None
 
         # and whether the entry fields are allowed to be active or not
@@ -91,20 +89,18 @@ class Erl2Mfc():
 
             # create the setting display widget's base frame as a child of its parent
             f = ttk.Frame(loc['parent'], padding='2 2', relief='solid', borderwidth=0)
-            f.grid(row=loc['row'], column=loc['column'], padx='2', pady='2', sticky='nwse')
+            f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nwse')
 
             # add a Label widget to show the current MFC flow rate
-            l = ttk.Label(f, text=f"{float(round(self.flowSetting,self.__displayDecimals)):.{self.__displayDecimals}f}", font='Arial 24 bold', justify='right'
+            l = ttk.Label(f, text=f"{float(round(self.flowSetting,self.__displayDecimals)):.{self.__displayDecimals}f}", font='Arial 8', justify='right'
                 #, relief='solid', borderwidth=1
                 )
-            l.grid(row=0, column=1, padx='2 ', sticky='e')
+            l.grid(row=0, column=1, padx='2', pady='0', sticky='e')
 
             # this is the Label shown beside the text display widget
-            x = ttk.Label(f, text=self.__label, font='Arial 16'
+            ttk.Label(f, text='Setting', font='Arial 8'
                 #, relief='solid', borderwidth=1
-                )
-            x.grid(row=0, column=0, padx='2 2', sticky='w')
-            self.__debugLabel = x
+                ).grid(row=0, column=0, padx='2', pady='0', sticky='w')
 
             f.rowconfigure(0,weight=1)
             f.columnconfigure(0,weight=1,minsize=45)
@@ -112,31 +108,6 @@ class Erl2Mfc():
 
             # keep a list of display widgets for this control
             self.__settingDisplayWidgets.append(l)
-
-        # loop through the list of needed actual display widgets for this control
-        for loc in self.__actualDisplayLocs:
-
-            # create the actual display widget's base frame as a child of its parent
-            f = ttk.Frame(loc['parent'], padding='2 2', relief='solid', borderwidth=0)
-            f.grid(row=loc['row'], column=loc['column'], padx='2', pady='2', sticky='nwse')
-
-            # add a Label widget to show the current MFC flow rate
-            l = ttk.Label(f, text='--', font='Arial 20', justify='right'
-                #, relief='solid', borderwidth=1
-                )
-            l.grid(row=0, column=1, padx='2 ', sticky='e')
-
-            # this is the Label shown beside the text display widget
-            ttk.Label(f, text=self.__label, font='Arial 16'
-                #, relief='solid', borderwidth=1
-                ).grid(row=0, column=0, padx='2 2', sticky='w')
-
-            f.rowconfigure(0,weight=1)
-            f.columnconfigure(0,weight=1,minsize=43)
-            f.columnconfigure(1,weight=1,minsize=74)
-
-            # keep a list of display widgets for this control
-            self.__actualDisplayWidgets.append(l)
 
         # create the entry widget's base frame as a child of its parent
         f = ttk.Frame(self.__entryLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
@@ -149,6 +120,7 @@ class Erl2Mfc():
                       labelLoc={'parent':f,'row':0,'column':0},
                       label=self.__label,
                       width=self.__width,
+                      labelFont='Arial 16',
                       displayDecimals=self.__displayDecimals,
                       validRange=self.__flowRateRange,
                       initValue=self.flowSetting,
@@ -267,25 +239,16 @@ class Erl2Mfc():
             else:
                 self.__entryWidget.setActive(0)
 
-    def updateDisplays(self, settingDisplayWidgets, actualDisplayWidgets):
+    def updateDisplays(self, settingDisplayWidgets):
 
         # format the values to be displayed
         setting = f"{float(round(self.flowSetting,self.__displayDecimals)):.{self.__displayDecimals}f}"
-        actual = '--'
 
         # loop through all placements of this control's setting display widgets
         for w in settingDisplayWidgets:
 
             # update the setting display
             w.config(text=setting)
-
-            #print (f"{self.__class__.__name__}: Debug: updateDisplays({self.controlType}): label width is [{self.__debugLabel.winfo_width()}], setting width is [{w.winfo_width()}]")
-
-        # loop through all placements of this control's actual display widgets
-        for w in actualDisplayWidgets:
-
-            # update the actual display
-            w.config(text=actual)
 
     def changeFlow(self, event=None):
 
@@ -348,7 +311,7 @@ class Erl2Mfc():
             self.log.writeMessage(f"flow setting changed from [{self.flowSetting}] to [{float(self.__entryWidget.stringVar.get())}]")
 
         # redraw the app's displays immediately
-        self.updateDisplays(self.__settingDisplayWidgets,self.__actualDisplayWidgets)
+        self.updateDisplays(self.__settingDisplayWidgets)
 
     def changeHardwareSetting(self):
 
@@ -369,25 +332,45 @@ class Erl2Mfc():
 def main():
 
     root = tk.Tk()
-    ttk.Label(root,text='Erl2Mfc').grid(row=0,column=0,columnspan=3)
-    mfcAir = Erl2Mfc(controlType='mfc.air',
-                     settingDisplayLocs=[{'parent':root,'row':1,'column':0}],
-                     actualDisplayLocs=[{'parent':root,'row':2,'column':0}],
-                     entryLoc={'parent':root,'row':3,'column':0},
-                     )
-    mfcCO2 = Erl2Mfc(controlType='mfc.co2',
-                     settingDisplayLocs=[{'parent':root,'row':1,'column':1}],
-                     actualDisplayLocs=[{'parent':root,'row':2,'column':1}],
-                     entryLoc={'parent':root,'row':3,'column':1},
-                     )
-    mfcN2 =  Erl2Mfc(controlType='mfc.n2',
-                     settingDisplayLocs=[{'parent':root,'row':1,'column':2}],
-                     actualDisplayLocs=[{'parent':root,'row':2,'column':2}],
-                     entryLoc={'parent':root,'row':3,'column':2},
-                     )
-    mfcAir.setActive()
-    mfcCO2.setActive()
-    mfcN2.setActive()
+    ttk.Label(root,text='Erl2Mfc',font='Arial 30 bold').grid(row=0,column=0,columnspan=3)
+
+    statusFrame = ttk.Frame(root)
+    statusFrame.grid(row=4,column=0,columnspan=3)
+    ttk.Label(statusFrame,text='Air MFC last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='CO2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=1,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='N2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=2,column=0,sticky='nse')
+
+    sensorMfcAir = Erl2Input4_20(sensorType='mfc.air',
+                                 displayLocs=[{'parent':root,'row':1,'column':0}],
+                                 statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
+                                 label='Air'
+                                 )
+    sensorMfcCO2 = Erl2Input4_20(sensorType='mfc.co2',
+                                 displayLocs=[{'parent':root,'row':1,'column':1}],
+                                 statusLocs=[{'parent':statusFrame,'row':1,'column':1}],
+                                 label=u'CO\u2082'
+                                 )
+    sensorMfcN2  = Erl2Input4_20(sensorType='mfc.n2',
+                                 displayLocs=[{'parent':root,'row':1,'column':2}],
+                                 statusLocs=[{'parent':statusFrame,'row':2,'column':1}],
+                                 label=u'N\u2082'
+                                 )
+
+    controlMfcAir = Erl2Mfc(controlType='mfc.air',
+                            settingDisplayLocs=[{'parent':root,'row':2,'column':0}],
+                            entryLoc={'parent':root,'row':3,'column':0},
+                            )
+    controlMfcCO2 = Erl2Mfc(controlType='mfc.co2',
+                            settingDisplayLocs=[{'parent':root,'row':2,'column':1}],
+                            entryLoc={'parent':root,'row':3,'column':1},
+                            )
+    controlMfcN2 =  Erl2Mfc(controlType='mfc.n2',
+                            settingDisplayLocs=[{'parent':root,'row':2,'column':2}],
+                            entryLoc={'parent':root,'row':3,'column':2},
+                            )
+    controlMfcAir.setActive()
+    controlMfcCO2.setActive()
+    controlMfcN2.setActive()
     root.mainloop()
 
 if __name__ == "__main__": main()

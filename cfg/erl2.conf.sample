@@ -4,11 +4,11 @@
 project = Default Project
 
 # logging to file on/off
-disableFileLogging = False
+# disableFileLogging = False
 
 # configure the system's clock display
-clockWithSeconds = False
-clockTwoLines = False
+# clockWithSeconds = False
+# clockTwoLines = False
 
 
 [tank]
@@ -23,259 +23,312 @@ location = Default Location
 [virtualtemp]
 
 # this is a virtual sensor for testing, designed to 'react' to heater and chiller
-enabled = False
+# enabled = False
 
 
 [temperature]
 
 # sequent microsystems stack level (usually 0, can be up to 7)
-stackLevel = 0
+# stackLevel = 0
 
 # sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
-inputChannel = 1
+# inputChannel = 1
 
-# default temperature hysteresis (degrees Celsius)
-hysteresisDefault = 0.1
+# how to convert milliAmps to the sensor value --
+# what to call it, what 4 mA should map to, and what 20 mA should map to
+# parameterName = temp.degC
+# hardwareRange = [0.0, 100.0]
 
 # which parameter to display in GUI, and with how many decimal places
-displayParameter = temp.degC
-displayDecimals = 1
+# displayParameter = temp.degC
+# displayDecimals = 1
 
 # sampling: frequency (seconds)
 # how often the sensor is sampled; not all values may be saved in memory/files
-sampleFrequency = 5
+# sampleFrequency = 5
 
 # sampling: retention (seconds)
 # how long data from the sensor are held in memory; 86400s is one day
-memoryRetention = 86400
+# memoryRetention = 86400
 
 # logging: frequency (seconds)
 # controls how often measured values are saved in memory and written to log files
-loggingFrequency = 300
+# loggingFrequency = 300
 
 # default corrective offset (degrees Celsius), and the parameter it applies to
 # (i.e. an offset applied when external/redundant temperature readings
 #  suggest that the temperature sensor is off by a consistent factor);
 # In most cases the offsetParameter and the displayParameter will be the same
-offsetParameter = temp.degC
-offsetDefault = 0.0
+# offsetParameter = temp.degC
+# offsetDefault = 0.0
 
 # valid range: values outside of this range will be considered errors
-validRange = [10.0, 40.0]
+# validRange = [10.0, 40.0]
+
+# default temperature hysteresis (degrees Celsius)
+# hysteresisDefault = 0.1
 
 # default temperature setpoint (degrees Celsius)
-setpointDefault = 25.0
+# setpointDefault = 25.0
 
 # default dynamic program (24 values, degrees Celsius)
 # this is a sine shape running between 25 degC (6am low point) and 29 degC (6pm high point)
-dynamicDefault = [27.0, 26.5, 26.0, 25.6, 25.3, 25.1, 25.0, 25.1, 25.3, 25.6, 26.0, 26.5, 27.0, 27.5, 28.0, 28.4, 28.7, 28.9, 29.0, 28.9, 28.7, 28.4, 28.0, 27.5]
+# dynamicDefault = [27.0, 26.5, 26.0, 25.6, 25.3, 25.1, 25.0, 25.1, 25.3, 25.6, 26.0, 26.5, 27.0, 27.5, 28.0, 28.4, 28.7, 28.9, 29.0, 28.9, 28.7, 28.4, 28.0, 27.5]
 
 
 [pH]
 
 # path to the Raspberry Pi serial port to be used for pH communications
-serialPort = /dev/ttyAMA1
+# serialPort = /dev/ttyAMA1
 
 # baud rate for communicating with the pH sensor
-baudRate = 19200
+# baudRate = 19200
 
 # which parameter to display in GUI, and with how many decimal places
-displayParameter = pH
-displayDecimals = 2
+# displayParameter = pH
+# displayDecimals = 2
 
 # sampling: frequency (seconds)
 # how often the sensor is sampled; not all values may be saved in memory/files
-sampleFrequency = 60
+# sampleFrequency = 60
 
 # sampling: retention (seconds)
 # how long data from the sensor are held in memory; 86400s is one day
-memoryRetention = 86400
+# memoryRetention = 86400
 
 # logging: frequency (seconds)
 # controls how often measured values are saved in memory and written to log files
-loggingFrequency = 300
+# loggingFrequency = 300
 
 # default corrective offset (total pH), and the parameter it applies to
 # (i.e. an offset applied when external/redundant pH readings
 # suggest that the pH sensor is off by a consistent factor);
 # In most cases the offsetParameter and the displayParameter will be the same
-offsetParameter = pH
-offsetDefault = 0.0
+# offsetParameter = pH
+# offsetDefault = 0.0
 
 # valid range: values outside of this range will be considered errors
-validRange = [6.00, 9.00]
+# validRange = [6.00, 9.00]
 
 # default pH setpoint (total pH)
-setpointDefault = 7.80
+# setpointDefault = 7.80
 
 # default temperature hysteresis (total pH)
-hysteresisDefault = 0.01
+# hysteresisDefault = 0.01
 
 # default dynamic program (24 values, total pH)
 # this is a sine shape running between 7.95 (6am low point) and 8.05 (6pm high point)
-dynamicDefault = [8.00, 7.99, 7.98, 7.96, 7.96, 7.95, 7.95, 7.95, 7.96, 7.96, 7.98, 7.99, 8.00, 8.01, 8.03, 8.04, 8.04, 8.05, 8.05, 8.05, 8.04, 8.04, 8.03, 8.01]
+# dynamicDefault = [8.00, 7.99, 7.98, 7.96, 7.96, 7.95, 7.95, 7.95, 7.96, 7.96, 7.98, 7.99, 8.00, 8.01, 8.03, 8.04, 8.04, 8.05, 8.05, 8.05, 8.04, 8.04, 8.03, 8.01]
 
 
 [DO]
 
 # path to the Raspberry Pi serial port to be used for O2 communications
-serialPort = /dev/ttyAMA2
+# serialPort = /dev/ttyAMA2
 
 # baud rate for communicating with the pH sensor
-baudRate = 19200
+# baudRate = 19200
 
 # which parameter to display in GUI, and with how many decimal places
-displayParameter = uM
-displayDecimals = 0
+# displayParameter = uM
+# displayDecimals = 0
 
 # sampling: frequency (seconds)
 # how often the sensor is sampled; not all values may be saved in memory/files
-sampleFrequency = 60
+# sampleFrequency = 60
 
 # sampling: retention (seconds)
 # how long data from the sensor are held in memory; 86400s is one day
-memoryRetention = 86400
+# memoryRetention = 86400
 
 # logging: frequency (seconds)
 # controls how often measured values are saved in memory and written to log files
-loggingFrequency = 300
+# loggingFrequency = 300
 
 # default corrective offset (umol/L), and the parameter it applies to
 # (i.e. an offset applied when external/redundant DO readings
 # suggest that the O2 sensor is off by a consistent factor);
 # In most cases the offsetParameter and the displayParameter will be the same
-offsetParameter = uM
-offsetDefault = 0.
+# offsetParameter = uM
+# offsetDefault = 0.
 
 # valid range: values outside of this range will be considered errors
-validRange = [100., 700.]
+# validRange = [100., 700.]
 
 # default pH setpoint (total pH)
-setpointDefault = 300.
+# setpointDefault = 300.
 
 # default dynamic program (24 values, umol/L)
 # this is a sine shape running between 275. (6am low point) and 325. (6pm high point)
-dynamicDefault = [300., 294., 288., 282., 278., 276., 275., 276., 278., 282., 288., 294., 300., 306., 313., 318., 322., 324., 325., 324., 322., 318., 313., 306.]
+# dynamicDefault = [300., 294., 288., 282., 278., 276., 275., 276., 278., 282., 288., 294., 300., 306., 313., 318., 322., 324., 325., 324., 322., 318., 313., 306.]
 
 
 [heater]
 
 # Raspberry Pi GPIO channel number (can be 1 - 27), writes 0 or 1, GPIO.LOW or GPIO.HIGH, True or False;
 # ERL2 uses GPIO 23 (pin 16), by default, to avoid conflicts with other Raspberry Pi wiring
-gpioChannel = 23
+# gpioChannel = 23
 
 # logging: frequency (seconds)
 # controls how often metrics from the heater are saved in memory and written to log files
-loggingFrequency = 300
+# loggingFrequency = 300
 
 # sampling: retention (seconds)
 # how long metrics from the heater are held in memory; 86400s is one day
-memoryRetention = 86400
+# memoryRetention = 86400
 
 
 [chiller]
 
 # sequent microsystems stack level (usually 0, can be up to 7)
-stackLevel = 0
+# stackLevel = 0
 
 # sequent microsystems Open-Drain / PWM output channel number (can be 1 - 4), writes 0-100%
-outputPwmChannel = 1
+# outputPwmChannel = 1
 
 # logging: frequency (seconds)
 # controls how often metrics from the chiller are saved in memory and written to log files
-loggingFrequency = 300
+# loggingFrequency = 300
 
 # sampling: retention (seconds)
 # how long metrics from the chiller are held in memory; 86400s is one day
-memoryRetention = 86400
+# memoryRetention = 86400
 
 
 [mfc.air]
 
 # sequent microsystems stack level (usually 0, can be up to 7)
-stackLevel = 0
+# stackLevel = 0
 
 # sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
-inputChannel = 2
+# inputChannel = 2
 
-# sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
-outputChannel = 1
+# how to convert milliAmps to the sensor value --
+# what to call it, what 4 mA should map to, and what 20 mA should map to
+# parameterName = flow.mLperMin
+# hardwareRange = [0., 5000.]
 
-# the minimum and maximum flow rates in mL/min for this MFC
-flowRateRange = [0., 5000.]
-
-# how many decimal places to show for flow rate in the app
-displayDecimals = 0
+# which parameter to display in GUI, and with how many decimal places
+# displayParameter = flow.mLperMin
+# displayDecimals = 0
 
 # sampling: frequency (seconds)
-# how often the MFC is asked for its current setting; not all values may be saved in memory/files
-sampleFrequency = 5
+# how often the MFC is asked for its current setting;
+# not all values may be saved in memory/files
+# sampleFrequency = 5
 
 # sampling: retention (seconds)
-# how long data from the MFC are held in memory; 86400s is one day
-memoryRetention = 86400
+# how long the data from the MFC are held in memory; 86400s is one day
+# memoryRetention = 86400
 
 # logging: frequency (seconds)
-# controls how often metrics from the air MFC are saved in memory and written to log files
-loggingFrequency = 300
+# controls how often metrics from the MFC are saved in memory and written to log files
+# loggingFrequency = 300
+
+# default corrective offset (mL/min), and the parameter it applies to
+# (probably not useful for MFCs)
+# offsetParameter = flow.mLperMin
+# offsetDefault = 0.
+
+# valid range: values outside of this range will be considered errors
+# validRange = [0., 5000.]
+
+# sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
+# outputChannel = 1
+
+# the minimum and maximum flow rates in mL/min for setting output voltages
+# on this MFC (should be the same as the hardwareRange)
+# flowRateRange = [0., 5000.]
 
 
 [mfc.co2]
 
 # sequent microsystems stack level (usually 0, can be up to 7)
-stackLevel = 0
+# stackLevel = 0
 
 # sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
-inputChannel = 3
+# inputChannel = 3
 
-# sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
-outputChannel = 2
+# how to convert milliAmps to the sensor value --
+# what to call it, what 4 mA should map to, and what 20 mA should map to
+# parameterName = flow.mLperMin
+# hardwareRange = [0.0, 20.0]
 
-# the minimum and maximum flow rates in mL/min for this MFC
-flowRateRange = [0.0, 20.0]
-
-# how many decimal places to show for flow rate in the app
-displayDecimals = 1
+# which parameter to display in GUI, and with how many decimal places
+# displayParameter = flow.mLperMin
+# displayDecimals = 1
 
 # sampling: frequency (seconds)
-# how often the MFC is asked for its current setting; not all values may be saved in memory/files
-sampleFrequency = 5
+# how often the MFC is asked for its current setting;
+# not all values may be saved in memory/files
+# sampleFrequency = 5
 
 # sampling: retention (seconds)
-# how long data from the MFC are held in memory; 86400s is one day
-memoryRetention = 86400
+# how long the data from the MFC are held in memory; 86400s is one day
+# memoryRetention = 86400
 
 # logging: frequency (seconds)
-# controls how often metrics from the carbon dioxide MFC are saved in memory and written to log files
-loggingFrequency = 300
+# controls how often metrics from the MFC are saved in memory and written to log files
+# loggingFrequency = 300
+
+# default corrective offset (mL/min), and the parameter it applies to
+# (probably not useful for MFCs)
+# offsetParameter = flow.mLperMin
+# offsetDefault = 0.0
+
+# valid range: values outside of this range will be considered errors
+# validRange = [0.0, 20.0]
+
+# sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
+# outputChannel = 2
+
+# the minimum and maximum flow rates in mL/min for setting output voltages
+# on this MFC (should be the same as the hardwareRange)
+# flowRateRange = [0.0, 20.0]
 
 
 [mfc.n2]
 
 # sequent microsystems stack level (usually 0, can be up to 7)
-stackLevel = 0
+# stackLevel = 0
 
 # sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
-inputChannel = 4
+# inputChannel = 4
 
-# sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
-outputChannel = 3
+# how to convert milliAmps to the sensor value --
+# what to call it, what 4 mA should map to, and what 20 mA should map to
+# parameterName = flow.mLperMin
+# hardwareRange = [0., 5000.]
 
-# the minimum and maximum flow rates in mL/min for this MFC
-flowRateRange = [0., 5000.]
-
-# how many decimal places to show for flow rate in the app
-displayDecimals = 0
+# which parameter to display in GUI, and with how many decimal places
+# displayParameter = flow.mLperMin
+# displayDecimals = 0
 
 # sampling: frequency (seconds)
-# how often the MFC is asked for its current setting; not all values may be saved in memory/files
-sampleFrequency = 5
+# how often the MFC is asked for its current setting;
+# not all values may be saved in memory/files
+# sampleFrequency = 5
 
 # sampling: retention (seconds)
-# how long data from the MFC are held in memory; 86400s is one day
-memoryRetention = 86400
+# how long the data from the MFC are held in memory; 86400s is one day
+# memoryRetention = 86400
 
 # logging: frequency (seconds)
-# controls how often metrics from the nitrogen MFC are saved in memory and written to log files
-loggingFrequency = 300
+# controls how often metrics from the MFC are saved in memory and written to log files
+# loggingFrequency = 300
+
+# default corrective offset (mL/min), and the parameter it applies to
+# (probably not useful for MFCs)
+# offsetParameter = flow.mLperMin
+# offsetDefault = 0.
+
+# valid range: values outside of this range will be considered errors
+# validRange = [0., 5000.]
+
+# sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
+# outputChannel = 3
+
+# the minimum and maximum flow rates in mL/min for setting output voltages
+# on this MFC (should be the same as the hardwareRange)
+# flowRateRange = [0., 5000.]
 

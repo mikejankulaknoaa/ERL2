@@ -226,12 +226,6 @@ class Erl2SubSystem():
                           onChangeArg=hourNum,
                           erl2context=self.erl2context)
 
-            #e = ttk.Entry(f, width=5, font='Arial 16', justify='right')
-            #e.insert(tk.END, hourVal)
-            #e.grid(row=valRow,column=valCol) #, sticky='s')
-            ##e.bind('<FocusIn>', self.numpadEntry)
-            #e.selection_range(0,0)
-
             self.dynamicSetpointsEntry.append(e)
 
             hourNum += 1
@@ -557,32 +551,43 @@ class Erl2SubSystem():
 def main():
 
     root = tk.Tk()
-    ttk.Label(root,text='Erl2SubSystem').grid(row=0,column=0,columnspan=5)
+    ttk.Label(root,text='Erl2SubSystem',font='Arial 30 bold').grid(row=0,column=0,columnspan=4)
+    statusFrame = ttk.Frame(root)
+    statusFrame.grid(row=3,column=0,columnspan=4)
+
+    ttk.Label(statusFrame,text='Virtual Temp last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
 
     tempFrame = ttk.Frame(root, padding='2', relief='solid', borderwidth=0)
-    tempFrame.grid(row=1, column=0, rowspan=4, padx='2', pady='2', sticky='nesw')
+    tempFrame.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')
 
     radioFrame = ttk.Frame(root, padding='2', relief='solid', borderwidth=0)
-    radioFrame.grid(row=1, column=3, rowspan=4, padx='2', pady='2', sticky='nesw')
+    radioFrame.grid(row=1, column=1, padx='2', pady='2', sticky='nesw')
+
+    controlFrame = ttk.Frame(root, padding='2', relief='solid', borderwidth=0)
+    controlFrame.grid(row=1, column=2, padx='2', pady='2', sticky='nesw')
+
+    subSysFrame = ttk.Frame(root, padding='2', relief='solid', borderwidth=0)
+    subSysFrame.grid(row=1, column=3, padx='2', pady='2', sticky='nesw')
 
     dynamicFrame = ttk.Frame(root, padding='2', relief='solid', borderwidth=0)
-    dynamicFrame.grid(row=5, column=0, columnspan=5, padx='2', pady='2', sticky='nesw')
+    dynamicFrame.grid(row=2, column=0, columnspan=4, padx='2', pady='2', sticky='nesw')
 
-    virtualtemp = Erl2VirtualTemp(displayLocs=[{'parent':tempFrame,'row':1,'column':0}],
-                                  statusLocs=[{'parent':tempFrame,'row':2,'column':0}],
-                                  correctionLoc={'parent':tempFrame,'row':3,'column':0})
+    virtualtemp = Erl2VirtualTemp(displayLocs=[{'parent':tempFrame,'row':0,'column':0}],
+                                  statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
+                                  correctionLoc={'parent':subSysFrame,'row':0,'column':0})
 
-    heater = Erl2Heater(displayLocs=[{'parent':root,'row':1,'column':1}],
-                        buttonLoc={'parent':root,'row':3,'column':1})
-    chiller = Erl2Chiller(displayLocs=[{'parent':root,'row':2,'column':1}],
-                          buttonLoc={'parent':root,'row':4,'column':1})
+    heater = Erl2Heater(displayLocs=[{'parent':controlFrame,'row':1,'column':0}],
+                        buttonLoc={'parent':controlFrame,'row':3,'column':0})
+    chiller = Erl2Chiller(displayLocs=[{'parent':controlFrame,'row':2,'column':0}],
+                          buttonLoc={'parent':controlFrame,'row':4,'column':0})
 
-    subsystem = Erl2SubSystem(radioLoc={'parent':radioFrame,'row':1,'column':0},
-                              staticSetpointLoc={'parent':root,'row':1,'column':4},
-                              hysteresisLoc={'parent':root,'row':2,'column':4},
-                              dynamicSetpointsLoc={'parent':dynamicFrame,'row':1,'column':0},
-                              setpointDisplayLocs=[{'parent':root,'row':3,'column':4}],
-                              modeDisplayLocs=[{'parent':root,'row':4,'column':4}],
+    subsystem = Erl2SubSystem(subSystemType='temperature',
+                              radioLoc={'parent':radioFrame,'row':0,'column':0},
+                              staticSetpointLoc={'parent':subSysFrame,'row':1,'column':0},
+                              hysteresisLoc={'parent':subSysFrame,'row':2,'column':0},
+                              dynamicSetpointsLoc={'parent':dynamicFrame,'row':0,'column':0},
+                              setpointDisplayLocs=[{'parent':tempFrame,'row':1,'column':0}],
+                              modeDisplayLocs=[{'parent':tempFrame,'row':2,'column':0}],
                               sensors={'temperature':virtualtemp},
                               controls={'heater':heater,'chiller':chiller})
     root.mainloop()

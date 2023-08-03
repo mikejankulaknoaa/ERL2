@@ -217,7 +217,7 @@ def testPopup(event):
 def main():
 
     root = tk.Tk()
-    ttk.Label(root,text='Erl2NumPad').grid(row=0,column=0)
+    ttk.Label(root,text='Erl2NumPad',font='Arial 30 bold').grid(row=0,column=0)
 
     v = tk.StringVar()
     e = ttk.Entry(root,textvariable=v)

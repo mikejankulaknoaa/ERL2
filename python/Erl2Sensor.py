@@ -18,6 +18,7 @@ class Erl2Sensor():
                  statusLocs=[],
                  correctionLoc={},
                  correctionWidth=4,
+                 label=None,
                  erl2context={}):
 
         self.sensorType = sensorType
@@ -25,6 +26,7 @@ class Erl2Sensor():
         self.__statusLocs = statusLocs
         self.__correctionLoc = correctionLoc
         self.__correctionWidth = correctionWidth
+        self.__label = label
         self.erl2context = erl2context
 
         # remember what widgets are active for this sensor
@@ -80,12 +82,34 @@ class Erl2Sensor():
         for loc in self.__displayLocs:
 
             # create the display widget's base frame as a child of its parent
-            f = ttk.Frame(loc['parent'], padding='0 0', relief='solid', borderwidth=0)
-            f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='n')
+            f = ttk.Frame(loc['parent'], padding='2 2', relief='solid', borderwidth=0)
+            f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nesw')
 
             # add a Label widget to show the current sensor value
-            l = ttk.Label(f, text='--', font='Arial 40 bold', foreground='#1C4587')
-            l.grid(row=0, column=0, sticky='nwse')
+
+            # if the sensor draws with a label, show both, in slightly smaller font
+            if self.__label is not None:
+                l = ttk.Label(f, text='--', font='Arial 19 bold', foreground='#1C4587')
+                l.grid(row=0, column=1, padx='2', sticky='e')
+
+                # this is the Label shown beside the text display widget
+                ttk.Label(f, text=self.__label, font='Arial 16'
+                    #, relief='solid', borderwidth=1
+                    ).grid(row=0, column=0, padx='2 2', sticky='w')
+
+                f.rowconfigure(0,weight=1)
+                f.columnconfigure(0,weight=1,minsize=45)
+                f.columnconfigure(1,weight=1,minsize=76)
+
+            # if there's no sensor label then draw it larger and centered
+            else:
+                l = ttk.Label(f, text='--', font='Arial 40 bold', foreground='#1C4587', justify='center'
+                    #, relief='solid', borderwidth=1
+                    )
+                l.grid(row=0, column=0, sticky='n')
+
+                f.rowconfigure(0,weight=1)
+                f.columnconfigure(0,weight=1)
 
             # keep a list of display widgets for this sensor
             self.__displayWidgets.append(l)
@@ -104,49 +128,41 @@ class Erl2Sensor():
             # keep a list of status widgets for this sensor
             self.__statusWidgets.append(l)
 
-        # create the correction widgets' base frame as a child of its parent
-        f = ttk.Frame(self.__correctionLoc['parent'], padding='0 0', relief='solid', borderwidth=0)
-        f.grid(row=self.__correctionLoc['row'], column=self.__correctionLoc['column'], padx='2', pady='0', sticky='nw')
+        # the offset/raw/correction logic is optional for sensors
+        if 'parent' in self.__correctionLoc:
 
-        # create the entry field for the correction offset
-        self.__offsetEntry = Erl2Entry(entryLoc={'parent':f,'row':0,'column':1},
-                                       labelLoc={'parent':f,'row':0,'column':0},
-                                       label='Offset',
-                                       width=self.__correctionWidth,
-                                       displayDecimals=self.__displayDecimals,
-                                       #validRange=,
-                                       initValue=self.__offsetFloat,
-                                       onChange=self.changeOffset,
-                                       erl2context=self.erl2context)
+            # create the correction widgets' base frame as a child of its parent
+            f = ttk.Frame(self.__correctionLoc['parent'], padding='0 0', relief='solid', borderwidth=0)
+            f.grid(row=self.__correctionLoc['row'], column=self.__correctionLoc['column'], padx='2', pady='0', sticky='nw')
 
-        # right now the offset Entry is the first Entry field in all tabs
-        self.firstEntry = self.__offsetEntry
+            # create the entry field for the correction offset
+            self.__offsetEntry = Erl2Entry(entryLoc={'parent':f,'row':0,'column':1},
+                                           labelLoc={'parent':f,'row':0,'column':0},
+                                           label='Offset',
+                                           width=self.__correctionWidth,
+                                           displayDecimals=self.__displayDecimals,
+                                           #validRange=,
+                                           initValue=self.__offsetFloat,
+                                           onChange=self.changeOffset,
+                                           erl2context=self.erl2context)
 
-        # add a Label widget to show the raw sensor value
-        l = ttk.Label(f, text='--', font='Arial 16', justify='right')
-        l.grid(row=1, column=1, sticky='e')
+            # right now the offset Entry is the first Entry field in all tabs
+            self.firstEntry = self.__offsetEntry
 
-        ttk.Label(f, text='Raw Value', font='Arial 14'
-            #, relief='solid', borderwidth=1
-            ).grid(row=1, column=0, padx='2 2', sticky='w')
+            # add a Label widget to show the raw sensor value
+            l = ttk.Label(f, text='--', font='Arial 16', justify='right')
+            l.grid(row=1, column=1, sticky='e')
 
-        self.__correctionWidgets.append(l)
+            ttk.Label(f, text='Raw Value', font='Arial 14'
+                #, relief='solid', borderwidth=1
+                ).grid(row=1, column=0, padx='2 2', sticky='w')
 
-        ## add a Label widget to show the corrected sensor value
-        #l = ttk.Label(f, text='--', font='Arial 16', justify='right')
-        #l.grid(row=2, column=1, sticky='e')
+            self.__correctionWidgets.append(l)
 
-        #ttk.Label(f, text='Corrected', font='Arial 14'
-        #    #, relief='solid', borderwidth=1
-        #    ).grid(row=2, column=0, padx='2 2', sticky='w')
-
-        #self.__correctionWidgets.append(l)
-
-        f.rowconfigure(0,weight=1)
-        f.rowconfigure(1,weight=1)
-        #f.rowconfigure(2,weight=1)
-        f.columnconfigure(1,weight=1)
-        f.columnconfigure(0,weight=0)
+            f.rowconfigure(0,weight=1)
+            f.rowconfigure(1,weight=1)
+            f.columnconfigure(1,weight=1)
+            f.columnconfigure(0,weight=0)
 
         # start up the timing loop to update the display widgets
         # (check first if this object is an Erl2Sensor or a child class)
@@ -265,9 +281,6 @@ class Erl2Sensor():
             fnt = 'Arial 14 bold'
             fgd = '#A93226'
 
-        #fnt = 'Arial 14 bold'
-        #fgd = '#A93226'
-
         # loop through all placements of this sensor's status widgets
         for w in self.__statusWidgets:
 
@@ -359,10 +372,15 @@ class Erl2Sensor():
 def main():
 
     root = tk.Tk()
-    ttk.Label(root,text='Erl2Sensor').grid(row=0,column=0)
+    ttk.Label(root,text='Erl2Sensor',font='Arial 30 bold').grid(row=0,column=0)
+
+    statusFrame = ttk.Frame(root)
+    statusFrame.grid(row=3,column=0)
+    ttk.Label(statusFrame,text='Sensor last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
+
     sensor = Erl2Sensor(displayLocs=[{'parent':root,'row':1,'column':0}],
-                        statusLocs=[{'parent':root,'row':2,'column':0}],
-                        correctionLoc={'parent':root,'row':3,'column':0},
+                        statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
+                        correctionLoc={'parent':root,'row':2,'column':0},
                         correctionWidth=8)
     root.mainloop()
 

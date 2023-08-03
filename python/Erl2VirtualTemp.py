@@ -14,6 +14,7 @@ class Erl2VirtualTemp(Erl2Sensor):
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
+                 label=None,
                  stack=0,
                  channel=1,
                  erl2context={}):
@@ -23,6 +24,7 @@ class Erl2VirtualTemp(Erl2Sensor):
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
                          correctionLoc=correctionLoc,
+                         label=label,
                          erl2context=erl2context)
 
         # private attributes specific to Erl2VirtualTemp
@@ -112,10 +114,15 @@ class Erl2VirtualTemp(Erl2Sensor):
 def main():
 
     root = tk.Tk()
-    ttk.Label(root,text='Erl2VirtualTemp').grid(row=0,column=0)
+    ttk.Label(root,text='Erl2VirtualTemp',font='Arial 30 bold').grid(row=0,column=0)
+
+    statusFrame = ttk.Frame(root)
+    statusFrame.grid(row=3,column=0)
+    ttk.Label(statusFrame,text='Virtual Temp last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
+
     virtualtemp = Erl2VirtualTemp(displayLocs=[{'parent':root,'row':1,'column':0}],
-                                  statusLocs=[{'parent':root,'row':2,'column':0}],
-                                  correctionLoc={'parent':root,'row':3,'column':0})
+                                  statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
+                                  correctionLoc={'parent':root,'row':2,'column':0})
     root.mainloop()
 
 if __name__ == "__main__": main()

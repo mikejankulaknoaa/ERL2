@@ -6,20 +6,24 @@ from tkinter import ttk
 from Erl2Config import Erl2Config
 from Erl2Sensor import Erl2Sensor
 
-# ProSense Pt100 temperature transmitter XTP25N-100-0100C
-class Erl2Temperature(Erl2Sensor):
+# any device connected to one of the Sequent Microsystems' four 4-20 mA input channels
+
+class Erl2Input4_20(Erl2Sensor):
 
     def __init__(self,
+                 sensorType='generic',
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
+                 label=None,
                  erl2context={}):
 
         # call the Erl2Sensor class's constructor
-        super().__init__(sensorType='temperature',
+        super().__init__(sensorType=sensorType,
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
                          correctionLoc=correctionLoc,
+                         label=label,
                          erl2context=erl2context)
 
         # read in the system configuration file if needed
@@ -28,13 +32,16 @@ class Erl2Temperature(Erl2Sensor):
             #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
-        # private attributes specific to Erl2Temperature
-        self.__stack = self.erl2context['conf'][self.sensorType]['stackLevel']
-        self.__channel = self.erl2context['conf'][self.sensorType]['inputChannel']
+        # private attributes specific to Erl2Input4_20
+        self.__stackLevel = self.erl2context['conf'][self.sensorType]['stackLevel']
+        self.__inputChannel = self.erl2context['conf'][self.sensorType]['inputChannel']
+        self.__parameterName = self.erl2context['conf'][self.sensorType]['parameterName']
+        self.__hardwareMin = self.erl2context['conf'][self.sensorType]['hardwareRange'][0]
+        self.__hardwareMax = self.erl2context['conf'][self.sensorType]['hardwareRange'][1]
 
         # start up the timing loop to update the display widgets
-        # (check first if this object is an Erl2Temperature or a child class)
-        if self.__class__.__name__ == 'Erl2Temperature':
+        # (check first if this object is an Erl2Input4_20 or a child class)
+        if self.__class__.__name__ == 'Erl2Input4_20':
             self.readSensor()
 
     def measure(self):
@@ -43,16 +50,20 @@ class Erl2Temperature(Erl2Sensor):
         self.value = {}
 
         # milliAmps are read from the input channel
-        milliAmps = get4_20In(self.__stack, self.__channel)
+        milliAmps = get4_20In(self.__stackLevel, self.__inputChannel)
 
         # check result: by definition this should be between 4 and 20 mA
         if milliAmps >= 4. and milliAmps <= 20.:
 
             # add milliAmps to the results
-            self.value['temp.mA'] = milliAmps
+            self.value['milliAmps'] = milliAmps
 
-            # convert from 4-20 mA to 0-100 degC
-            self.value['temp.degC'] = (self.value['temp.mA'] - 4.) * 100. / 16.
+            # convert from 4-20 mA to a value in the defined hardwareRange
+            self.value[self.__parameterName] = ( (self.value['milliAmps'] - 4.)
+                                               / 16.
+                                               * (self.__hardwareMax - self.__hardwareMin)
+                                               + self.__hardwareMin
+                                               )
 
         # check if we're still/currently offline
         self.online = not (self.value == {})
@@ -78,10 +89,29 @@ class Erl2Temperature(Erl2Sensor):
 def main():
 
     root = tk.Tk()
-    ttk.Label(root,text='Erl2Temperature').grid(row=0,column=0)
-    temperature = Erl2Temperature(displayLocs=[{'parent':root,'row':1,'column':0}],
-                                  statusLocs=[{'parent':root,'row':2,'column':0}],
-                                  correctionLoc={'parent':root,'row':3,'column':0})
+    ttk.Label(root,text='Erl2Input4_20',font='Arial 30 bold').grid(row=0,column=0,columnspan=4)
+
+    statusFrame = ttk.Frame(root)
+    statusFrame.grid(row=3,column=0,columnspan=4)
+    ttk.Label(statusFrame,text='Temperature last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='Air MFC last read:',font='Arial 14 bold',justify='right').grid(row=1,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='CO2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=2,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='N2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=3,column=0,sticky='nse')
+
+    temperature = Erl2Input4_20(sensorType='temperature',
+                                displayLocs=[{'parent':root,'row':1,'column':0}],
+                                statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
+                                correctionLoc={'parent':root,'row':2,'column':0})
+    mfcAir =      Erl2Input4_20(sensorType='mfc.air',
+                                displayLocs=[{'parent':root,'row':1,'column':1}],
+                                statusLocs=[{'parent':statusFrame,'row':1,'column':1}])
+    mfcCO2 =      Erl2Input4_20(sensorType='mfc.co2',
+                                displayLocs=[{'parent':root,'row':1,'column':2}],
+                                statusLocs=[{'parent':statusFrame,'row':2,'column':1}])
+    mfcN2  =      Erl2Input4_20(sensorType='mfc.n2',
+                                displayLocs=[{'parent':root,'row':1,'column':3}],
+                                statusLocs=[{'parent':statusFrame,'row':3,'column':1}])
+
     root.mainloop()
 
 if __name__ == "__main__": main()

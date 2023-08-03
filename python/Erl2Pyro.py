@@ -8,8 +8,8 @@ from serial import Serial as ser
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
+from Erl2Input4_20 import Erl2Input4_20
 from Erl2Sensor import Erl2Sensor
-from Erl2Temperature import Erl2Temperature
 
 # pyroscience pico-pH and pico-o2 sensors
 class Erl2Pyro(Erl2Sensor):
@@ -29,6 +29,7 @@ class Erl2Pyro(Erl2Sensor):
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
+                 label=None,
                  tempSensor=None,
                  erl2context={}):
 
@@ -37,6 +38,7 @@ class Erl2Pyro(Erl2Sensor):
                          displayLocs=displayLocs,
                          statusLocs=statusLocs,
                          correctionLoc=correctionLoc,
+                         label=label,
                          erl2context=erl2context)
 
         # read in the system configuration file if needed
@@ -178,20 +180,27 @@ class Erl2Pyro(Erl2Sensor):
 def main():
 
     root = tk.Tk()
-    ttk.Label(root,text='Erl2Pyro').grid(row=0,column=0,columnspan=3)
-    temperature = Erl2Temperature(displayLocs=[{'parent':root,'row':1,'column':0}],
-                                  statusLocs=[{'parent':root,'row':2,'column':0}],
-                                  correctionLoc={'parent':root,'row':3,'column':0})
+    ttk.Label(root,text='Erl2Pyro',font='Arial 30 bold').grid(row=0,column=0,columnspan=3)
+
+    statusFrame = ttk.Frame(root)
+    statusFrame.grid(row=3,column=0,columnspan=3)
+    ttk.Label(statusFrame,text='Temperature last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='pH last read:',font='Arial 14 bold',justify='right').grid(row=1,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='DO last read:',font='Arial 14 bold',justify='right').grid(row=2,column=0,sticky='nse')
+
+    temperature = Erl2Input4_20(sensorType='temperature',
+                                displayLocs=[{'parent':root,'row':1,'column':0}],
+                                statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
+                                correctionLoc={'parent':root,'row':2,'column':0})
     ph = Erl2Pyro(sensorType='pH',
                   displayLocs=[{'parent':root,'row':1,'column':1}],
-                  statusLocs=[{'parent':root,'row':2,'column':1}],
-                  correctionLoc={'parent':root,'row':3,'column':1},
+                  statusLocs=[{'parent':statusFrame,'row':1,'column':1}],
+                  correctionLoc={'parent':root,'row':2,'column':1},
                   tempSensor=temperature)
-
     o2 = Erl2Pyro(sensorType='DO',
                   displayLocs=[{'parent':root,'row':1,'column':2}],
-                  statusLocs=[{'parent':root,'row':2,'column':2}],
-                  correctionLoc={'parent':root,'row':3,'column':2},
+                  statusLocs=[{'parent':statusFrame,'row':2,'column':1}],
+                  correctionLoc={'parent':root,'row':2,'column':2},
                   tempSensor=temperature)
 
     root.mainloop()
