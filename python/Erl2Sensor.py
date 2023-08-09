@@ -55,12 +55,6 @@ class Erl2Sensor():
         if 'state' not in self.erl2context:
             self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
 
-        # start a data/log file for the sensor
-        if not self.erl2context['conf']['system']['disableFileLogging']:
-            self.log = Erl2Log(logType='sensor', logName=self.sensorType, erl2context=self.erl2context)
-        else:
-            self.log = None
-
         # read these useful parameters from Erl2Config
         self.__sampleFrequency = self.erl2context['conf'][self.sensorType]['sampleFrequency']
         self.__loggingFrequency = self.erl2context['conf'][self.sensorType]['loggingFrequency']
@@ -69,14 +63,20 @@ class Erl2Sensor():
         self.__offsetParameter = self.erl2context['conf'][self.sensorType]['offsetParameter']
         self.__offsetDefault = self.erl2context['conf'][self.sensorType]['offsetDefault']
 
+        # we also keep track of what the active offset parameter is
+        # (try to read one back from saved system state)
+        self.__offsetFloat = self.erl2context['state'].get(self.sensorType,'offset',self.__offsetDefault)
+
         # and also these system-level Erl2Config parameters
         self.__disableFileLogging = self.erl2context['conf']['system']['disableFileLogging']
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
 
-        # we also keep track of what the active offset parameter is
-        # (try to read one back from saved system state)
-        self.__offsetFloat = self.erl2context['state'].get(self.sensorType,'offset',self.__offsetDefault)
+        # start a data/log file for the sensor
+        if not self.__disableFileLogging:
+            self.log = Erl2Log(logType='sensor', logName=self.sensorType, erl2context=self.erl2context)
+        else:
+            self.log = None
 
         # loop through the list of needed display widgets for this sensor
         for loc in self.__displayLocs:

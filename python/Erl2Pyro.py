@@ -75,14 +75,18 @@ class Erl2Pyro(Erl2Sensor):
                 # prevent the pyrolibs code from spamming stdout
                 #with self.suppress_stdout():
                     self.__device = PyroDevice(self.__port, self.__baud)
+                    #if not self.online:
+                    #    print (f"{self.__class__.__name__}: Debug: connect(): PyroDevice() succeeded, [{self.sensorType}] sensor going online")
                     self.online = True
-                    #print (f"{self.__class__.__name__}: Debug: PyroDevice connect() succeeded, [{self.sensorType}] sensor is online")
 
             except Exception as e:
+                #if self.online:
+                #    print (f"{self.__class__.__name__}: Debug: connect(): PyroDevice() failed, [{self.sensorType}] sensor going offline [{e}]")
                 self.online = False
-                #print (f"{self.__class__.__name__}: Debug: PyroDevice connect() failed, [{self.sensorType}] sensor is offline [{e}]")
 
         else:
+            #if self.online:
+            #    print (f"{self.__class__.__name__}: Debug: connect(): testSerial() failed, [{self.sensorType}] sensor going offline")
             self.online = False
 
     def measure(self):
@@ -96,8 +100,9 @@ class Erl2Pyro(Erl2Sensor):
 
         # another problem would be if the temperature sensor were offline
         if not self.__tempSensor.online:
+            #if self.online:
+            #    print (f"{self.__class__.__name__}: Debug: measure(): tempSensor is offline, [{self.sensorType}] sensor going offline")
             self.online = False
-            #print (f"{self.__class__.__name__}: Debug: setting [{self.sensorType}] sensor offline because temp sensor is offline")
 
         # proceed only if we are connected
         if self.online:
@@ -119,7 +124,9 @@ class Erl2Pyro(Erl2Sensor):
                 self.value = q.get()
 
         # check if we're still/currently offline
-        self.online = not (self.value == {})
+        #if self.online != (self.value != {}):
+        #    print (f"{self.__class__.__name__}: Debug: measure(): measurement result triggers [{self.sensorType}] sensor to go {'off' if self.online else 'on'}line")
+        self.online = (self.value != {})
 
         # add Timestamps to measurement record
         t, m = self.getTimestamp()
@@ -130,8 +137,6 @@ class Erl2Pyro(Erl2Sensor):
         # remember timestamp of last valid measurement
         if self.online:
             self.lastValid = t
-
-        #print (f"{self.__class__.__name__}: Debug: measure() returning [{str(t)}][{str(self.value)}][{str(self.online)}]")
 
         # apply the corrective offset
         self.applyOffset(self.value, updateRaw=True)

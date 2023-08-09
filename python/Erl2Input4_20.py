@@ -53,7 +53,10 @@ class Erl2Input4_20(Erl2Sensor):
         milliAmps = get4_20In(self.__stackLevel, self.__inputChannel)
 
         # check result: by definition this should be between 4 and 20 mA
-        if milliAmps >= 4. and milliAmps <= 20.:
+        # (however: allow values slightly outside this range because when
+        # legitimately reporting sensor's min or max values there is often
+        # some noise around the 4 and 20 mA readings)
+        if milliAmps >= 3.6 and milliAmps <= 20.4:
 
             # add milliAmps to the results
             self.value['milliAmps'] = milliAmps

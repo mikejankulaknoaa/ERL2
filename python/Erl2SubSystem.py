@@ -1,6 +1,7 @@
 #! /usr/bin/python3
 
 from datetime import datetime as dt
+from datetime import timezone as tz
 import tkinter as tk
 from tkinter import ttk
 from Erl2Chiller import Erl2Chiller
@@ -81,6 +82,10 @@ class Erl2SubSystem():
         if self.__hysteresisLoc is not None:
             self.__hysteresisDefault = self.erl2context['conf'][self.subSystemType]['hysteresisDefault']
 
+        # and also these system-level Erl2Config parameters
+        self.__timezone = self.erl2context['conf']['system']['timezone']
+        self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
+
         # also keep a float-valued record of the current values of these parameters
         self.staticSetpointFloat = self.erl2context['state'].get(self.subSystemType,'staticSetpoint',self.__setpointDefault)
         self.dynamicSetpointsFloat = self.erl2context['state'].get(self.subSystemType,'dynamicSetpoints',self.__dynamicDefault)
@@ -105,6 +110,12 @@ class Erl2SubSystem():
         self.__modeVar = tk.IntVar()
         self.__lastModeVar = None
         self.__activeSetpoint = self.__setpointDefault
+
+        # also we track the timing of the subsystem to a certain extent
+        self.__hour = None
+        self.__modeChanged = False
+        self.__modeLastChanged = None
+        self.__setpointLastChanged = None
 
         # and here is the list of all possible modes
         self.__modeDict = {0:'Manual',
@@ -194,7 +205,7 @@ class Erl2SubSystem():
         hourNum = 0
         for hourVal in self.dynamicSetpointsFloat:
 
-            # try them in two rows?
+            # lay them out in two rows, 12 boxes each
             if hourNum < 12:
                 hourRow = 0
                 hourCol = hourNum
@@ -332,6 +343,7 @@ class Erl2SubSystem():
 
         # remember the last known mode
         self.__lastModeVar = var
+        self.__modeChanged = True
 
         # save the new mode setting to system state
         self.erl2context['state'].set(self.subSystemType,'mode',var)
@@ -364,6 +376,15 @@ class Erl2SubSystem():
 
     def monitorSystem(self, fromApplyMode=False):
 
+        # figure out by the end if a new data record should be written
+        writeNow = False
+
+        # make note of the current timestamp
+        currentTime = dt.now(tz=tz.utc)
+
+        # what is the current hour of day?
+        currentHour = int(currentTime.strftime('%H'))
+
         # read the current mode of the system
         var = self.__modeVar.get()
 
@@ -382,6 +403,7 @@ class Erl2SubSystem():
                     self.__modeVar.set(0)
                     self.applyMode()
                     var=0
+                    writeNow = True
 
         # no logic to carry out if in Manual mode
         if var==0:
@@ -394,20 +416,28 @@ class Erl2SubSystem():
         # static and dynamic modes share some logic
         elif var in [2,3]:
 
-            ## for debug purposes
-            #hour = -1
+            # keep track of whether the active setpoint changed
+            newSetpoint = None
+
+            # trigger a data record on the hour if in auto static/dynamic mode
+            if self.__hour is None or self.__hour != currentHour:
+                self.__hour = currentHour
+                writeNow = True
 
             # static setpoint
             if var==2:
-                self.__activeSetpoint = float(self.staticSetpointEntry.stringVar.get())
+                newSetpoint = float(self.staticSetpointEntry.stringVar.get())
 
             # dynamic setpoint
             else:
-                # what is the current hour of day?
-                hour = int(dt.now().strftime('%H'))
+                # what is the setpoint corresponding to the current hour?
+                newSetpoint = float(self.dynamicSetpointsEntry[currentHour].stringVar.get())
 
-                # what is the corresponding setpoint?
-                self.__activeSetpoint = float(self.dynamicSetpointsEntry[hour].stringVar.get())
+            # trigger a data record if the active setpoint changed
+            if self.__activeSetpoint is None or self.__activeSetpoint != newSetpoint:
+                self.__activeSetpoint = newSetpoint
+                self.__setpointLastChanged = currentTime
+                writeNow = True
 
             # what is the current temperature?
             if (    'temperature' in self.__sensors
@@ -423,18 +453,13 @@ class Erl2SubSystem():
             else:
                 hysteresis = float('nan')
 
-            ## for debug purposes
-            #action = ''
-
             # determine the correct course of action
             if temp < self.__activeSetpoint-hysteresis:
-                action='HEATER'
                 if 'heater' in self.__controls:
                     self.__controls['heater'].setControl(1)
                 if 'chiller' in self.__controls:
                     self.__controls['chiller'].setControl(0)
             elif temp > self.__activeSetpoint+hysteresis:
-                action='CHILLER'
                 if 'heater' in self.__controls:
                     self.__controls['heater'].setControl(0)
                 if 'chiller' in self.__controls:
@@ -445,7 +470,7 @@ class Erl2SubSystem():
                 if 'chiller' in self.__controls:
                     self.__controls['chiller'].setControl(0)
 
-            #print(f"{self.__class__.__name__}: Debug: mode [{self.__modeDict[var]}], hour [{hour}], active setpoint [{self.__activeSetpoint}], hysteresis [{hysteresis}] temp [{temp}] action [{action}]")
+            #print(f"{self.__class__.__name__}: Debug: mode [{self.__modeDict[var]}], hour [{currentHour}], active setpoint [{self.__activeSetpoint}], hysteresis [{hysteresis}] temp [{temp}]")
 
         # unrecognized mode
         else:
@@ -463,6 +488,34 @@ class Erl2SubSystem():
         else:
             self.__radioWidgets[2].config(state='disabled')
             self.__radioWidgets[3].config(state='disabled')
+
+        # if the mode has changed, always trigger a data record
+        if self.__modeChanged:
+            self.__modeChanged = False
+            self.__modeLastChanged = currentTime
+            writeNow = True
+
+        # write a subsystems data record if needed
+        if writeNow:
+
+            # initialize timing attributes if not yet set
+            if self.__modeLastChanged is None:
+                self.__modeLastChanged = currentTime
+            if self.__setpointLastChanged is None:
+                self.__setpointLastChanged = currentTime
+            if self.__hour is None:
+                self.__hour = currentHour
+
+            # write a record to the data file
+            self.log.writeData(
+                {'Timestamp.UTC': currentTime.strftime(self.__dtFormat),
+                 'Timestamp.Local': currentTime.astimezone(self.__timezone).strftime(self.__dtFormat),
+                 'Hour.Local': self.__hour,
+                 'Active Mode': var,
+                 'Active Setpoint': self.__activeSetpoint,
+                 'Mode Last Changed (Local)': self.__modeLastChanged.astimezone(self.__timezone).strftime(self.__dtFormat),
+                 'Septpoint Last Changed (Local)': self.__setpointLastChanged.astimezone(self.__timezone).strftime(self.__dtFormat)}
+            )
 
         # update display widgets to show to current mode and setpoint
         self.updateDisplays()

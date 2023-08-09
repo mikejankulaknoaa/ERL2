@@ -126,9 +126,10 @@ class Erl2Tank:
             for c in range(4):
                self.__tabs[p].columnconfigure(c, weight=1)
 
-        # but afterwards, overwrite column weights in the Data tab to squeeze the first two columns
+        # but afterwards, overwrite column weights in the Data tab to squeeze three of the columns
         self.__tabs['Data'].columnconfigure(0,weight=0)
         self.__tabs['Data'].columnconfigure(1,weight=0)
+        self.__tabs['Data'].columnconfigure(3,weight=0)
 
         # for Settings, just create three frames for now
         self.__frames['Settings'] = {}
@@ -608,6 +609,51 @@ class Erl2Tank:
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
 
+        # placeholder stats
+        ttk.Label(self.__frames['Data'][0][3], text='25.0', font='Arial 14 bold', foreground='#A93226'
+            #, relief='solid', borderwidth=1
+            ).grid(row=0, column=1, padx='2 0', sticky='ne')
+        ttk.Label(self.__frames['Data'][0][3], text='0.10', font='Arial 14 bold', foreground='#A93226'
+            #, relief='solid', borderwidth=1
+            ).grid(row=1, column=1, padx='2 0', sticky='ne')
+        ttk.Label(self.__frames['Data'][0][3], text='0.10', font='Arial 14 bold', foreground='#A93226'
+            #, relief='solid', borderwidth=1
+            ).grid(row=2, column=1, padx='2 0', sticky='ne')
+        ttk.Label(self.__frames['Data'][1][3], text='7.80', font='Arial 14 bold', foreground='#A93226'
+            #, relief='solid', borderwidth=1
+            ).grid(row=0, column=1, padx='2 0', sticky='ne')
+        ttk.Label(self.__frames['Data'][1][3], text='0.010', font='Arial 14 bold', foreground='#A93226'
+            #, relief='solid', borderwidth=1
+            ).grid(row=1, column=1, padx='2 0', sticky='ne')
+        ttk.Label(self.__frames['Data'][1][3], text='0.010', font='Arial 14 bold', foreground='#A93226'
+            #, relief='solid', borderwidth=1
+            ).grid(row=2, column=1, padx='2 0', sticky='ne')
+        ttk.Label(self.__frames['Data'][2][3], text='300', font='Arial 14 bold', foreground='#A93226'
+            #, relief='solid', borderwidth=1
+            ).grid(row=0, column=1, padx='2 0', sticky='ne')
+        ttk.Label(self.__frames['Data'][2][3], text='1.0', font='Arial 14 bold', foreground='#A93226'
+            #, relief='solid', borderwidth=1
+            ).grid(row=1, column=1, padx='2 0', sticky='ne')
+        ttk.Label(self.__frames['Data'][2][3], text='1.0', font='Arial 14 bold', foreground='#A93226'
+            #, relief='solid', borderwidth=1
+            ).grid(row=2, column=1, padx='2 0', sticky='ne')
+
+        # labels for stats
+        for row in range(3):
+            ttk.Label(self.__frames['Data'][row][3], text='Mean:', font='Arial 14'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
+            ttk.Label(self.__frames['Data'][row][3], text='Stdev:', font='Arial 14'
+                #, relief='solid', borderwidth=1
+                ).grid(row=1, column=0, sticky='nw')
+            ttk.Label(self.__frames['Data'][row][3], text='Target dev:', font='Arial 14'
+                #, relief='solid', borderwidth=1
+                ).grid(row=2, column=0, sticky='nw')
+
+            # weighting
+            self.__frames['Data'][row][3].columnconfigure(0,weight=0)
+            self.__frames['Data'][row][3].columnconfigure(1,weight=1)
+
         # misc spacing/weighting
         for f in [self.__frames['Data'][0][0],
                   self.__frames['Data'][1][0],
@@ -634,6 +680,9 @@ class Erl2Tank:
         for s in self.sensors.values():
             if s.firstEntry is not None:
                 s.firstEntry.widget.select_clear()
+
+        #for row in range(3):
+        #   print (f"{self.__class__.__name__}: Debug: changeTabs({p}): frame width is [{self.__frames['Data'][row][2].winfo_width()}], frame height is [{self.__frames['Data'][row][2].winfo_height()}]")
 
     # a method to toggle between fullscreen and regular window modes
     def setFullscreen(self, event=None):
