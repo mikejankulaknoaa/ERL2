@@ -507,6 +507,7 @@ class Erl2Tank:
         # the logic that implements the overarching temperature subsystem (and its controls)
         self.systems['temperature'] = Erl2SubSystem(
             subSystemType='temperature',
+            logic='hysteresis',
             radioLoc={'parent':self.__frames['Temp'][1][0],'row':0,'column':0},
             staticSetpointLoc={'parent':self.__frames['Temp'][1][2],'row':1,'column':0},
             hysteresisLoc={'parent':self.__frames['Temp'][1][2],'row':2,'column':0},
@@ -518,16 +519,16 @@ class Erl2Tank:
                              {'parent':self.__frames['Temp'][0][0],'row':4,'column':0}],
 
             sensors={'temperature':self.sensors['temperature']},
-            controls={'heater':self.controls['heater'],
-                      'chiller':self.controls['chiller']},
+            toggles={'to.raise':self.controls['heater'],
+                     'to.lower':self.controls['chiller']},
             erl2context=self.erl2context)
 
         # the logic that implements the overarching pH subsystem (and its controls)
         self.systems['pH'] = Erl2SubSystem(
             subSystemType='pH',
+            logic='PID',
             radioLoc={'parent':self.__frames['pH'][1][0],'row':0,'column':0},
             staticSetpointLoc={'parent':self.__frames['pH'][1][2],'row':1,'column':0},
-            #hysteresisLoc={'parent':self.__frames['pH'][1][2],'row':2,'column':0},
             dynamicSetpointsLoc={'parent':self.__frames['pH'][2][0],'row':1,'column':0},
 
             setpointDisplayLocs=[{'parent':self.__frames['Data'][1][0],'row':3,'column':0},
@@ -536,16 +537,16 @@ class Erl2Tank:
                              {'parent':self.__frames['pH'][0][0],'row':4,'column':0}],
 
             sensors={'pH':self.sensors['pH']},
-            controls={'mfc.air':self.controls['mfc.air'],
-                      'mfc.co2':self.controls['mfc.co2']},
+            MFCs={'mfc.air':self.controls['mfc.air'],
+                  'mfc.co2':self.controls['mfc.co2']},
             erl2context=self.erl2context)
 
         # the logic that implements the overarching DO subsystem (and its controls)
         self.systems['DO'] = Erl2SubSystem(
             subSystemType='DO',
+            logic='PID',
             radioLoc={'parent':self.__frames['DO'][1][0],'row':0,'column':0},
             staticSetpointLoc={'parent':self.__frames['DO'][1][2],'row':1,'column':0},
-            #hysteresisLoc={'parent':self.__frames['DO'][1][2],'row':2,'column':0},
             dynamicSetpointsLoc={'parent':self.__frames['DO'][2][0],'row':1,'column':0},
 
             setpointDisplayLocs=[{'parent':self.__frames['Data'][2][0],'row':3,'column':0},
@@ -554,7 +555,7 @@ class Erl2Tank:
                              {'parent':self.__frames['DO'][0][0],'row':4,'column':0}],
 
             sensors={'DO':self.sensors['DO']},
-            controls={'mfc.n2':self.controls['mfc.n2']},
+            MFCs={'mfc.n2':self.controls['mfc.n2']},
             erl2context=self.erl2context)
 
         # standardized labels for some Temp, pH and DO frames

@@ -12,7 +12,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.08b (2023-08-09)'
+    VERSION = '0.09b (2023-08-15)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -76,6 +76,13 @@ class Erl2Config():
                                                    '8.00, 8.01, 8.03, 8.04, 8.04, 8.05, '
                                                    '8.05, 8.05, 8.04, 8.04, 8.03, 8.01]')
 
+        self.__default['pH']['mfc.air.Kp'] = '10000.0'
+        self.__default['pH']['mfc.air.Ki'] = '1000.0'
+        self.__default['pH']['mfc.air.Kd'] = '0.0'
+        self.__default['pH']['mfc.co2.Kp'] = '-40.0'
+        self.__default['pH']['mfc.co2.Ki'] = '-4.0'
+        self.__default['pH']['mfc.co2.Kd'] = '0.0'
+
         self.__default['DO']['serialPort'] = '/dev/ttyAMA2'
         self.__default['DO']['baudRate'] = '19200'
 
@@ -93,6 +100,10 @@ class Erl2Config():
                                                    '275., 276., 278., 282., 288., 294., '
                                                    '300., 306., 313., 318., 322., 324., '
                                                    '325., 324., 322., 318., 313., 306.]')
+
+        self.__default['DO']['mfc.n2.Kp'] = '-10000.0'
+        self.__default['DO']['mfc.n2.Ki'] = '-1000.0'
+        self.__default['DO']['mfc.n2.Kd'] = '0.0'
 
         self.__default['generic']['displayParameter'] = 'generic'
         self.__default['generic']['displayDecimals'] = '3'
@@ -327,6 +338,15 @@ class Erl2Config():
             # these are required to fall within the validRange for the sensor
             self.validate    (float, sensorType, 'setpointDefault',    min=self.__erl2conf[sensorType]['validRange'][0], max=self.__erl2conf[sensorType]['validRange'][1])
             self.validateList(float, sensorType, 'dynamicDefault', 24, min=self.__erl2conf[sensorType]['validRange'][0], max=self.__erl2conf[sensorType]['validRange'][1])
+
+        # the pH and DO subsystems require PID parameter values for their controls
+        for param in 'Kp', 'Ki', 'Kd':
+            for gas in 'air', 'co2', 'n2':
+                if gas == 'n2':
+                    sys = 'DO'
+                else:
+                    sys = 'pH'
+                self.validate(float, sys, f"mfc.{gas}.{param}")
 
         # the virtual temperature sensor might be required even if not explicitly enabled
         self.__erl2conf['virtualtemp'] = {**self.__erl2conf['virtualtemp'], **self.__erl2conf['temperature']}

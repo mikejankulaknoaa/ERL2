@@ -73,7 +73,7 @@ class Erl2Mfc():
         self.__stackLevel = self.erl2context['conf'][self.controlType]['stackLevel']
         #self.__inputChannel = self.erl2context['conf'][self.controlType]['inputChannel']
         self.__outputChannel = self.erl2context['conf'][self.controlType]['outputChannel']
-        self.__flowRateRange = self.erl2context['conf'][self.controlType]['flowRateRange']
+        self.flowRateRange = self.erl2context['conf'][self.controlType]['flowRateRange']
         self.__displayDecimals = self.erl2context['conf'][self.controlType]['displayDecimals']
         #self.__sampleFrequency = self.erl2context['conf'][self.controlType]['sampleFrequency']
         self.__loggingFrequency = self.erl2context['conf'][self.controlType]['loggingFrequency']
@@ -113,7 +113,7 @@ class Erl2Mfc():
         f = ttk.Frame(self.__entryLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
         f.grid(row=self.__entryLoc['row'], column=self.__entryLoc['column'], padx='2', pady='0', sticky='nwse')
 
-        #print (f"{self.__class__.__name__}: Debug: {self.controlType} valid range is {str(self.__flowRateRange)}")
+        #print (f"{self.__class__.__name__}: Debug: {self.controlType} valid range is {str(self.flowRateRange)}")
 
         # add an entry widget to change the current setting of the control
         e = Erl2Entry(entryLoc={'parent':f,'row':0,'column':1},
@@ -122,7 +122,7 @@ class Erl2Mfc():
                       width=self.__width,
                       labelFont='Arial 16',
                       displayDecimals=self.__displayDecimals,
-                      validRange=self.__flowRateRange,
+                      validRange=self.flowRateRange,
                       initValue=self.flowSetting,
                       onChange=self.changeFlow,
                       erl2context=self.erl2context)
@@ -244,6 +244,9 @@ class Erl2Mfc():
         # format the values to be displayed
         setting = f"{float(round(self.flowSetting,self.__displayDecimals)):.{self.__displayDecimals}f}"
 
+        # make sure the same value shows in the entry field (e.g. if set by PID logic)
+        self.__entryWidget.stringVar.set(setting)
+
         # loop through all placements of this control's setting display widgets
         for w in settingDisplayWidgets:
 
@@ -263,12 +266,14 @@ class Erl2Mfc():
 
     def setControl(self, newSetting=0.):
 
+        #print(f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}]")
+
         # do nothing if no change is required
         if self.flowSetting == float(newSetting):
             return
 
         # it's an error to try to set an MFC to a value outside its range
-        assert self.__flowRateRange[0] <= float(newSetting) <= self.__flowRateRange[1]
+        assert self.flowRateRange[0] <= float(newSetting) <= self.flowRateRange[1]
 
         # tally up how many times the setting is changing
         self.numChanges += 1
@@ -316,7 +321,7 @@ class Erl2Mfc():
     def changeHardwareSetting(self):
 
         # calculate the Vdc that corresponds to the current setting
-        volts = (self.flowSetting - self.__flowRateRange[0]) / (self.__flowRateRange[1] - self.__flowRateRange[0]) * 5.
+        volts = (self.flowSetting - self.flowRateRange[0]) / (self.flowRateRange[1] - self.flowRateRange[0]) * 5.
 
         # don't exceed the range of 0 - 5 V
         if volts > 5.:

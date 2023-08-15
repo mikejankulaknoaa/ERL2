@@ -2,6 +2,8 @@
 
 from datetime import datetime as dt
 from datetime import timezone as tz
+from math import isnan
+from simple_pid import PID
 import tkinter as tk
 from tkinter import ttk
 from Erl2Chiller import Erl2Chiller
@@ -17,6 +19,7 @@ class Erl2SubSystem():
 
     def __init__(self,
                  subSystemType='generic',
+                 logic='generic',
 
                  # these controls are unique and aren't cloned to more than one frame
                  radioLoc={},
@@ -30,10 +33,14 @@ class Erl2SubSystem():
 
                  radioImages=['radio-off-30.png','radio-on-30.png'],
                  sensors={},
-                 controls={},
+                 toggles={},
+                 MFCs={},
                  erl2context={}):
 
         self.subSystemType = subSystemType
+        self.__logic = logic
+        assert(self.__logic in ('generic','hysteresis','PID'))
+
         self.__radioLoc = radioLoc
         self.__staticSetpointLoc = staticSetpointLoc
         self.__hysteresisLoc = hysteresisLoc
@@ -44,7 +51,12 @@ class Erl2SubSystem():
 
         self.radioImages = radioImages
         self.__sensors = sensors
-        self.__controls = controls
+        self.__toggles = toggles
+        self.__MFCs = MFCs
+        self.__controls = {**toggles, **MFCs}
+        self.__PIDs = {}
+        self.__pidParams = {}
+        self.__pidLastUpdated = {}
         self.erl2context = erl2context
 
         # read in the system configuration file if needed
@@ -79,8 +91,16 @@ class Erl2SubSystem():
         # other useful parameters from Erl2Config
         self.__setpointDefault = self.erl2context['conf'][self.subSystemType]['setpointDefault']
         self.__dynamicDefault = self.erl2context['conf'][self.subSystemType]['dynamicDefault']
-        if self.__hysteresisLoc is not None:
+        if self.__logic == 'hysteresis':
             self.__hysteresisDefault = self.erl2context['conf'][self.subSystemType]['hysteresisDefault']
+
+        # look up PID tuning parameters for the MFCs
+        if self.__logic == 'PID':
+            for mfc in self.__MFCs:
+                self.__pidParams[mfc] = {}
+                for param in 'Kp', 'Ki', 'Kd':
+                    self.__pidParams[mfc][param] = self.erl2context['conf'][self.subSystemType][f"{mfc}.{param}"]
+                    #print(f"{__class__.__name__}: Debug: PID param [{mfc}.{param}] [{self.__pidParams[mfc][param]}]")
 
         # and also these system-level Erl2Config parameters
         self.__timezone = self.erl2context['conf']['system']['timezone']
@@ -89,14 +109,14 @@ class Erl2SubSystem():
         # also keep a float-valued record of the current values of these parameters
         self.staticSetpointFloat = self.erl2context['state'].get(self.subSystemType,'staticSetpoint',self.__setpointDefault)
         self.dynamicSetpointsFloat = self.erl2context['state'].get(self.subSystemType,'dynamicSetpoints',self.__dynamicDefault)
-        if self.__hysteresisLoc is not None:
+        if self.__logic == 'hysteresis':
             self.hysteresisFloat = self.erl2context['state'].get(self.subSystemType,'hysteresis',self.__hysteresisDefault)
 
         # remember what radio widgets and entry fields are active for this control
         self.__radioWidgets = []
         self.staticSetpointEntry = None
         self.dynamicSetpointsEntry = []
-        if self.__hysteresisLoc is not None:
+        if self.__logic == 'hysteresis':
             self.hysteresisEntry = None
 
         # also keep track of display-only widgets
@@ -171,7 +191,7 @@ class Erl2SubSystem():
                                              erl2context=self.erl2context)
 
         # hysteresis is only used in certain subsystems
-        if self.__hysteresisLoc is not None:
+        if self.__logic == 'hysteresis' and self.__hysteresisLoc is not None:
 
             # create the hysteresis entry widget's base frame as a child of its parent
             f = ttk.Frame(self.__hysteresisLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
@@ -288,14 +308,48 @@ class Erl2SubSystem():
         # begin monitoring the system
         self.monitorSystem()
 
-    # testing how manipulating one control can en/disable another
+    # figure out what the target variable's current value is
+    def getCurrentValue(self):
+
+        # initialize sensor value, time and online status
+        v = t = o = None
+
+        # this logic depends on the subSystemType being the same as the sensorType ('temperature', 'pH, 'DO')
+        if self.subSystemType in self.__sensors:
+
+            # grab the current sensor value if we can find it
+            if (    hasattr(self.__sensors[self.subSystemType],'value')
+                and self.__displayParameter in self.__sensors[self.subSystemType].value):
+                v = self.__sensors[self.subSystemType].value[self.__displayParameter]
+
+            # check if current value is invalid
+            if (   v is None
+                or isnan(v)
+                or (len(self.__validRange) >= 1 and v < self.__validRange[0])
+                or (len(self.__validRange) >= 2 and v > self.__validRange[1])):
+                v = None
+
+            # grab the timestamp when the sensor was last updated
+            if hasattr(self.__sensors[self.subSystemType],'lastValid'):
+                t = self.__sensors[self.subSystemType].lastValid
+
+            # grab the sensor's online status
+            if hasattr(self.__sensors[self.subSystemType],'online'):
+                o = self.__sensors[self.subSystemType].online
+
+        #print (f"{self.__class__.__name__}: Debug: getCurrentValue() [{v}][{t}][{o}]")
+
+        # return any values found
+        return v, t, o
+
+    # detect a change in mode, and enable/disable widgets according to the current mode
     def applyMode(self):
 
         # read the current mode of the system
         var = self.__modeVar.get()
 
-        # work in progress: pH and DO subsystems can only do Manual mode for now
-        if self.subSystemType != 'temperature':
+        # work in progress: DO subsystem can only do Manual mode for now
+        if self.subSystemType == 'DO':
             var = 0
             for r in range(1,len(self.__radioWidgets)):
                 self.__radioWidgets[r].config(state='disabled')
@@ -316,7 +370,7 @@ class Erl2SubSystem():
                 self.staticSetpointEntry.setActive(0)
 
         # enable/disable the hysteresis entry field as appropriate
-        if self.__hysteresisLoc is not None and self.hysteresisEntry is not None:
+        if self.__logic == 'hysteresis' and self.hysteresisEntry is not None:
             if var!=0:
                 self.hysteresisEntry.setActive(1)
             else:
@@ -388,16 +442,15 @@ class Erl2SubSystem():
         # read the current mode of the system
         var = self.__modeVar.get()
 
-        # try to get the current temperature
-        if (    'temperature' in self.__sensors
-            and hasattr(self.__sensors['temperature'],'value')
-            and self.__displayParameter in self.__sensors['temperature'].value):
-            temp = self.__sensors['temperature'].value[self.__displayParameter]
+        # try to get the sensor's current value
+        currVal, currTime, currOnline = self.getCurrentValue()
 
-        # if temperature is missing
-        else:
+        # if current value is missing or invalid
+        if (currVal is None):
+
             # change to Manual mode if not already there
             if var>0:
+
                 # make absolutely certain this isn't an infinite loop
                 if not fromApplyMode:
                     self.__modeVar.set(0)
@@ -439,50 +492,100 @@ class Erl2SubSystem():
                 self.__setpointLastChanged = currentTime
                 writeNow = True
 
-            # what is the current temperature?
-            if (    'temperature' in self.__sensors
-                and hasattr(self.__sensors['temperature'],'value')
-                and self.__displayParameter in self.__sensors['temperature'].value):
-                temp = self.__sensors['temperature'].value[self.__displayParameter]
-            else:
-                temp = float('nan')
+            # hysteresis logic -- these systems have a targeted setpoint, toggles
+            # to raise and lower the current value, and a hardcoded parameter for
+            # the maximum allowed amount of drift from the setpoint
+            if self.__logic == 'hysteresis':
 
-            # what is the hysteresis -- the allowable drift from the targeted setpoint?
-            if self.__hysteresisLoc is not None and self.hysteresisEntry is not None:
-                hysteresis = float(self.hysteresisEntry.stringVar.get())
-            else:
-                hysteresis = float('nan')
+                # what is the hysteresis -- the allowable drift from the targeted setpoint?
+                if self.__logic == 'hysteresis' and self.hysteresisEntry is not None:
+                    hysteresis = float(self.hysteresisEntry.stringVar.get())
+                else:
+                    hysteresis = float('nan')
 
-            # determine the correct course of action
-            if temp < self.__activeSetpoint-hysteresis:
-                if 'heater' in self.__controls:
-                    self.__controls['heater'].setControl(1)
-                if 'chiller' in self.__controls:
-                    self.__controls['chiller'].setControl(0)
-            elif temp > self.__activeSetpoint+hysteresis:
-                if 'heater' in self.__controls:
-                    self.__controls['heater'].setControl(0)
-                if 'chiller' in self.__controls:
-                    self.__controls['chiller'].setControl(1)
-            else:
-                if 'heater' in self.__controls:
-                    self.__controls['heater'].setControl(0)
-                if 'chiller' in self.__controls:
-                    self.__controls['chiller'].setControl(0)
-
-            #print(f"{self.__class__.__name__}: Debug: mode [{self.__modeDict[var]}], hour [{currentHour}], active setpoint [{self.__activeSetpoint}], hysteresis [{hysteresis}] temp [{temp}]")
+                # determine the correct course of action
+                if currVal < self.__activeSetpoint-hysteresis:
+                    if 'to.raise' in self.__toggles:
+                        self.__toggles['to.raise'].setControl(1)
+                    if 'to.lower' in self.__toggles:
+                        self.__toggles['to.lower'].setControl(0)
+                elif currVal > self.__activeSetpoint+hysteresis:
+                    if 'to.raise' in self.__toggles:
+                        self.__toggles['to.raise'].setControl(0)
+                    if 'to.lower' in self.__toggles:
+                        self.__toggles['to.lower'].setControl(1)
+                else:
+                    if 'to.raise' in self.__toggles:
+                        self.__toggles['to.raise'].setControl(0)
+                    if 'to.lower' in self.__toggles:
+                        self.__toggles['to.lower'].setControl(0)
 
         # unrecognized mode
         else:
             raise SystemError(f"{self.__class__.__name__}: Error: monitorSystem() invalid mode [{var}]")
 
-        # temperature sensors come and go, so make sure the setpoint-related
-        # radio buttons are enabled if-and-only-if temperature is available
-        if (        'temperature' in self.__sensors
-                and hasattr(self.__sensors['temperature'],'online')
-                and self.__sensors['temperature'].online
-                and hasattr(self.__sensors['temperature'],'value')
-                and self.__displayParameter in self.__sensors['temperature'].value):
+        # PID logic -- uses the simple_pid library to set the MFCs to gas
+        # rates that will raise or lower the current value of the system
+        if self.__logic == 'PID':
+
+            # loop through the various types of MFCs
+            for mfc in self.__MFCs:
+
+                # sometimes the PID isn't needed
+                if (currVal is None or not currOnline or var == 0):
+
+                    # disable the PID if it exists (if it wasn't created yet, then ignore it)
+                    if mfc in self.__PIDs and self.__PIDs[mfc].auto_mode:
+                        #print(f"{__class__.__name__}: Debug: setting PID auto_mode to False for [{mfc}]")
+                        self.__PIDs[mfc].auto_mode = False
+
+                # explicitly check if the system is in auto (static or dynamic) mode
+                elif var in [2,3]:
+
+                    # remember if we've given the PID new instructions
+                    newSetpoint = False
+
+                    # create the PID if it doesn't exist yet
+                    if mfc not in self.__PIDs:
+
+                        # initialize the new PID object
+                        #print(f"{__class__.__name__}: Debug: initializing PID for [{mfc}]")
+                        self.__PIDs[mfc] = PID(self.__pidParams[mfc]['Kp'],
+                                               self.__pidParams[mfc]['Ki'],
+                                               self.__pidParams[mfc]['Kd'])
+
+                        # tell it what the output limits of this MFC are
+                        #print(f"{__class__.__name__}: Debug: setting PID limits for [{mfc}] to [{self.__MFCs[mfc].flowRateRange}]")
+                        self.__PIDs[mfc].output_limits = self.__MFCs[mfc].flowRateRange
+
+                    # ensure that the PID is enabled
+                    if not self.__PIDs[mfc].auto_mode:
+                        #print(f"{__class__.__name__}: Debug: setting PID auto_mode to True for [{mfc}]")
+                        self.__PIDs[mfc].auto_mode = True
+
+                    # make sure it knows the setpoint we're currently working toward
+                    if self.__PIDs[mfc].setpoint != self.__activeSetpoint:
+                        #print(f"{__class__.__name__}: Debug: setting PID setpoint to [{self.__activeSetpoint}] for [{mfc}]")
+                        self.__PIDs[mfc].setpoint = self.__activeSetpoint
+                        newSetpoint = True
+
+                    # don't consult the PID unless the system's current value has been
+                    # updated since the last time it was called, or there's a new setpoint
+                    if mfc not in self.__pidLastUpdated or self.__pidLastUpdated[mfc] < currTime or newSetpoint:
+
+                        # ask the PID what the new MFC setting should be
+                        newSetting = self.__PIDs[mfc](currVal)
+                        #print(f"{__class__.__name__}: Debug: PID says flow rate for [{mfc}] should be [{newSetting}], given current system value [{currVal}]")
+
+                        # apply that value to the MFC
+                        self.__MFCs[mfc].setControl(newSetting=newSetting)
+
+                        # remember the last time we updated the PID
+                        self.__pidLastUpdated[mfc] = currTime
+
+        # sensors come and go, so make sure the setpoint-related
+        # radio buttons are enabled if-and-only-if the sensor is available
+        if (currVal is not None and currOnline):
             self.__radioWidgets[2].config(state='normal')
             self.__radioWidgets[3].config(state='normal')
         else:
@@ -635,6 +738,7 @@ def main():
                           buttonLoc={'parent':controlFrame,'row':4,'column':0})
 
     subsystem = Erl2SubSystem(subSystemType='temperature',
+                              logic='hysteresis',
                               radioLoc={'parent':radioFrame,'row':0,'column':0},
                               staticSetpointLoc={'parent':subSysFrame,'row':1,'column':0},
                               hysteresisLoc={'parent':subSysFrame,'row':2,'column':0},
@@ -642,7 +746,7 @@ def main():
                               setpointDisplayLocs=[{'parent':tempFrame,'row':1,'column':0}],
                               modeDisplayLocs=[{'parent':tempFrame,'row':2,'column':0}],
                               sensors={'temperature':virtualtemp},
-                              controls={'heater':heater,'chiller':chiller})
+                              toggles={'to.raise':heater,'to.lower':chiller})
     root.mainloop()
 
 if __name__ == "__main__": main()

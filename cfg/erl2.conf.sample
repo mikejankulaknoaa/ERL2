@@ -120,6 +120,14 @@ location = Default Location
 # this is a sine shape running between 7.95 (6am low point) and 8.05 (6pm high point)
 # dynamicDefault = [8.00, 7.99, 7.98, 7.96, 7.96, 7.95, 7.95, 7.95, 7.96, 7.96, 7.98, 7.99, 8.00, 8.01, 8.03, 8.04, 8.04, 8.05, 8.05, 8.05, 8.04, 8.04, 8.03, 8.01]
 
+# PID Tuning Parameters for pH -- controls are the Air and CO2 MFCs
+mfc.air.Kp = 10000.0
+mfc.air.Ki = 1000.0
+mfc.air.Kd = 0.0
+mfc.co2.Kp = -40.0
+mfc.co2.Ki = -4.0
+mfc.co2.Kd = 0.0
+
 
 [DO]
 
@@ -161,6 +169,11 @@ location = Default Location
 # default dynamic program (24 values, umol/L)
 # this is a sine shape running between 275. (6am low point) and 325. (6pm high point)
 # dynamicDefault = [300., 294., 288., 282., 278., 276., 275., 276., 278., 282., 288., 294., 300., 306., 313., 318., 322., 324., 325., 324., 322., 318., 313., 306.]
+
+# PID Tuning Parameters for DO -- right now, pretend that the only control is the N2 MFC
+mfc.n2.Kp = -10000.0
+mfc.n2.Ki = -1000.0
+mfc.n2.Kd = 0.0
 
 
 [heater]
