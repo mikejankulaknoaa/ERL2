@@ -5,6 +5,7 @@ from math import ceil,cos,pi
 import tkinter as tk
 from tkinter import ttk
 from Erl2Sensor import Erl2Sensor
+from Erl2State import Erl2State
 
 # this is a 'virtual' temperature sensor designed to be reactive to heater/chiller controls
 class Erl2VirtualTemp(Erl2Sensor):
@@ -27,10 +28,21 @@ class Erl2VirtualTemp(Erl2Sensor):
                          label=label,
                          erl2context=erl2context)
 
+        # read in the system configuration file if needed
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
+
+        # load any saved info about the application state
+        if 'state' not in self.erl2context:
+            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
+
         # private attributes specific to Erl2VirtualTemp
         self.__parent = parent
         self.__midpoint = 26.
         self.__range = 1.
+        self.__stateTracker = None
 
         # start up the timing loop to update the display widgets
         # (check first if this object is an Erl2VirtualTemp or a child class)
@@ -52,8 +64,9 @@ class Erl2VirtualTemp(Erl2Sensor):
         if 'temp.degC' in self.value:
             prevTemp = self.value['temp.degC']
         else:
-            # at startup, assign tank temp to be environmental temp
-            prevTemp = targetTemp
+            # at startup, try to load a recently-logged temp, then just assign tank temp to be environmental temp
+            prevTemp = self.erl2context['state'].get(self.sensorType,'temp.degC',targetTemp)
+            #print (f"{self.__class__.__name__}: Debug: measure() reading [{prevTemp}] from state file")
 
         # initialize the measurement result
         self.value = {}
@@ -96,6 +109,14 @@ class Erl2VirtualTemp(Erl2Sensor):
 
         # add Timestamps to measurement record
         t, m = self.getTimestamp()
+
+        # every 60 readings, track the current virtualTemp in the state file to avoid jumps when rebooted
+        if (self.__stateTracker is None or self.__stateTracker >= 60):
+            #print (f"{self.__class__.__name__}: Debug: measure({t}) writing [{self.value['temp.degC']}] to state file")
+            self.erl2context['state'].set(self.sensorType,'temp.degC',self.value['temp.degC'])
+            self.__stateTracker = 0
+        else:
+            self.__stateTracker += 1
 
         # produce the final measurement dict with timestamps and values
         self.value = {**m, **self.value}

@@ -266,7 +266,7 @@ class Erl2Mfc():
 
     def setControl(self, newSetting=0.):
 
-        #print(f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}]")
+        #print (f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}]")
 
         # do nothing if no change is required
         if self.flowSetting == float(newSetting):

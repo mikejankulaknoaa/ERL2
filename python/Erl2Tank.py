@@ -513,6 +513,7 @@ class Erl2Tank:
             hysteresisLoc={'parent':self.__frames['Temp'][1][2],'row':2,'column':0},
             dynamicSetpointsLoc={'parent':self.__frames['Temp'][2][0],'row':1,'column':0},
 
+            plotDisplayLoc={'parent':self.__frames['Data'][0][2],'row':0,'column':0},
             setpointDisplayLocs=[{'parent':self.__frames['Data'][0][0],'row':3,'column':0},
                                  {'parent':self.__frames['Temp'][0][0],'row':3,'column':0}],
             modeDisplayLocs=[{'parent':self.__frames['Data'][0][0],'row':4,'column':0},
@@ -531,6 +532,7 @@ class Erl2Tank:
             staticSetpointLoc={'parent':self.__frames['pH'][1][2],'row':1,'column':0},
             dynamicSetpointsLoc={'parent':self.__frames['pH'][2][0],'row':1,'column':0},
 
+            plotDisplayLoc={'parent':self.__frames['Data'][1][2],'row':0,'column':0},
             setpointDisplayLocs=[{'parent':self.__frames['Data'][1][0],'row':3,'column':0},
                                  {'parent':self.__frames['pH'][0][0],'row':3,'column':0}],
             modeDisplayLocs=[{'parent':self.__frames['Data'][1][0],'row':4,'column':0},
@@ -549,6 +551,7 @@ class Erl2Tank:
             staticSetpointLoc={'parent':self.__frames['DO'][1][2],'row':1,'column':0},
             dynamicSetpointsLoc={'parent':self.__frames['DO'][2][0],'row':1,'column':0},
 
+            plotDisplayLoc={'parent':self.__frames['Data'][2][2],'row':0,'column':0},
             setpointDisplayLocs=[{'parent':self.__frames['Data'][2][0],'row':3,'column':0},
                                  {'parent':self.__frames['DO'][0][0],'row':3,'column':0}],
             modeDisplayLocs=[{'parent':self.__frames['Data'][2][0],'row':4,'column':0},
@@ -734,7 +737,8 @@ class Erl2Tank:
             self.__systemLog.writeMessage('Erl2Tank system exit requested by GUI user')
 
             # terminate the system
-            self.__parent.destroy()
+            #self.__parent.destroy() # this was leaving some .after() callbacks hanging
+            tk.Tk.quit(self.__parent)
 
 def main():
 

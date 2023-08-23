@@ -12,6 +12,7 @@ from Erl2Entry import Erl2Entry
 from Erl2Heater import Erl2Heater
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
+from Erl2Plot import Erl2Plot
 from Erl2State import Erl2State
 from Erl2VirtualTemp import Erl2VirtualTemp
 
@@ -28,6 +29,7 @@ class Erl2SubSystem():
                  dynamicSetpointsLoc={},
 
                  # these displays may be cloned to multiple tabs/frames
+                 plotDisplayLoc={},
                  setpointDisplayLocs=[],
                  modeDisplayLocs=[],
 
@@ -46,6 +48,8 @@ class Erl2SubSystem():
         self.__hysteresisLoc = hysteresisLoc
         self.__dynamicSetpointsLoc = dynamicSetpointsLoc
 
+        self.__plotDisplayLoc = plotDisplayLoc
+        self.__plot = None
         self.__setpointDisplayLocs = setpointDisplayLocs
         self.__modeDisplayLocs = modeDisplayLocs
 
@@ -100,7 +104,7 @@ class Erl2SubSystem():
                 self.__pidParams[mfc] = {}
                 for param in 'Kp', 'Ki', 'Kd':
                     self.__pidParams[mfc][param] = self.erl2context['conf'][self.subSystemType][f"{mfc}.{param}"]
-                    #print(f"{__class__.__name__}: Debug: PID param [{mfc}.{param}] [{self.__pidParams[mfc][param]}]")
+                    #print (f"{__class__.__name__}: Debug: PID param [{mfc}.{param}] [{self.__pidParams[mfc][param]}]")
 
         # and also these system-level Erl2Config parameters
         self.__timezone = self.erl2context['conf']['system']['timezone']
@@ -305,6 +309,22 @@ class Erl2SubSystem():
         # set the focus to the first radio button
         self.__radioWidgets[0].focus()
 
+        # build a list of logs for plotting
+        plotData = []
+        for sens in self.__sensors:
+            plotData.append({'name':sens, 'data':self.__sensors[sens].log.history})
+        for ctrl in self.__controls:
+            plotData.append({'name':ctrl, 'data':self.__controls[ctrl].log.history})
+
+        # draw a plot of the history of the subsystem
+        if 'parent' in self.__plotDisplayLoc:
+            self.__plot = Erl2Plot(plotLoc=self.__plotDisplayLoc,
+                                   #figsize=(3.166,1.345), # sizing doesn't seem to matter if frame is weighted properly
+                                   figsize=(2.500,1.000),
+                                   displayParameter=self.__displayParameter,
+                                   plotData=plotData,
+                                   erl2context=self.erl2context)
+
         # begin monitoring the system
         self.monitorSystem()
 
@@ -451,12 +471,14 @@ class Erl2SubSystem():
             # change to Manual mode if not already there
             if var>0:
 
-                # make absolutely certain this isn't an infinite loop
+                # change to Manual mode and trigger a data record to the log
+                self.__modeVar.set(0)
+                var=0
+                writeNow = True
+
+                # apply the new mode, but make absolutely certain this isn't an infinite loop
                 if not fromApplyMode:
-                    self.__modeVar.set(0)
                     self.applyMode()
-                    var=0
-                    writeNow = True
 
         # no logic to carry out if in Manual mode
         if var==0:
@@ -503,6 +525,8 @@ class Erl2SubSystem():
                 else:
                     hysteresis = float('nan')
 
+                #print (f"{__class__.__name__}: Debug: monitorSystem() var is [{var}], currVal is [{currVal}], setpoint is [{self.__activeSetpoint}], hysteresis is [{hysteresis}]")
+
                 # determine the correct course of action
                 if currVal < self.__activeSetpoint-hysteresis:
                     if 'to.raise' in self.__toggles:
@@ -536,7 +560,7 @@ class Erl2SubSystem():
 
                     # disable the PID if it exists (if it wasn't created yet, then ignore it)
                     if mfc in self.__PIDs and self.__PIDs[mfc].auto_mode:
-                        #print(f"{__class__.__name__}: Debug: setting PID auto_mode to False for [{mfc}]")
+                        #print (f"{__class__.__name__}: Debug: setting PID auto_mode to False for [{mfc}]")
                         self.__PIDs[mfc].auto_mode = False
 
                 # explicitly check if the system is in auto (static or dynamic) mode
@@ -549,23 +573,23 @@ class Erl2SubSystem():
                     if mfc not in self.__PIDs:
 
                         # initialize the new PID object
-                        #print(f"{__class__.__name__}: Debug: initializing PID for [{mfc}]")
+                        #print (f"{__class__.__name__}: Debug: initializing PID for [{mfc}]")
                         self.__PIDs[mfc] = PID(self.__pidParams[mfc]['Kp'],
                                                self.__pidParams[mfc]['Ki'],
                                                self.__pidParams[mfc]['Kd'])
 
                         # tell it what the output limits of this MFC are
-                        #print(f"{__class__.__name__}: Debug: setting PID limits for [{mfc}] to [{self.__MFCs[mfc].flowRateRange}]")
+                        #print (f"{__class__.__name__}: Debug: setting PID limits for [{mfc}] to [{self.__MFCs[mfc].flowRateRange}]")
                         self.__PIDs[mfc].output_limits = self.__MFCs[mfc].flowRateRange
 
                     # ensure that the PID is enabled
                     if not self.__PIDs[mfc].auto_mode:
-                        #print(f"{__class__.__name__}: Debug: setting PID auto_mode to True for [{mfc}]")
+                        #print (f"{__class__.__name__}: Debug: setting PID auto_mode to True for [{mfc}]")
                         self.__PIDs[mfc].auto_mode = True
 
                     # make sure it knows the setpoint we're currently working toward
                     if self.__PIDs[mfc].setpoint != self.__activeSetpoint:
-                        #print(f"{__class__.__name__}: Debug: setting PID setpoint to [{self.__activeSetpoint}] for [{mfc}]")
+                        #print (f"{__class__.__name__}: Debug: setting PID setpoint to [{self.__activeSetpoint}] for [{mfc}]")
                         self.__PIDs[mfc].setpoint = self.__activeSetpoint
                         newSetpoint = True
 
@@ -575,7 +599,7 @@ class Erl2SubSystem():
 
                         # ask the PID what the new MFC setting should be
                         newSetting = self.__PIDs[mfc](currVal)
-                        #print(f"{__class__.__name__}: Debug: PID says flow rate for [{mfc}] should be [{newSetting}], given current system value [{currVal}]")
+                        #print (f"{__class__.__name__}: Debug: PID says flow rate for [{mfc}] should be [{newSetting}], given current system value [{currVal}]")
 
                         # apply that value to the MFC
                         self.__MFCs[mfc].setControl(newSetting=newSetting)
@@ -622,6 +646,10 @@ class Erl2SubSystem():
 
         # update display widgets to show to current mode and setpoint
         self.updateDisplays()
+
+        # if there's a plot, update it
+        if self.__plot is not None:
+            self.__plot.updatePlot()
 
         # wake up every five seconds and see if anything needs adjustment
         self.__radioWidgets[0].after(5000, self.monitorSystem)
