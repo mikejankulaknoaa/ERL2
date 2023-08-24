@@ -45,20 +45,23 @@ class Erl2Plot():
         currentTime = dt.now()
         dayAgo = currentTime + self.__timeRange
 
-        # try to import some junk data if nothing was passed
-        if self.__displayParameter == 'junk' and self.__plotData == []:
+        ## try to import some junk data if nothing was passed
+        #if self.__displayParameter == 'junk' and self.__plotData == []:
 
-            # read in one day's worth of data from a test file on the system
-            with open(self.erl2context['conf']['system']['rootDir'] + '/test/temp.dat', 'r', newline='') as f:
-                r = DictReader(f, dialect='unix')
-                self.__plotData.append({'name':'temperature', 'data':list(r)})
+        #    # read in one day's worth of data from a test file on the system
+        #    with open(self.erl2context['conf']['system']['rootDir'] + '/test/temp.dat', 'r', newline='') as f:
+        #        r = DictReader(f, dialect='unix')
+        #        self.__plotData.append({'name':'temperature', 'data':list(r)})
 
-            # adjust the displayParameter to match what's in the test file
-            self.__displayParameter = 'temp.degC'
+        #    # create a fake Erl2Log instance
+        #    log = Erl2Log(self.erl2context)
 
-            # fudge the time axis so that the file's data will be displayed
-            currentTime = dt.strptime("2023-08-14 08:45:01","%Y-%m-%d %H:%M:%S")
-            dayAgo = currentTime + self.__timeRange
+        #    # adjust the displayParameter to match what's in the test file
+        #    self.__displayParameter = 'temp.degC'
+
+        #    # fudge the time axis so that the file's data will be displayed
+        #    currentTime = dt.strptime("2023-08-14 08:45:01","%Y-%m-%d %H:%M:%S")
+        #    dayAgo = currentTime + self.__timeRange
 
         # override default 'math' font type for $...$ expressions (e.g. $CO_2$), which is italics
         matplotlib.rcParams["mathtext.default"] = 'regular'
@@ -153,7 +156,7 @@ class Erl2Plot():
             specs = self.getSpecs(self.__plotData[ind]['name'])
 
             # convert log history into a pandas dataframe
-            data = pd.DataFrame(self.__plotData[ind]['data'])
+            data = pd.DataFrame(self.__plotData[ind]['log'].history)
 
             #print (f"{__class__.__name__}: Debug: updatePlotLines() [{self.__displayParameter}][{self.__plotData[ind]['name']}] length [{len(data)}]")
 
@@ -194,14 +197,18 @@ class Erl2Plot():
                     line = 0
                     for segment in segments:
 
-                        #print (f"{__class__.__name__}: Debug: updatePlotLines() [{self.__displayParameter}][{self.__plotData[ind]['name']}] line [{line}] length [{len(segment)}]")
-
                         # if this line segment exists, update its data
-                        if len(self.__fig.axes[ind].lines) > line+1:
+                        if len(self.__fig.axes[ind].lines) >= line+1:
+
+                            #if self.__plotData[ind]['name'] in ['to.raise','to.lower','virtualtemp','temperature']:
+                            #    print (f"{__class__.__name__}: Debug: updatePlotLines(): UPDATING [{self.__displayParameter}][{self.__plotData[ind]['name']}] line [{line}] length [{len(segment)}]")
                             self.__fig.axes[ind].lines[line].set_data(segment.index, segment[specs['yName']])
 
                         # otherwise, this is a new line segment to be added
                         else:
+
+                            #if self.__plotData[ind]['name'] in ['to.raise','to.lower','virtualtemp','temperature']:
+                            #    print (f"{__class__.__name__}: Debug: updatePlotLines(): CREATING [{self.__displayParameter}][{self.__plotData[ind]['name']}] line [{line}] length [{len(segment)}]")
                             self.__fig.axes[ind].plot(segment.index, segment[specs['yName']], color=specs['color'])
 
                         # increment line for next loop

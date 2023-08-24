@@ -50,6 +50,7 @@ class Erl2SubSystem():
 
         self.__plotDisplayLoc = plotDisplayLoc
         self.__plot = None
+        self.__plotTracker = None
         self.__setpointDisplayLocs = setpointDisplayLocs
         self.__modeDisplayLocs = modeDisplayLocs
 
@@ -312,9 +313,9 @@ class Erl2SubSystem():
         # build a list of logs for plotting
         plotData = []
         for sens in self.__sensors:
-            plotData.append({'name':sens, 'data':self.__sensors[sens].log.history})
+            plotData.append({'name':sens, 'log':self.__sensors[sens].log})
         for ctrl in self.__controls:
-            plotData.append({'name':ctrl, 'data':self.__controls[ctrl].log.history})
+            plotData.append({'name':ctrl, 'log':self.__controls[ctrl].log})
 
         # draw a plot of the history of the subsystem
         if 'parent' in self.__plotDisplayLoc:
@@ -647,9 +648,15 @@ class Erl2SubSystem():
         # update display widgets to show to current mode and setpoint
         self.updateDisplays()
 
-        # if there's a plot, update it
+        # if there's a plot
         if self.__plot is not None:
-            self.__plot.updatePlot()
+
+            # every 60 loops (approx 5 mins) push new data to the plots
+            if (self.__plotTracker is None or self.__plotTracker >= 60):
+                self.__plot.updatePlot()
+                self.__plotTracker = 0
+            else:
+                self.__plotTracker += 1
 
         # wake up every five seconds and see if anything needs adjustment
         self.__radioWidgets[0].after(5000, self.monitorSystem)

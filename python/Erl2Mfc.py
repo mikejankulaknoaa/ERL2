@@ -329,7 +329,7 @@ class Erl2Mfc():
         elif volts < 0.:
             volts = 0.
 
-        #print (f"{self.__class__.__name__}: Debug: changeHardwareSetting(): setting is [{self.flowSetting}], volts is [{volts}]")
+        #print (f"{self.__class__.__name__}: Debug: changeHardwareSetting({self.controlType}): stack/channel is [{self.__stackLevel}]/[{self.__outputChannel}], setting is [{self.flowSetting}], volts is [{volts}]")
 
         # apply this voltage to the output channel
         set0_10Out(self.__stackLevel,self.__outputChannel,volts)
