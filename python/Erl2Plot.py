@@ -191,6 +191,7 @@ class Erl2Plot():
 
                     # special case: if there are fewer line segments now than in the past, delete the earliest ones
                     while len(self.__fig.axes[ind].lines) > 0 and len(self.__fig.axes[ind].lines) > len(segments):
+                        #print (f"{__class__.__name__}: Debug: updatePlotLines(): DELETING [{self.__displayParameter}][{self.__plotData[ind]['name']}] one line")
                         self.__fig.axes[ind].lines[0].remove()
 
                     # Plot each segment separately

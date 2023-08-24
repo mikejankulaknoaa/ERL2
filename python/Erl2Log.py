@@ -73,10 +73,14 @@ class Erl2Log():
                 self.history = list(r)
 
             # calculate the oldest timestamp that should be kept in memory
-            oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
+            #oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
+            oldest = dt.utcnow().timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
 
             # delete any historical data older than the retention timeframe
             self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).timestamp() > oldest ]
+
+            #if self.__logName in ['heater','chiller','virtualtemp']:
+            #    print (f"{__class__.__name__}: Debug: __init__({self.__logType},{self.__logName}): count [{len(self.history)}], oldest [{dt.fromtimestamp(round(oldest))}], newest [{self.history[len(self.history)-1]['Timestamp.UTC']}]")
 
         # # make a note if we've reloaded anything from memory
         # if len(self.history) > 0:
@@ -88,10 +92,14 @@ class Erl2Log():
         self.history.append(data)
 
         # calculate the oldest timestamp that should be kept in memory
-        oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
+        #oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
+        oldest = dt.utcnow().timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
 
         # delete any historical data older than the retention timeframe
         self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).timestamp() > oldest ]
+
+        #if self.__logName in ['heater','chiller','virtualtemp']:
+        #    print (f"{__class__.__name__}: Debug: writeData({self.__logType},{self.__logName}): count [{len(self.history)}], oldest [{dt.fromtimestamp(round(oldest))}], newest [{self.history[len(self.history)-1]['Timestamp.UTC']}]")
 
         # finally, write the new data point to the data file
         try:
