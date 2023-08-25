@@ -2,7 +2,7 @@
 
 from ast import literal_eval
 from csv import reader,writer
-from os import makedirs,path,rename,stat
+from os import makedirs,path,remove,rename,stat
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config

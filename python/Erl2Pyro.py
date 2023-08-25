@@ -4,13 +4,13 @@
 _hwLoaded = True
 try:
     from pyrolib import PyroDevice
+    from serial import Serial as ser
 except:
     _hwLoaded = False
 
 from contextlib import contextmanager,redirect_stderr,redirect_stdout
 from multiprocessing import Process,Queue
 from os import devnull
-from serial import Serial as ser
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
@@ -176,6 +176,10 @@ class Erl2Pyro(Erl2Sensor):
             q.put(m[1])
 
     def testSerial(self):
+
+        # silently fail if the hardware library is missing
+        if not _hwLoaded:
+            return False
 
         # test if there's a PyroDevice connected on this port
         # (waiting only 1 second for a reply)
