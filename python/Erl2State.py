@@ -74,6 +74,12 @@ class Erl2State():
 
         # if it exists, rename the old file instead of overwriting
         if path.isfile(self.__fileName) and stat(self.__fileName).st_size > 0:
+
+            # on windows you must first explicitly remove the old .bak file
+            if path.isfile(self.__fileName + '.bak'):
+                remove(self.__fileName + '.bak')
+
+            # now rename the current state file before creating the new one
             rename(self.__fileName, self.__fileName + '.bak')
 
         # open the state file for writing
