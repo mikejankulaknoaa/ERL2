@@ -82,7 +82,7 @@ class Erl2Sensor():
         for loc in self.__displayLocs:
 
             # create the display widget's base frame as a child of its parent
-            f = ttk.Frame(loc['parent'], padding='2 2', relief='solid', borderwidth=0)
+            f = ttk.Frame(loc['parent'], padding='2 2', relief='flat', borderwidth=0)
             f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nesw')
 
             # add a Label widget to show the current sensor value
@@ -118,7 +118,7 @@ class Erl2Sensor():
         for loc in self.__statusLocs:
 
             # create the display widget's base frame as a child of its parent
-            f = ttk.Frame(loc['parent'], padding='0 0', relief='solid', borderwidth=0)
+            f = ttk.Frame(loc['parent'], padding='0 0', relief='flat', borderwidth=0)
             f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nw')
 
             # add a Label widget to show the current sensor value
@@ -132,7 +132,7 @@ class Erl2Sensor():
         if 'parent' in self.__correctionLoc:
 
             # create the correction widgets' base frame as a child of its parent
-            f = ttk.Frame(self.__correctionLoc['parent'], padding='0 0', relief='solid', borderwidth=0)
+            f = ttk.Frame(self.__correctionLoc['parent'], padding='0 0', relief='flat', borderwidth=0)
             f.grid(row=self.__correctionLoc['row'], column=self.__correctionLoc['column'], padx='2', pady='0', sticky='nw')
 
             # create the entry field for the correction offset

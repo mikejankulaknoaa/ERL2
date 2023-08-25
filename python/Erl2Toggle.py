@@ -75,7 +75,7 @@ class Erl2Toggle():
         for loc in self.__displayLocs:
 
             # create the display widget's base frame as a child of its parent
-            f = ttk.Frame(loc['parent'], padding='2 2', relief='solid', borderwidth=0)
+            f = ttk.Frame(loc['parent'], padding='2 2', relief='flat', borderwidth=0)
             f.grid(row=loc['row'], column=loc['column'], padx='2', pady='2', sticky='nwse')
 
             # add a Label widget to show the current control value
@@ -97,7 +97,7 @@ class Erl2Toggle():
             self.__displayWidgets.append(l)
 
         # create the button widget's base frame as a child of its parent
-        f = ttk.Frame(self.__buttonLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
+        f = ttk.Frame(self.__buttonLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
         f.grid(row=self.__buttonLoc['row'], column=self.__buttonLoc['column'], padx='2', pady='0', sticky='nwse')
 
         # add a button widget to change the state of the control

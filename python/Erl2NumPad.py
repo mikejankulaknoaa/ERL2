@@ -46,7 +46,7 @@ class Erl2NumPad(tk.Toplevel):
         vcmd = self.register(self.validateNumPad)
 
         # create a Frame to hold everything
-        self.__f = ttk.Frame(self, padding='2 2', relief='solid', borderwidth=5)
+        self.__f = ttk.Frame(self, padding='2 2', relief='flat', borderwidth=5)
         self.__f.grid(row=0, column=0, padx='2', pady='2', sticky='nwse')
 
         # assuming popup is 312x322, screen is 800x480

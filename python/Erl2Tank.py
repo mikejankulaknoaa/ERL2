@@ -300,7 +300,7 @@ class Erl2Tank:
 
         # add a control to set / unset fullscreen mode
         r = 1
-        fullscreenFrame = ttk.Frame(self.__frames['Settings'][0][0], padding='2 2', relief='solid', borderwidth=0)
+        fullscreenFrame = ttk.Frame(self.__frames['Settings'][0][0], padding='2 2', relief='flat', borderwidth=0)
         fullscreenFrame.grid(row=r, column=0, padx='2', pady='2', sticky='nwse')
         fullscreenCheckbutton = tk.Checkbutton(fullscreenFrame,
                                                indicatoron=0,
@@ -329,7 +329,7 @@ class Erl2Tank:
 
         # add a control to enable / disable the Erl2NumPad popups
         r += 1
-        numPadFrame = ttk.Frame(self.__frames['Settings'][0][0], padding='2 2', relief='solid', borderwidth=0)
+        numPadFrame = ttk.Frame(self.__frames['Settings'][0][0], padding='2 2', relief='flat', borderwidth=0)
         numPadFrame.grid(row=r, column=0, padx='2', pady='2', sticky='nwse')
         numPadCheckbutton = tk.Checkbutton(numPadFrame,
                                                indicatoron=0,
@@ -357,7 +357,7 @@ class Erl2Tank:
         numPadFrame.columnconfigure(1,weight=1)
 
         # restart the app
-        restartFrame = ttk.Frame(self.__frames['Settings'][1][0], padding='2 2', relief='solid', borderwidth=0)
+        restartFrame = ttk.Frame(self.__frames['Settings'][1][0], padding='2 2', relief='flat', borderwidth=0)
         restartFrame.grid(row=1, column=0, padx='2', pady='2', sticky='nwse')
         restartButton = tk.Button(restartFrame,
                                   image=self.erl2context['img']['reload'],
@@ -380,7 +380,7 @@ class Erl2Tank:
         restartFrame.columnconfigure(1,weight=1)
 
         # kill the app completely with this shutdown button
-        exitFrame = ttk.Frame(self.__frames['Settings'][1][0], padding='2 2', relief='solid', borderwidth=0)
+        exitFrame = ttk.Frame(self.__frames['Settings'][1][0], padding='2 2', relief='flat', borderwidth=0)
         exitFrame.grid(row=2, column=0, padx='2', pady='2', sticky='nwse')
         exitButton = tk.Button(exitFrame,
                                image=self.erl2context['img']['shutdown'],
@@ -744,7 +744,7 @@ def main():
 
     root = tk.Tk()
     #root.attributes('-fullscreen', True)
-    root.attributes('-topmost', True)
+    #root.attributes('-topmost', True)
     root.rowconfigure(0,weight=1)
     root.columnconfigure(0,weight=1)
 

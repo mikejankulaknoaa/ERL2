@@ -177,7 +177,7 @@ class Erl2SubSystem():
             self.__radioWidgets.append(r)
 
         # create the static setpoint entry widget's base frame as a child of its parent
-        f = ttk.Frame(self.__staticSetpointLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
+        f = ttk.Frame(self.__staticSetpointLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
         f.grid(row=self.__staticSetpointLoc['row'], column=self.__staticSetpointLoc['column'], padx='2', pady='0', sticky='nwse')
 
         f.rowconfigure(0,weight=1)
@@ -199,7 +199,7 @@ class Erl2SubSystem():
         if self.__logic == 'hysteresis' and self.__hysteresisLoc is not None:
 
             # create the hysteresis entry widget's base frame as a child of its parent
-            f = ttk.Frame(self.__hysteresisLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
+            f = ttk.Frame(self.__hysteresisLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
             f.grid(row=self.__hysteresisLoc['row'], column=self.__hysteresisLoc['column'], padx='2', pady='0', sticky='nwse')
 
             f.rowconfigure(0,weight=1)
@@ -220,7 +220,7 @@ class Erl2SubSystem():
         # add dynamic setpoint entry fields
 
         # create the dynamic setpoint grid's base frame as a child of its parent
-        f = ttk.Frame(self.__dynamicSetpointsLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
+        f = ttk.Frame(self.__dynamicSetpointsLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
         f.grid(row=self.__dynamicSetpointsLoc['row'], column=self.__dynamicSetpointsLoc['column'], padx='2', pady='2', sticky='nwse')
 
         f.rowconfigure(0,weight=1)
@@ -270,7 +270,7 @@ class Erl2SubSystem():
         for loc in self.__setpointDisplayLocs:
 
             # create the display widget's base frame as a child of its parent
-            f = ttk.Frame(loc['parent'], padding='0 0', relief='solid', borderwidth=0)
+            f = ttk.Frame(loc['parent'], padding='0 0', relief='flat', borderwidth=0)
             f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='n')
 
             # add a Label widget to show the current sensor value
@@ -287,7 +287,7 @@ class Erl2SubSystem():
         for loc in self.__modeDisplayLocs:
 
             # create the display widget's base frame as a child of its parent
-            f = ttk.Frame(loc['parent'], padding='0 0', relief='solid', borderwidth=0)
+            f = ttk.Frame(loc['parent'], padding='0 0', relief='flat', borderwidth=0)
             f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='n')
 
             # add a Label widget to show the current sensor value
@@ -748,19 +748,19 @@ def main():
 
     ttk.Label(statusFrame,text='Virtual Temp last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
 
-    tempFrame = ttk.Frame(root, padding='2', relief='solid', borderwidth=0)
+    tempFrame = ttk.Frame(root, padding='2', relief='flat', borderwidth=0)
     tempFrame.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')
 
-    radioFrame = ttk.Frame(root, padding='2', relief='solid', borderwidth=0)
+    radioFrame = ttk.Frame(root, padding='2', relief='flat', borderwidth=0)
     radioFrame.grid(row=1, column=1, padx='2', pady='2', sticky='nesw')
 
-    controlFrame = ttk.Frame(root, padding='2', relief='solid', borderwidth=0)
+    controlFrame = ttk.Frame(root, padding='2', relief='flat', borderwidth=0)
     controlFrame.grid(row=1, column=2, padx='2', pady='2', sticky='nesw')
 
-    subSysFrame = ttk.Frame(root, padding='2', relief='solid', borderwidth=0)
+    subSysFrame = ttk.Frame(root, padding='2', relief='flat', borderwidth=0)
     subSysFrame.grid(row=1, column=3, padx='2', pady='2', sticky='nesw')
 
-    dynamicFrame = ttk.Frame(root, padding='2', relief='solid', borderwidth=0)
+    dynamicFrame = ttk.Frame(root, padding='2', relief='flat', borderwidth=0)
     dynamicFrame.grid(row=2, column=0, columnspan=4, padx='2', pady='2', sticky='nesw')
 
     virtualtemp = Erl2VirtualTemp(displayLocs=[{'parent':tempFrame,'row':0,'column':0}],

@@ -22,7 +22,7 @@ class Erl2Clock():
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # create the clock's base frame as a child of its parent
-        self.__frame = ttk.Frame(self.__clockLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
+        self.__frame = ttk.Frame(self.__clockLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
         self.__frame.grid(row=self.__clockLoc['row'], column=self.__clockLoc['column'], padx='5 5', pady='3 3', sticky='ne')
 
         # add the Label widgets for time and date

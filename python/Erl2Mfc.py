@@ -97,7 +97,7 @@ class Erl2Mfc():
         for loc in self.__settingDisplayLocs:
 
             # create the setting display widget's base frame as a child of its parent
-            f = ttk.Frame(loc['parent'], padding='2 2', relief='solid', borderwidth=0)
+            f = ttk.Frame(loc['parent'], padding='2 2', relief='flat', borderwidth=0)
             f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nwse')
 
             # add a Label widget to show the current MFC flow rate
@@ -119,7 +119,7 @@ class Erl2Mfc():
             self.__settingDisplayWidgets.append(l)
 
         # create the entry widget's base frame as a child of its parent
-        f = ttk.Frame(self.__entryLoc['parent'], padding='2 2', relief='solid', borderwidth=0)
+        f = ttk.Frame(self.__entryLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
         f.grid(row=self.__entryLoc['row'], column=self.__entryLoc['column'], padx='2', pady='0', sticky='nwse')
 
         #print (f"{self.__class__.__name__}: Debug: {self.controlType} valid range is {str(self.flowRateRange)}")
