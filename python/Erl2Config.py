@@ -5,6 +5,7 @@ from configparser import ConfigParser
 from datetime import datetime as dt
 from datetime import timezone as tz
 from os import path
+from sys import platform
 import tkinter as tk
 from tkinter import ttk
 from tzlocal import get_localzone
@@ -12,7 +13,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.11b (2023-08-24)'
+    VERSION = '0.12b (2023-08-25)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -227,6 +228,9 @@ class Erl2Config():
         # otherwise we couldn't find a config
         else:
             raise RuntimeError('Cannot find the erl2.conf configuration file')
+
+        # what OS are we running?
+        self.__erl2conf['system']['platform'] = platform
 
         # share the version info with the app
         self.__erl2conf['system']['version'] = self.VERSION

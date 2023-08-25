@@ -1,6 +1,12 @@
 #! /usr/bin/python3
 
-from megaind import get4_20In
+# ignore any failure to load hardware libraries on windows
+_hwLoaded = True
+try:
+    from megaind import get4_20In
+except:
+    _hwLoaded = False
+
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
@@ -32,6 +38,9 @@ class Erl2Input4_20(Erl2Sensor):
             #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
+        # force an error if this isn't windows and the hardware lib wasn't found
+        assert(_hwLoaded or self.erl2context['conf']['system']['platform'] == 'win32')
+
         # private attributes specific to Erl2Input4_20
         self.__stackLevel = self.erl2context['conf'][self.sensorType]['stackLevel']
         self.__inputChannel = self.erl2context['conf'][self.sensorType]['inputChannel']
@@ -49,8 +58,12 @@ class Erl2Input4_20(Erl2Sensor):
         # initialize the measurement result
         self.value = {}
 
-        # milliAmps are read from the input channel
-        milliAmps = get4_20In(self.__stackLevel, self.__inputChannel)
+        # ignore missing hardware libraries on windows
+        if _hwLoaded:
+            # milliAmps are read from the input channel
+            milliAmps = get4_20In(self.__stackLevel, self.__inputChannel)
+        else:
+            milliAmps = 0.
 
         # check result: by definition this should be between 4 and 20 mA
         # (however: allow values slightly outside this range because when

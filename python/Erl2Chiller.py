@@ -1,6 +1,12 @@
 #! /usr/bin/python3
 
-from megaind import setOdPWM
+# ignore any failure to load hardware libraries on windows
+_hwLoaded = True
+try:
+    from megaind import setOdPWM
+except:
+    _hwLoaded = False
+
 import tkinter as tk
 from tkinter import ttk
 from Erl2Toggle import Erl2Toggle
@@ -30,6 +36,9 @@ class Erl2Chiller(Erl2Toggle):
             #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
+        # force an error if this isn't windows and the hardware lib wasn't found
+        assert(_hwLoaded or self.erl2context['conf']['system']['platform'] == 'win32')
+
         # read these useful parameters from Erl2Config
         self.__stackLevel = self.erl2context['conf'][self.controlType]['stackLevel']
         self.__outputPwmChannel = self.erl2context['conf'][self.controlType]['outputPwmChannel']
@@ -44,12 +53,14 @@ class Erl2Chiller(Erl2Toggle):
         # apply the new state to the chiller solenoid hardware
         #print (f"{self.__class__.__name__}: Debug: changing to state [{self.state}] on Open-Drain / PWM output channel [{self.__outputPwmChannel}]")
 
-        if self.state:
-            # turn on chiller -- set to 100%
-            setOdPWM(self.__stackLevel,self.__outputPwmChannel,100)
-        else:
-            # turn off chiller -- set to 0%
-            setOdPWM(self.__stackLevel,self.__outputPwmChannel,0)
+        # ignore missing hardware libraries on windows
+        if _hwLoaded:
+            if self.state:
+                # turn on chiller -- set to 100%
+                setOdPWM(self.__stackLevel,self.__outputPwmChannel,100)
+            else:
+                # turn off chiller -- set to 0%
+                setOdPWM(self.__stackLevel,self.__outputPwmChannel,0)
 
 def main():
 

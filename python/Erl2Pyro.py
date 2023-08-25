@@ -1,9 +1,15 @@
 #! /usr/bin/python3
 
+# ignore any failure to load hardware libraries on windows
+_hwLoaded = True
+try:
+    from pyrolib import PyroDevice
+except:
+    _hwLoaded = False
+
 from contextlib import contextmanager,redirect_stderr,redirect_stdout
 from multiprocessing import Process,Queue
 from os import devnull
-from pyrolib import PyroDevice
 from serial import Serial as ser
 import tkinter as tk
 from tkinter import ttk
@@ -47,6 +53,9 @@ class Erl2Pyro(Erl2Sensor):
             #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
+        # force an error if this isn't windows and the hardware lib wasn't found
+        assert(_hwLoaded or self.erl2context['conf']['system']['platform'] == 'win32')
+
         # private attributes specific to Erl2Pyro
         self.__port = self.erl2context['conf'][self.sensorType]['serialPort']
         self.__baud = self.erl2context['conf'][self.sensorType]['baudRate']
@@ -70,18 +79,23 @@ class Erl2Pyro(Erl2Sensor):
         # before doing anything, try to verify that there's a PyroDevice connected
         if self.testSerial():
 
-            # set up the sensor for taking measurements
-            try:
-                # prevent the pyrolibs code from spamming stdout
-                #with self.suppress_stdout():
-                    self.__device = PyroDevice(self.__port, self.__baud)
-                    #if not self.online:
-                    #    print (f"{self.__class__.__name__}: Debug: connect(): PyroDevice() succeeded, [{self.sensorType}] sensor going online")
-                    self.online = True
+            # ignore missing hardware libraries on windows
+            if _hwLoaded:
+                # set up the sensor for taking measurements
+                try:
+                    # prevent the pyrolibs code from spamming stdout
+                    #with self.suppress_stdout():
+                        self.__device = PyroDevice(self.__port, self.__baud)
+                        #if not self.online:
+                        #    print (f"{self.__class__.__name__}: Debug: connect(): PyroDevice() succeeded, [{self.sensorType}] sensor going online")
+                        self.online = True
 
-            except Exception as e:
-                #if self.online:
-                #    print (f"{self.__class__.__name__}: Debug: connect(): PyroDevice() failed, [{self.sensorType}] sensor going offline [{e}]")
+                except Exception as e:
+                    #if self.online:
+                    #    print (f"{self.__class__.__name__}: Debug: connect(): PyroDevice() failed, [{self.sensorType}] sensor going offline [{e}]")
+                    self.online = False
+
+            else:
                 self.online = False
 
         else:

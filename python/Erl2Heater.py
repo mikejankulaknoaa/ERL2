@@ -1,6 +1,12 @@
 #! /usr/bin/python3
 
-import RPi.GPIO as GPIO
+# ignore any failure to load hardware libraries on windows
+_hwLoaded = True
+try:
+    import RPi.GPIO as GPIO
+except:
+    _hwLoaded = False
+
 import tkinter as tk
 from tkinter import ttk
 from Erl2Toggle import Erl2Toggle
@@ -30,22 +36,26 @@ class Erl2Heater(Erl2Toggle):
             #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
+        # force an error if this isn't windows and the hardware lib wasn't found
+        assert(_hwLoaded or self.erl2context['conf']['system']['platform'] == 'win32')
+
         # read this useful parameter from Erl2Config
         self.__gpioChannel = self.erl2context['conf'][self.controlType]['gpioChannel']
 
         # set up the heater relay hardware...
+        if _hwLoaded:
 
-        # we're using GPIO.BCM (channel numbers) not GPIO.BOARD (pin numbers on the pi)
-        GPIO.setmode(GPIO.BCM)
+            # we're using GPIO.BCM (channel numbers) not GPIO.BOARD (pin numbers on the pi)
+            GPIO.setmode(GPIO.BCM)
 
-        # silence the annoying GPIO warnings about channels having already been set up
-        GPIO.setwarnings(False)
+            # silence the annoying GPIO warnings about channels having already been set up
+            GPIO.setwarnings(False)
 
-        # set up the heater relay channel for output
-        GPIO.setup(self.__gpioChannel, GPIO.OUT)
+            # set up the heater relay channel for output
+            GPIO.setup(self.__gpioChannel, GPIO.OUT)
 
-        # set the channel's state explicitly, to match our logical state
-        GPIO.output(self.__gpioChannel, self.state)
+            # set the channel's state explicitly, to match our logical state
+            GPIO.output(self.__gpioChannel, self.state)
 
         # start up the timing loop to log control metrics to a log file
         # (check first if this object is an Erl2Heater or a child class)
@@ -56,7 +66,8 @@ class Erl2Heater(Erl2Toggle):
 
         # apply the new state to the relay hardware
         #print (f"{self.__class__.__name__}: Debug: changing to state [{self.state}] on GPIO channel [{self.__gpioChannel}]")
-        GPIO.output(self.__gpioChannel, self.state)
+        if _hwLoaded:
+            GPIO.output(self.__gpioChannel, self.state)
 
 def main():
 

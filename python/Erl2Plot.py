@@ -229,6 +229,10 @@ class Erl2Plot():
             # update the time axes limits
             self.__fig.axes[ind].set_xlim(dayAgo, currentTime)
 
+            # update the vertical axes limits
+            self.__fig.axes[ind].relim(visible_only=True)
+            self.__fig.axes[ind].autoscale_view(scalex=False,scaley=True)
+
         self.canvas.draw()
         plt.draw()
 

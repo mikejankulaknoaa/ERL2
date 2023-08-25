@@ -55,7 +55,7 @@ class Erl2VirtualTemp(Erl2Sensor):
         local = dt.now()
 
         # how far into the current day are we?
-        day = ((float(local.strftime('%-H'))/60. + float(local.strftime('%-M')))/60. + float(local.strftime('%-S')))/24.
+        day = ((float(local.strftime('%H'))/60. + float(local.strftime('%M')))/60. + float(local.strftime('%S')))/24.
 
         # figure out the external temperature we're equilibrating towards, at this hour
         targetTemp = self.__midpoint - cos( day * 2. * pi ) * self.__range

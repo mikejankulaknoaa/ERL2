@@ -1,8 +1,14 @@
 #! /usr/bin/python3
 
+# ignore any failure to load hardware libraries on windows
+_hwLoaded = True
+try:
+    from megaind import set0_10Out
+except:
+    _hwLoaded = False
+
 from datetime import datetime as dt
 from datetime import timezone as tz
-from megaind import get4_20In,set0_10Out
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
@@ -68,6 +74,9 @@ class Erl2Mfc():
             self.erl2context['conf'] = Erl2Config()
             #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
+
+        # force an error if this isn't windows and the hardware lib wasn't found
+        assert(_hwLoaded or self.erl2context['conf']['system']['platform'] == 'win32')
 
         # read these useful parameters from Erl2Config
         self.__stackLevel = self.erl2context['conf'][self.controlType]['stackLevel']
@@ -331,8 +340,10 @@ class Erl2Mfc():
 
         #print (f"{self.__class__.__name__}: Debug: changeHardwareSetting({self.controlType}): stack/channel is [{self.__stackLevel}]/[{self.__outputChannel}], setting is [{self.flowSetting}], volts is [{volts}]")
 
-        # apply this voltage to the output channel
-        set0_10Out(self.__stackLevel,self.__outputChannel,volts)
+        # ignore missing hardware libraries on windows
+        if _hwLoaded:
+            # apply this voltage to the output channel
+            set0_10Out(self.__stackLevel,self.__outputChannel,volts)
 
 def main():
 

@@ -57,7 +57,7 @@ class Erl2Clock():
             clockTime = clock.strftime('%H:%M:%S')
         else:
             clockTime = clock.strftime('%H:%M')
-        clockDate = clock.strftime('%-m.%d.%y')
+        clockDate = clock.strftime('%m.%d.%y').lstrip('0')
         self.__clockTime.config(text=clockTime)
         self.__clockDate.config(text=clockDate)
 
