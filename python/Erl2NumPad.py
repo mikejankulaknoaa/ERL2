@@ -17,6 +17,7 @@ class Erl2NumPad(tk.Toplevel):
     numPad = None
     entryWidget = None
     varName = None
+    buttonsPressed = False
 
     # list of buttons (in order of appearance, 4x4 grid)
     BUTTONS = ['7', '8', '9', 'Del', '4', '5', '6', 'Clear', '1', '2', '3', 'Cancel', '0', 'Dot', 'Minus', 'Done']
@@ -94,6 +95,11 @@ class Erl2NumPad(tk.Toplevel):
 
         #print (f"{__name__}: Debug: screen width [{self.winfo_screenwidth()}], height [{self.winfo_screenheight()}]")
         #print (f"{__name__}: Debug: popup width [{self.winfo_width()}], height [{self.winfo_height()}]")
+
+        # allow user to 'overwrite' the existing value when they start typing
+        if (not Erl2NumPad.buttonsPressed) and label not in ['Del','Clear','Cancel','Done','Minus']:
+            self.displayVar.set('')
+        Erl2NumPad.buttonsPressed = True
 
         if label == 'Del':
             self.displayVar.set(self.displayVar.get()[:-1])
@@ -200,6 +206,7 @@ class Erl2NumPad(tk.Toplevel):
 
         cls.entryWidget = entryWidget
         cls.varName = cls.entryWidget['textvariable']
+        cls.buttonsPressed = False
 
         #print (f"{__name__}: Debug: openPopup([{cls.entryWidget}]): value in [{cls.varName}] is {cls.entryWidget.getvar(cls.varName)}")
 

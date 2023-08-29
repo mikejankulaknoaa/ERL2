@@ -364,7 +364,7 @@ class Erl2SubSystem():
         return v, t, o
 
     # detect a change in mode, and enable/disable widgets according to the current mode
-    def applyMode(self):
+    def applyMode(self, loopCount=0):
 
         # read the current mode of the system
         var = self.__modeVar.get()
@@ -381,7 +381,12 @@ class Erl2SubSystem():
 
         # enable/disable this subsystem's associated controls as appropriate
         for c in self.__controls.values():
+            #print (f"{__class__.__name__}: Debug: applyMode({self.subSystemType}) calling setActive({int(var==0)}) for [{c.controlType}]")
             c.setActive(int(var==0))
+
+        # special case: if we are leaving Manual mode, reset all MFCs to zero
+        for m in self.__MFCs.values():
+            m.setControl(newSetting=0.)
 
         # enable/disable the static setpoint entry field as appropriate
         if self.staticSetpointEntry is not None:
@@ -427,7 +432,9 @@ class Erl2SubSystem():
         self.updateDisplays()
 
         # trigger monitorSystem right away to see immediate effects of mode change
-        self.monitorSystem(fromApplyMode=True)
+        if loopCount <= 10:
+            #print (f"{__class__.__name__}: Debug: applyMode() recursion level [{loopCount}]")
+            self.monitorSystem(loopCount+1)
 
     def updateDisplays(self):
 
@@ -449,7 +456,7 @@ class Erl2SubSystem():
         for w in self.__modeDisplayWidgets:
             w.config(text=self.__modeDict[var] + ' mode')
 
-    def monitorSystem(self, fromApplyMode=False):
+    def monitorSystem(self, loopCount=0):
 
         # figure out by the end if a new data record should be written
         writeNow = False
@@ -478,8 +485,9 @@ class Erl2SubSystem():
                 writeNow = True
 
                 # apply the new mode, but make absolutely certain this isn't an infinite loop
-                if not fromApplyMode:
-                    self.applyMode()
+                if loopCount <= 10:
+                    #print (f"{__class__.__name__}: Debug: monitorSystem() recursion level [{loopCount}]")
+                    self.applyMode(loopCount+1)
 
         # no logic to carry out if in Manual mode
         if var==0:
@@ -720,7 +728,7 @@ class Erl2SubSystem():
                 setattr(self,floatName,floatValue)
 
             # trigger monitorSystem right away to see immediate effects of mode change
-            self.monitorSystem(fromApplyMode=True)
+            self.monitorSystem()
 
             # notify application that its state has changed
             if floatList is not None:

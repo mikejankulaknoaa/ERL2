@@ -144,7 +144,11 @@ class Erl2Mfc():
         self.__entryWidget = e
 
         # now set each control's enabled state individually
+        #print (f"{self.__class__.__name__}: Debug: __init__({self.controlType}) calling its own setActive({self.enabled})")
         self.setActive(self.enabled)
+
+        # at initialization, force the hardware control to match the logical flow setting
+        self.setControl(self.flowSetting,force=True)
 
         # start up the timing loop to log control metrics to a log file
         # (check first if this object is an Erl2Mfc or a child class)
@@ -248,6 +252,11 @@ class Erl2Mfc():
             else:
                 self.__entryWidget.setActive(0)
 
+        # if we are enabling this control, then make sure that the current
+        # hardware setting matches what the entry field currently shows
+        if self.enabled:
+            self.changeFlow()
+
     def updateDisplays(self, settingDisplayWidgets):
 
         # format the values to be displayed
@@ -262,10 +271,10 @@ class Erl2Mfc():
             # update the setting display
             w.config(text=setting)
 
-    def changeFlow(self, event=None):
+    def changeFlow(self, event=None, force=False):
 
         # pull new flow rate from entry field and apply it
-        self.setControl(float(self.__entryWidget.stringVar.get()))
+        self.setControl(float(self.__entryWidget.stringVar.get()),force=force)
 
         # if this control has a subsystem, notify it of this change
         if self.subSystem is not None:
@@ -273,12 +282,12 @@ class Erl2Mfc():
             # the subsystem will only log this change if it's made in Manual mode
             self.subSystem.controlsLog(f"{self.controlType} setting was manually changed to {self.flowSetting}")
 
-    def setControl(self, newSetting=0.):
+    def setControl(self, newSetting=0., force=False):
 
-        #print (f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}]")
+        #print (f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}], force [{force}]")
 
         # do nothing if no change is required
-        if self.flowSetting == float(newSetting):
+        if (not force) and self.flowSetting == float(newSetting):
             return
 
         # it's an error to try to set an MFC to a value outside its range
@@ -303,8 +312,9 @@ class Erl2Mfc():
 
         # calculate how long the system had been in its prior setting
         # (but don't count earlier than the start of the current interval)
-        fromTime = max(self.settingLastChanged.timestamp(),
-                       self.__nextFileTime - self.__loggingFrequency)
+        fromTime = self.settingLastChanged.timestamp()
+        if self.__nextFileTime is not None and self.__nextFileTime - self.__loggingFrequency > fromTime:
+            fromTime = self.__nextFileTime - self.__loggingFrequency
         timing = currentTime.timestamp() - fromTime
 
         # add this timing to the tally of cumulative off/on time
