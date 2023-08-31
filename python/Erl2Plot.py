@@ -165,7 +165,7 @@ class Erl2Plot():
 
                 # convert x and y axis columns into datetime and numeric types, respectively
                 data['Timestamp.Local'] = pd.to_datetime(data['Timestamp.Local'])
-                data[specs['yName']] = pd.to_numeric(data[specs['yName']])
+                data[specs['yName']] = pd.to_numeric(data[specs['yName']],errors='coerce')
 
                 # eliminate any missing or invalid values
                 data = data[data['Timestamp.Local'].notnull()]

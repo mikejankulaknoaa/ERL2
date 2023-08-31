@@ -208,7 +208,10 @@ class Erl2Sensor():
 
                 # send the new sensor data to the log (in dictionary form)
                 if self.log is not None:
-                    self.log.writeData(measurement)
+
+                    # only log this measurement if the sensor is online
+                    if self.online:
+                        self.log.writeData(measurement)
 
             # if the next file-writing interval time is empty or in the past, update it
             if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
