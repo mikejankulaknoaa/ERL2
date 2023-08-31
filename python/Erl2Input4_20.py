@@ -39,7 +39,7 @@ class Erl2Input4_20(Erl2Sensor):
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # force an error if this isn't windows and the hardware lib wasn't found
-        assert(_hwLoaded or self.erl2context['conf']['system']['platform'] == 'win32')
+        assert(_hwLoaded or self.erl2context['conf']['system']['platform'] in ['darwin','win32'])
 
         # private attributes specific to Erl2Input4_20
         self.__stackLevel = self.erl2context['conf'][self.sensorType]['stackLevel']
