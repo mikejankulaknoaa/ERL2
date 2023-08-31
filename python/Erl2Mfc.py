@@ -75,7 +75,7 @@ class Erl2Mfc():
             #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
-        # force an error if this isn't windows and the hardware lib wasn't found
+        # trigger an error if this isn't windows and the hardware lib wasn't found
         assert(_hwLoaded or self.erl2context['conf']['system']['platform'] in ['darwin','win32'])
 
         # read these useful parameters from Erl2Config
@@ -276,19 +276,17 @@ class Erl2Mfc():
         # pull new flow rate from entry field and apply it
         self.setControl(float(self.__entryWidget.stringVar.get()),force=force)
 
-        # if this control has a subsystem, notify it of this change
-        if self.subSystem is not None:
-
-            # the subsystem will only log this change if it's made in Manual mode
-            self.subSystem.controlsLog(f"{self.controlType} setting was manually changed to {self.flowSetting}")
-
     def setControl(self, newSetting=0., force=False):
 
         #print (f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}], force [{force}]")
 
-        # do nothing if no change is required
-        if (not force) and self.flowSetting == float(newSetting):
-            return
+        # allow changes to be 'forced' even if setting looks the same, but don't log it
+        logThis = True
+        if self.flowSetting == float(newSetting):
+            if not force:
+                return
+            else:
+                logThis = False
 
         # it's an error to try to set an MFC to a value outside its range
         assert self.flowRateRange[0] <= float(newSetting) <= self.flowRateRange[1]
@@ -330,9 +328,18 @@ class Erl2Mfc():
         # save the new last-changed time
         self.settingLastChanged = currentTime
 
-        # make a note in the log about this change
-        if self.log is not None:
-            self.log.writeMessage(f"flow setting changed from [{self.flowSetting}] to [{float(self.__entryWidget.stringVar.get())}]")
+        # some situations do, or do not, trigger log messages
+        if logThis:
+
+            # make a note in the control's own log about this change
+            if self.log is not None:
+                self.log.writeMessage(f"flow setting changed from [{previousFlowSetting}] to [{self.flowSetting}]")
+
+            # if this control has a subsystem, notify it of this change
+            if self.subSystem is not None:
+
+                # the subsystem will only log this change if it's made in Manual mode
+                self.subSystem.controlsLog(f"{self.controlType} setting was manually changed from [{previousFlowSetting}] to [{self.flowSetting}]")
 
         # redraw the app's displays immediately
         self.updateDisplays(self.__settingDisplayWidgets)

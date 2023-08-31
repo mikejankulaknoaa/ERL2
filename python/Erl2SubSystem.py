@@ -409,7 +409,7 @@ class Erl2SubSystem():
             else:
                 w.setActive(0)
 
-        # if in Manual mode, force all hardware controls to off
+        # if in Manual mode, reset all hardware controls to off
         if var==0:
             for c in self.__controls.values():
                 c.setControl(0)
