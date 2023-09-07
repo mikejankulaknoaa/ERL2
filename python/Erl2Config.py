@@ -13,7 +13,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.16b (2023-08-31r3)'
+    VERSION = '0.17b (2023-09-07)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -241,27 +241,24 @@ class Erl2Config():
         # whatever the OS considers our local timezone to be
         self.__erl2conf['system']['timezone'] = get_localzone()
 
+        # whether app is in shutdown or not
+        self.__erl2conf['system']['shutdown'] = False
+
         # explicitly define a date+time format to ensure reading/writing is consistent
         # (this one cannot be customized in the erl2.conf file)
         self.__erl2conf['system']['dtFormat'] = '%Y-%m-%d %H:%M:%S'
 
-        # special logic for setting the main log and img directories
-        if 'logDir' not in self.in_conf['system']:
-            self.__erl2conf['system']['logDir'] = self.__erl2conf['system']['rootDir'] + '/log'
-        else:
-            self.__erl2conf['system']['logDir'] = self.in_conf['system']['logDir']
-        if 'imgDir' not in self.in_conf['system']:
-            self.__erl2conf['system']['imgDir'] = self.__erl2conf['system']['rootDir'] + '/img'
-        else:
-            self.__erl2conf['system']['imgDir'] = self.in_conf['system']['imgDir']
+        # special logic for setting the main ERL2 directories
+        for d in ['img','lock','log']:
+            dname = d + 'Dir'
+            if dname not in self.in_conf['system']:
+                self.__erl2conf['system'][dname] = self.__erl2conf['system']['rootDir'] + '/' + d
+            else:
+                self.__erl2conf['system'][dname] = self.in_conf['system'][dname]
 
-        # we must insist that the parent of the specified log directory already exists, at least
-        if not path.isdir(path.dirname(self.__erl2conf['system']['logDir'])):
-            raise TypeError(f"{self.__class__.__name__}: ['system']['logDir'] = [{self.__erl2conf['system']['logDir']}] is not a valid directory")
-
-        # and the images directory itself must exist
-        if not path.isdir(self.__erl2conf['system']['imgDir']):
-            raise TypeError(f"{self.__class__.__name__}: ['system']['imgDir'] = [{self.__erl2conf['system']['imgDir']}] is not a valid directory")
+            # we must insist that the parent of the specified directory already exists, at least
+            if not path.isdir(path.dirname(self.__erl2conf['system'][dname])):
+                raise TypeError(f"{self.__class__.__name__}: ['system']['{dname}'] = [{self.__erl2conf['system'][dname]}] is not a valid directory")
 
         # here is where we will define default values for key parameters,
         # in case any crucial values are missing from the erl2.conf file.

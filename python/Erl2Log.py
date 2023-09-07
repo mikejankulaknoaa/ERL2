@@ -69,7 +69,12 @@ class Erl2Log():
 
             # try to read in the old data to memory
             with open(self.__logData, 'r', newline='') as f:
-                r = DictReader(f, dialect='unix')
+
+                # use "generator" syntax to strip out NULLs and drop blank lines
+                lines = (x.replace('\x00','') for x in f if x.replace('\x00','') != '')
+
+                # pass the generator along to DictReader, and convert to list
+                r = DictReader(lines, dialect='unix')
                 self.history = list(r)
 
             # calculate the oldest timestamp that should be kept in memory
@@ -128,6 +133,9 @@ class Erl2Log():
 
                     # write the new data row
                     w.writerow(data)
+
+                    # don't buffer the output stream, in case of irregular app termination
+                    f.flush()
 
         except Exception as e:
             print (f'{self.__class__.__name__}: Error: __writeData(): {str(e)}')

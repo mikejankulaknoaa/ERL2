@@ -1,7 +1,10 @@
 #! /usr/bin/python3
 
-from os import execl
-from sys import argv,executable
+import atexit
+import fcntl
+import os
+import signal
+import sys
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox as mb
@@ -24,11 +27,35 @@ class Erl2Tank:
         self.__parent = parent
         self.erl2context = erl2context
 
+        # for graceful handling of termination and restart
+        self.__restart = False
+
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
             #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
             #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
+
+        # identify the PID of this process
+        self.__myPID = os.getpid()
+
+        # try to get an exclusive lock on the PID file, if it exists
+        self.__lockname = self.erl2context['conf']['system']['lockDir'] + '/Erl2Tank.pid'
+        if os.path.isfile(self.__lockname):
+            self.__lockfile = open(self.__lockname, 'r+')
+            try:
+                fcntl.lockf(self.__lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except:
+                somePID = self.__lockfile.readline().rstrip()
+                mb.showerror(title='Fatal Error', message=f"Cannot start Erl2Tank because PID [{somePID}] is already running")
+                sys.exit()
+            self.__lockfile.close()
+
+        # reopen lockfile to write new PID
+        self.__lockfile = open(self.__lockname, 'w')
+        fcntl.lockf(self.__lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        self.__lockfile.write(str(self.__myPID))
+        self.__lockfile.flush()
 
         # start a system log
         self.__systemLog = Erl2Log(logType='system', logName='Erl2Tank', erl2context=self.erl2context)
@@ -724,8 +751,8 @@ class Erl2Tank:
             self.__systemLog.writeMessage('Erl2Tank system restart requested by GUI user')
 
             # terminate the current system and start it up again
-            python = executable
-            execl(python, python, * argv)
+            self.__restart = True
+            self.gracefulExit()
 
     # shut down the App
     def exitApp(self, event=None):
@@ -737,6 +764,49 @@ class Erl2Tank:
             self.__systemLog.writeMessage('Erl2Tank system exit requested by GUI user')
 
             # terminate the system
+            self.gracefulExit()
+
+    # atexit.register() handler
+    def atexitHandler(self):
+
+        # make note in the logs if this event wasn't triggered by some other trapped signal
+        if not self.erl2context['conf']['system']['shutdown']:
+            self.__systemLog.writeMessage('Erl2Tank atexit handler triggered for App shutdown')
+
+        # proceed with app termination
+        self.gracefulExit()
+
+    # signal handler
+    def signalHandler(self, *args):
+
+        # add a log entry to note any signals that were trapped
+        if len(args) > 0:
+            self.__systemLog.writeMessage(f"Erl2Tank trapped signal [{signal.Signals(args[0]).name}], exiting")
+
+        # proceed with app termination
+        self.gracefulExit()
+
+    # for a graceful shutdown
+    def gracefulExit(self, *args):
+
+        # avoid repeated calls to this handler
+        if self.erl2context['conf']['system']['shutdown']:
+            return
+        self.erl2context['conf']['system']['shutdown'] = True
+
+        # set any controls to zero
+        if hasattr(self, 'controls'):
+            for c in self.controls.values():
+                c.setControl(0,force=True)
+            #self.__systemLog.writeMessage(f"Erl2Tank Debug: zeroed out [{len(self.controls)}] controls")
+
+        # terminate the current system and start it up again (if asked to do so)
+        if self.__restart:
+            python = sys.executable
+            os.execl(python, python, * sys.argv)
+
+        # otherwise, just terminate the system
+        else:
             #self.__parent.destroy() # this was leaving some .after() callbacks hanging
             tk.Tk.quit(self.__parent)
 
@@ -750,6 +820,13 @@ def main():
 
     tank = Erl2Tank(root)
     tank.setFullscreen()
+
+    # set things up for graceful termination
+    atexit.register(tank.atexitHandler)
+    signal.signal(signal.SIGHUP,tank.signalHandler)
+    signal.signal(signal.SIGINT,tank.signalHandler)
+    signal.signal(signal.SIGTERM,tank.signalHandler)
+
     root.mainloop()
 
 if __name__ == "__main__": main()

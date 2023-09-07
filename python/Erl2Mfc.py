@@ -341,8 +341,9 @@ class Erl2Mfc():
                 # the subsystem will only log this change if it's made in Manual mode
                 self.subSystem.controlsLog(f"{self.controlType} setting was manually changed from [{previousFlowSetting}] to [{self.flowSetting}]")
 
-        # redraw the app's displays immediately
-        self.updateDisplays(self.__settingDisplayWidgets)
+        # redraw the app's displays immediately (unless in shutdown)
+        if not self.erl2context['conf']['system']['shutdown']:
+            self.updateDisplays(self.__settingDisplayWidgets)
 
     def changeHardwareSetting(self):
 

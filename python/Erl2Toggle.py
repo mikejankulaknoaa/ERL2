@@ -259,7 +259,10 @@ class Erl2Toggle():
             # the subsystem will only log this change if it's made in Manual mode
             self.subSystem.controlsLog(f"{self.controlType} state was manually changed to {self.state}")
 
-    def setControl(self, newState=0):
+    def setControl(self, newState=0, force=False):
+
+        # "force" argument exists only for compatibility but is ignored here
+        #print (f"{__class__.__name__}: Debug: setControl({newState}) called for [{self.controlType}], force [{force}]")
 
         # do nothing if no change is required
         if self.state == int(newState):
@@ -271,8 +274,9 @@ class Erl2Toggle():
         # remember what the current state is
         self.state = int(newState)
 
-        # update the control's buttons to show correct on/off image
-        self.updateDisplays(self.__displayWidgets, self.__buttonWidget)
+        # update the control's buttons to show correct on/off image (unless in shutdown)
+        if not self.erl2context['conf']['system']['shutdown']:
+            self.updateDisplays(self.__displayWidgets, self.__buttonWidget)
 
         # apply the new state to the control's hardware
         self.changeHardwareState()
