@@ -13,7 +13,7 @@ import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
 from Erl2Entry import Erl2Entry
-from Elr2Input import Elr2Input
+from Erl2Input import Erl2Input
 from Erl2Log import Erl2Log
 
 # MFC = Mass Flow Controllers (gas rates for Air, CO2, N2)
@@ -374,17 +374,17 @@ def main():
     ttk.Label(statusFrame,text='CO2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=1,column=0,sticky='nse')
     ttk.Label(statusFrame,text='N2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=2,column=0,sticky='nse')
 
-    sensorMfcAir = Elr2Input(sensorType='mfc.air',
+    sensorMfcAir = Erl2Input(sensorType='mfc.air',
                              displayLocs=[{'parent':root,'row':1,'column':0}],
                              statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
                              label='Air'
                              )
-    sensorMfcCO2 = Elr2Input(sensorType='mfc.co2',
+    sensorMfcCO2 = Erl2Input(sensorType='mfc.co2',
                              displayLocs=[{'parent':root,'row':1,'column':1}],
                              statusLocs=[{'parent':statusFrame,'row':1,'column':1}],
                              label=u'CO\u2082'
                              )
-    sensorMfcN2  = Elr2Input(sensorType='mfc.n2',
+    sensorMfcN2  = Erl2Input(sensorType='mfc.n2',
                              displayLocs=[{'parent':root,'row':1,'column':2}],
                              statusLocs=[{'parent':statusFrame,'row':2,'column':1}],
                              label=u'N\u2082'
