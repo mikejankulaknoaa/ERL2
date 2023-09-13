@@ -13,7 +13,7 @@ from Erl2Clock import Erl2Clock
 from Erl2Config import Erl2Config
 from Erl2Heater import Erl2Heater
 from Erl2Image import Erl2Image
-from Erl2Input4_20 import Erl2Input4_20
+from Erl2Input import Erl2Input
 from Erl2Log import Erl2Log
 from Erl2Mfc import Erl2Mfc
 from Erl2Pyro import Erl2Pyro
@@ -438,7 +438,7 @@ class Erl2Tank:
                 correctionLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
                 erl2context=self.erl2context)
         else:
-            self.sensors['temperature'] = Erl2Input4_20(
+            self.sensors['temperature'] = Erl2Input(
                 sensorType='temperature',
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
@@ -467,7 +467,7 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # readout displays for the current Air MFC flow rate
-        self.sensors['mfc.air'] = Erl2Input4_20(
+        self.sensors['mfc.air'] = Erl2Input(
             sensorType='mfc.air',
             displayLocs=[{'parent':self.__frames['Data'][1][1],'row':1,'column':0},
                          {'parent':self.__frames['pH'][0][1],'row':1,'column':0}],
@@ -476,7 +476,7 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # readout displays for the current CO2 MFC flow rate
-        self.sensors['mfc.co2'] = Erl2Input4_20(
+        self.sensors['mfc.co2'] = Erl2Input(
             sensorType='mfc.co2',
             displayLocs=[{'parent':self.__frames['Data'][1][1],'row':3,'column':0},
                          {'parent':self.__frames['pH'][0][1],'row':3,'column':0}],
@@ -485,7 +485,7 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # readout displays for the current N2 MFC flow rate
-        self.sensors['mfc.n2'] = Erl2Input4_20(
+        self.sensors['mfc.n2'] = Erl2Input(
             sensorType='mfc.n2',
             displayLocs=[{'parent':self.__frames['Data'][2][1],'row':1,'column':0},
                          {'parent':self.__frames['DO'][0][1],'row':1,'column':0}],
@@ -540,11 +540,12 @@ class Erl2Tank:
             hysteresisLoc={'parent':self.__frames['Temp'][1][2],'row':2,'column':0},
             dynamicSetpointsLoc={'parent':self.__frames['Temp'][2][0],'row':1,'column':0},
 
-            plotDisplayLoc={'parent':self.__frames['Data'][0][2],'row':0,'column':0},
             setpointDisplayLocs=[{'parent':self.__frames['Data'][0][0],'row':3,'column':0},
                                  {'parent':self.__frames['Temp'][0][0],'row':3,'column':0}],
             modeDisplayLocs=[{'parent':self.__frames['Data'][0][0],'row':4,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':4,'column':0}],
+            plotDisplayLoc={'parent':self.__frames['Data'][0][2],'row':0,'column':0},
+            statsDisplayLoc={'parent':self.__frames['Data'][0][3],'row':0,'column':0},
 
             sensors={'temperature':self.sensors['temperature']},
             toggles={'to.raise':self.controls['heater'],
@@ -559,11 +560,12 @@ class Erl2Tank:
             staticSetpointLoc={'parent':self.__frames['pH'][1][2],'row':1,'column':0},
             dynamicSetpointsLoc={'parent':self.__frames['pH'][2][0],'row':1,'column':0},
 
-            plotDisplayLoc={'parent':self.__frames['Data'][1][2],'row':0,'column':0},
             setpointDisplayLocs=[{'parent':self.__frames['Data'][1][0],'row':3,'column':0},
                                  {'parent':self.__frames['pH'][0][0],'row':3,'column':0}],
             modeDisplayLocs=[{'parent':self.__frames['Data'][1][0],'row':4,'column':0},
                              {'parent':self.__frames['pH'][0][0],'row':4,'column':0}],
+            plotDisplayLoc={'parent':self.__frames['Data'][1][2],'row':0,'column':0},
+            statsDisplayLoc={'parent':self.__frames['Data'][1][3],'row':0,'column':0},
 
             sensors={'pH':self.sensors['pH']},
             MFCs={'mfc.air':self.controls['mfc.air'],
@@ -578,11 +580,12 @@ class Erl2Tank:
             staticSetpointLoc={'parent':self.__frames['DO'][1][2],'row':1,'column':0},
             dynamicSetpointsLoc={'parent':self.__frames['DO'][2][0],'row':1,'column':0},
 
-            plotDisplayLoc={'parent':self.__frames['Data'][2][2],'row':0,'column':0},
             setpointDisplayLocs=[{'parent':self.__frames['Data'][2][0],'row':3,'column':0},
                                  {'parent':self.__frames['DO'][0][0],'row':3,'column':0}],
             modeDisplayLocs=[{'parent':self.__frames['Data'][2][0],'row':4,'column':0},
                              {'parent':self.__frames['DO'][0][0],'row':4,'column':0}],
+            plotDisplayLoc={'parent':self.__frames['Data'][2][2],'row':0,'column':0},
+            statsDisplayLoc={'parent':self.__frames['Data'][2][3],'row':0,'column':0},
 
             sensors={'DO':self.sensors['DO']},
             MFCs={'mfc.n2':self.controls['mfc.n2']},
@@ -640,46 +643,47 @@ class Erl2Tank:
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
 
-        # placeholder stats
-        ttk.Label(self.__frames['Data'][0][3], text='25.0', font='Arial 14 bold', foreground='#A93226'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=1, padx='2 0', sticky='ne')
-        ttk.Label(self.__frames['Data'][0][3], text='0.10', font='Arial 14 bold', foreground='#A93226'
-            #, relief='solid', borderwidth=1
-            ).grid(row=1, column=1, padx='2 0', sticky='ne')
-        ttk.Label(self.__frames['Data'][0][3], text='0.10', font='Arial 14 bold', foreground='#A93226'
-            #, relief='solid', borderwidth=1
-            ).grid(row=2, column=1, padx='2 0', sticky='ne')
-        ttk.Label(self.__frames['Data'][1][3], text='7.80', font='Arial 14 bold', foreground='#A93226'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=1, padx='2 0', sticky='ne')
-        ttk.Label(self.__frames['Data'][1][3], text='0.010', font='Arial 14 bold', foreground='#A93226'
-            #, relief='solid', borderwidth=1
-            ).grid(row=1, column=1, padx='2 0', sticky='ne')
-        ttk.Label(self.__frames['Data'][1][3], text='0.010', font='Arial 14 bold', foreground='#A93226'
-            #, relief='solid', borderwidth=1
-            ).grid(row=2, column=1, padx='2 0', sticky='ne')
-        ttk.Label(self.__frames['Data'][2][3], text='300', font='Arial 14 bold', foreground='#A93226'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=1, padx='2 0', sticky='ne')
-        ttk.Label(self.__frames['Data'][2][3], text='1.0', font='Arial 14 bold', foreground='#A93226'
-            #, relief='solid', borderwidth=1
-            ).grid(row=1, column=1, padx='2 0', sticky='ne')
-        ttk.Label(self.__frames['Data'][2][3], text='1.0', font='Arial 14 bold', foreground='#A93226'
-            #, relief='solid', borderwidth=1
-            ).grid(row=2, column=1, padx='2 0', sticky='ne')
+        ## placeholder stats
+        #ttk.Label(self.__frames['Data'][0][3], text='25.0', font='Arial 14 bold', foreground='#A93226'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=1, padx='2 0', sticky='ne')
+        #ttk.Label(self.__frames['Data'][0][3], text='0.10', font='Arial 14 bold', foreground='#A93226'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=1, column=1, padx='2 0', sticky='ne')
+        #ttk.Label(self.__frames['Data'][0][3], text='0.10', font='Arial 14 bold', foreground='#A93226'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=2, column=1, padx='2 0', sticky='ne')
+        #ttk.Label(self.__frames['Data'][1][3], text='7.80', font='Arial 14 bold', foreground='#A93226'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=1, padx='2 0', sticky='ne')
+        #ttk.Label(self.__frames['Data'][1][3], text='0.010', font='Arial 14 bold', foreground='#A93226'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=1, column=1, padx='2 0', sticky='ne')
+        #ttk.Label(self.__frames['Data'][1][3], text='0.010', font='Arial 14 bold', foreground='#A93226'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=2, column=1, padx='2 0', sticky='ne')
+        #ttk.Label(self.__frames['Data'][2][3], text='300', font='Arial 14 bold', foreground='#A93226'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=1, padx='2 0', sticky='ne')
+        #ttk.Label(self.__frames['Data'][2][3], text='1.0', font='Arial 14 bold', foreground='#A93226'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=1, column=1, padx='2 0', sticky='ne')
+        #ttk.Label(self.__frames['Data'][2][3], text='1.0', font='Arial 14 bold', foreground='#A93226'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=2, column=1, padx='2 0', sticky='ne')
 
-        # labels for stats
+        # frames for stats
         for row in range(3):
-            ttk.Label(self.__frames['Data'][row][3], text='Mean:', font='Arial 14'
-                #, relief='solid', borderwidth=1
-                ).grid(row=0, column=0, sticky='nw')
-            ttk.Label(self.__frames['Data'][row][3], text='Stdev:', font='Arial 14'
-                #, relief='solid', borderwidth=1
-                ).grid(row=1, column=0, sticky='nw')
-            ttk.Label(self.__frames['Data'][row][3], text='Target dev:', font='Arial 14'
-                #, relief='solid', borderwidth=1
-                ).grid(row=2, column=0, sticky='nw')
+
+        #    ttk.Label(self.__frames['Data'][row][3], text='Mean:', font='Arial 14'
+        #        #, relief='solid', borderwidth=1
+        #        ).grid(row=0, column=0, sticky='nw')
+        #    ttk.Label(self.__frames['Data'][row][3], text='Stdev:', font='Arial 14'
+        #        #, relief='solid', borderwidth=1
+        #        ).grid(row=1, column=0, sticky='nw')
+        #    ttk.Label(self.__frames['Data'][row][3], text='Target dev:', font='Arial 14'
+        #        #, relief='solid', borderwidth=1
+        #        ).grid(row=2, column=0, sticky='nw')
 
             # weighting
             self.__frames['Data'][row][3].columnconfigure(0,weight=0)

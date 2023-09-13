@@ -19,6 +19,7 @@ class Erl2Plot():
 
     def __init__(self,
                  plotLoc={},
+                 statsLoc={},
                  figsize=(5,3),
                  displayParameter=None,
                  plotData=[],
@@ -26,6 +27,7 @@ class Erl2Plot():
 
         # save the Erl2Plot-specific parameters in attributes
         self.__plotLoc = plotLoc
+        self.__statsLoc = statsLoc
         self.__figsize = figsize
         self.__displayParameter = displayParameter
         self.__plotData = plotData
@@ -147,6 +149,29 @@ class Erl2Plot():
         self.__plotLoc['parent'].rowconfigure(0,weight=1)
         self.__plotLoc['parent'].columnconfigure(0,weight=1)
 
+        # set up the plot statistics frame
+        if 'parent' in self.__statsLoc:
+
+            ttk.Label(self.__statsLoc['parent'], text='Mean:', font='Arial 14'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
+            ttk.Label(self.__statsLoc['parent'], text='Stdev:', font='Arial 14'
+                #, relief='solid', borderwidth=1
+                ).grid(row=1, column=0, sticky='nw')
+            ttk.Label(self.__statsLoc['parent'], text='Target dev:', font='Arial 14'
+                #, relief='solid', borderwidth=1
+                ).grid(row=2, column=0, sticky='nw')
+
+            ttk.Label(self.__statsLoc['parent'], text='--', font='Arial 14 bold', foreground='#1C4587'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=1, padx='2 0', sticky='ne')
+            ttk.Label(self.__statsLoc['parent'], text='--', font='Arial 14 bold', foreground='#1C4587'
+                #, relief='solid', borderwidth=1
+                ).grid(row=1, column=1, padx='2 0', sticky='ne')
+            ttk.Label(self.__statsLoc['parent'], text='--', font='Arial 14 bold', foreground='#A93226'
+                #, relief='solid', borderwidth=1
+                ).grid(row=2, column=1, padx='2 0', sticky='ne')
+
     def updatePlotLines(self):
 
         # loop through subplots
@@ -175,6 +200,9 @@ class Erl2Plot():
 
                 # only proceed if the dataframe has any rows in it
                 if len(data) > 0:
+
+                    #if ind == 0:
+                    #    print (f"{__class__.__name__}: Debug: updatePlotLines(): mean [{data[specs['yName']].mean()}], stdev [{data[specs['yName']].std()}]")
 
                     # divide into plot segments where there are >60min gaps; adapted from
                     # https://towardsdatascience.com/plot-organization-in-matplotlib-your-one-stop-guide-if-you-are-reading-this-it-is-probably-f79c2dcbc801

@@ -3,7 +3,7 @@
 # ignore any failure to load hardware libraries on windows
 _hwLoaded = True
 try:
-    from megaind import get4_20In
+    from megaind import get4_20In, get0_10In
 except:
     _hwLoaded = False
 
@@ -12,9 +12,10 @@ from tkinter import ttk
 from Erl2Config import Erl2Config
 from Erl2Sensor import Erl2Sensor
 
-# any device connected to one of the Sequent Microsystems' four 4-20 mA input channels
+# any device connected to one of the Sequent Microsystems' four 4-20 mA input channels,
+# or (optionally) one of its 0-10V input channels
 
-class Erl2Input4_20(Erl2Sensor):
+class Erl2Input(Erl2Sensor):
 
     def __init__(self,
                  sensorType='generic',
@@ -41,16 +42,17 @@ class Erl2Input4_20(Erl2Sensor):
         # trigger an error if this isn't windows and the hardware lib wasn't found
         assert(_hwLoaded or self.erl2context['conf']['system']['platform'] in ['darwin','win32'])
 
-        # private attributes specific to Erl2Input4_20
+        # private attributes specific to Erl2Input
         self.__stackLevel = self.erl2context['conf'][self.sensorType]['stackLevel']
         self.__inputChannel = self.erl2context['conf'][self.sensorType]['inputChannel']
+        self.__channelType = self.erl2context['conf'][self.sensorType]['channelType']
         self.__parameterName = self.erl2context['conf'][self.sensorType]['parameterName']
         self.__hardwareMin = self.erl2context['conf'][self.sensorType]['hardwareRange'][0]
         self.__hardwareMax = self.erl2context['conf'][self.sensorType]['hardwareRange'][1]
 
         # start up the timing loop to update the display widgets
-        # (check first if this object is an Erl2Input4_20 or a child class)
-        if self.__class__.__name__ == 'Erl2Input4_20':
+        # (check first if this object is an Erl2Input or a child class)
+        if self.__class__.__name__ == 'Erl2Input':
             self.readSensor()
 
     def measure(self):
@@ -60,23 +62,39 @@ class Erl2Input4_20(Erl2Sensor):
 
         # ignore missing hardware libraries on windows
         if _hwLoaded:
-            # milliAmps are read from the input channel
-            milliAmps = get4_20In(self.__stackLevel, self.__inputChannel)
-        else:
-            milliAmps = 0.
 
-        # check result: by definition this should be between 4 and 20 mA
+            if self.__channelType == 'volts':
+                # read volts from the input channel
+                measuredVal = get0_10In(self.__stackLevel, self.__inputChannel)
+                minVal = 0.
+                maxVal = 10.
+                bufferVal = 0.25
+
+            elif self.__channelType == 'milliAmps':
+                # read milliAmps from the input channel
+                measuredVal = get4_20In(self.__stackLevel, self.__inputChannel)
+                minVal = 4.
+                maxVal = 20.
+                bufferVal = 0.4
+
+            else:
+                measuredVal = float('nan')
+
+        else:
+            measuredVal = float('nan')
+
+        # check result: by definition this should be within 0-10V or 4-20mA
         # (however: allow values slightly outside this range because when
         # legitimately reporting sensor's min or max values there is often
-        # some noise around the 4 and 20 mA readings)
-        if milliAmps >= 3.6 and milliAmps <= 20.4:
+        # some noise around the readings at both edges of the range)
+        if measuredVal >= (minVal-bufferVal) and measuredVal <= (maxVal+bufferVal):
 
-            # add milliAmps to the results
-            self.value['milliAmps'] = milliAmps
+            # add raw measurement to the results
+            self.value[self.__channelType] = measuredVal
 
-            # convert from 4-20 mA to a value in the defined hardwareRange
-            self.value[self.__parameterName] = ( (self.value['milliAmps'] - 4.)
-                                               / 16.
+            # convert from volts or milliAmps to a value in the defined hardwareRange
+            self.value[self.__parameterName] = ( (measuredVal - minVal)
+                                               / (maxVal-minVal)
                                                * (self.__hardwareMax - self.__hardwareMin)
                                                + self.__hardwareMin
                                                )
@@ -105,7 +123,7 @@ class Erl2Input4_20(Erl2Sensor):
 def main():
 
     root = tk.Tk()
-    ttk.Label(root,text='Erl2Input4_20',font='Arial 30 bold').grid(row=0,column=0,columnspan=4)
+    ttk.Label(root,text='Erl2Input',font='Arial 30 bold').grid(row=0,column=0,columnspan=4)
 
     statusFrame = ttk.Frame(root)
     statusFrame.grid(row=3,column=0,columnspan=4)
@@ -114,19 +132,19 @@ def main():
     ttk.Label(statusFrame,text='CO2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=2,column=0,sticky='nse')
     ttk.Label(statusFrame,text='N2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=3,column=0,sticky='nse')
 
-    temperature = Erl2Input4_20(sensorType='temperature',
-                                displayLocs=[{'parent':root,'row':1,'column':0}],
-                                statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
-                                correctionLoc={'parent':root,'row':2,'column':0})
-    mfcAir =      Erl2Input4_20(sensorType='mfc.air',
-                                displayLocs=[{'parent':root,'row':1,'column':1}],
-                                statusLocs=[{'parent':statusFrame,'row':1,'column':1}])
-    mfcCO2 =      Erl2Input4_20(sensorType='mfc.co2',
-                                displayLocs=[{'parent':root,'row':1,'column':2}],
-                                statusLocs=[{'parent':statusFrame,'row':2,'column':1}])
-    mfcN2  =      Erl2Input4_20(sensorType='mfc.n2',
-                                displayLocs=[{'parent':root,'row':1,'column':3}],
-                                statusLocs=[{'parent':statusFrame,'row':3,'column':1}])
+    temperature = Erl2Input(sensorType='temperature',
+                            displayLocs=[{'parent':root,'row':1,'column':0}],
+                            statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
+                            correctionLoc={'parent':root,'row':2,'column':0})
+    mfcAir =      Erl2Input(sensorType='mfc.air',
+                            displayLocs=[{'parent':root,'row':1,'column':1}],
+                            statusLocs=[{'parent':statusFrame,'row':1,'column':1}])
+    mfcCO2 =      Erl2Input(sensorType='mfc.co2',
+                            displayLocs=[{'parent':root,'row':1,'column':2}],
+                            statusLocs=[{'parent':statusFrame,'row':2,'column':1}])
+    mfcN2  =      Erl2Input(sensorType='mfc.n2',
+                            displayLocs=[{'parent':root,'row':1,'column':3}],
+                            statusLocs=[{'parent':statusFrame,'row':3,'column':1}])
 
     root.mainloop()
 

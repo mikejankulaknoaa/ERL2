@@ -33,9 +33,10 @@ location = Default Location
 
 # sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
 # inputChannel = 1
+# channelType = milliAmps
 
-# how to convert milliAmps to the sensor value --
-# what to call it, what 4 mA should map to, and what 20 mA should map to
+# how to convert volts or milliAmps to the sensor value -- what to call it,
+# what 0 V (or 4 mA) should map to, and what 10 V (or 20 mA) should map to
 # parameterName = temp.degC
 # hardwareRange = [0.0, 100.0]
 
@@ -215,11 +216,12 @@ mfc.n2.Kd = 0.0
 
 # sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
 # inputChannel = 2
+# channelType = volts
 
-# how to convert milliAmps to the sensor value --
-# what to call it, what 4 mA should map to, and what 20 mA should map to
+# how to convert volts or milliAmps to the sensor value -- what to call it,
+# what 0 V (or 4 mA) should map to, and what 10 V (or 20 mA) should map to
 # parameterName = flow.mLperMin
-# hardwareRange = [0., 5000.]
+# hardwareRange = [0., 10000.]
 
 # which parameter to display in GUI, and with how many decimal places
 # displayParameter = flow.mLperMin
@@ -261,11 +263,12 @@ mfc.n2.Kd = 0.0
 
 # sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
 # inputChannel = 3
+# channelType = volts
 
-# how to convert milliAmps to the sensor value --
-# what to call it, what 4 mA should map to, and what 20 mA should map to
+# how to convert volts or milliAmps to the sensor value -- what to call it,
+# what 0 V (or 4 mA) should map to, and what 10 V (or 20 mA) should map to
 # parameterName = flow.mLperMin
-# hardwareRange = [0.0, 20.0]
+# hardwareRange = [0.0, 40.0]
 
 # which parameter to display in GUI, and with how many decimal places
 # displayParameter = flow.mLperMin
@@ -307,11 +310,12 @@ mfc.n2.Kd = 0.0
 
 # sequent microsystems input channel number (can be 1 - 4), reads 4-20 mA
 # inputChannel = 4
+# channelType = volts
 
-# how to convert milliAmps to the sensor value --
-# what to call it, what 4 mA should map to, and what 20 mA should map to
+# how to convert volts or milliAmps to the sensor value -- what to call it,
+# what 0 V (or 4 mA) should map to, and what 10 V (or 20 mA) should map to
 # parameterName = flow.mLperMin
-# hardwareRange = [0., 5000.]
+# hardwareRange = [0., 10000.]
 
 # which parameter to display in GUI, and with how many decimal places
 # displayParameter = flow.mLperMin

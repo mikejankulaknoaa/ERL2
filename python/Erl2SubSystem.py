@@ -29,9 +29,10 @@ class Erl2SubSystem():
                  dynamicSetpointsLoc={},
 
                  # these displays may be cloned to multiple tabs/frames
-                 plotDisplayLoc={},
                  setpointDisplayLocs=[],
                  modeDisplayLocs=[],
+                 plotDisplayLoc={},
+                 statsDisplayLoc={},
 
                  radioImages=['radio-off-30.png','radio-on-30.png'],
                  sensors={},
@@ -49,6 +50,7 @@ class Erl2SubSystem():
         self.__dynamicSetpointsLoc = dynamicSetpointsLoc
 
         self.__plotDisplayLoc = plotDisplayLoc
+        self.__statsDisplayLoc = statsDisplayLoc
         self.__plot = None
         self.__plotTracker = None
         self.__setpointDisplayLocs = setpointDisplayLocs
@@ -320,6 +322,7 @@ class Erl2SubSystem():
         # draw a plot of the history of the subsystem
         if 'parent' in self.__plotDisplayLoc:
             self.__plot = Erl2Plot(plotLoc=self.__plotDisplayLoc,
+                                   statsLoc=self.__statsDisplayLoc,
                                    #figsize=(3.166,1.345), # sizing doesn't seem to matter if frame is weighted properly
                                    figsize=(2.500,1.000),
                                    displayParameter=self.__displayParameter,

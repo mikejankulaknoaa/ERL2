@@ -13,7 +13,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.17b (2023-09-07)'
+    VERSION = '0.18b (2023-09-13)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -40,6 +40,7 @@ class Erl2Config():
 
         self.__default['temperature']['stackLevel'] = '0'
         self.__default['temperature']['inputChannel'] = '1'
+        self.__default['temperature']['channelType'] = 'milliAmps'
         self.__default['temperature']['parameterName'] = 'temp.degC'
         self.__default['temperature']['hardwareRange'] = '[0.0, 100.0]'
 
@@ -132,8 +133,9 @@ class Erl2Config():
 
         self.__default['mfc.air']['stackLevel'] = '0'
         self.__default['mfc.air']['inputChannel'] = '2'
+        self.__default['mfc.air']['channelType'] = 'volts'
         self.__default['mfc.air']['parameterName'] = 'flow.mLperMin'
-        self.__default['mfc.air']['hardwareRange'] = '[0., 5000.]'
+        self.__default['mfc.air']['hardwareRange'] = '[0., 10000.]'
         self.__default['mfc.air']['displayParameter'] = 'flow.mLperMin'
         self.__default['mfc.air']['displayDecimals'] = '0'
         self.__default['mfc.air']['sampleFrequency'] = '5'
@@ -147,8 +149,9 @@ class Erl2Config():
 
         self.__default['mfc.co2']['stackLevel'] = '0'
         self.__default['mfc.co2']['inputChannel'] = '3'
+        self.__default['mfc.co2']['channelType'] = 'volts'
         self.__default['mfc.co2']['parameterName'] = 'flow.mLperMin'
-        self.__default['mfc.co2']['hardwareRange'] = '[0.0, 20.0]'
+        self.__default['mfc.co2']['hardwareRange'] = '[0.0, 40.0]'
         self.__default['mfc.co2']['displayParameter'] = 'flow.mLperMin'
         self.__default['mfc.co2']['displayDecimals'] = '1'
         self.__default['mfc.co2']['sampleFrequency'] = '5'
@@ -162,8 +165,9 @@ class Erl2Config():
 
         self.__default['mfc.n2']['stackLevel'] = '0'
         self.__default['mfc.n2']['inputChannel'] = '4'
+        self.__default['mfc.n2']['channelType'] = 'volts'
         self.__default['mfc.n2']['parameterName'] = 'flow.mLperMin'
-        self.__default['mfc.n2']['hardwareRange'] = '[0., 5000.]'
+        self.__default['mfc.n2']['hardwareRange'] = '[0., 10000.]'
         self.__default['mfc.n2']['displayParameter'] = 'flow.mLperMin'
         self.__default['mfc.n2']['displayDecimals'] = '0'
         self.__default['mfc.n2']['sampleFrequency'] = '5'
@@ -283,11 +287,16 @@ class Erl2Config():
         # temperature is the only category that has hysteresis
         self.validate(float, 'temperature', 'hysteresisDefault', min=0.)
 
-        # any Input4_20 sensor (temperature, MFCs) have these parameters
+        # any Input 4-20mA or 0-10V sensor (temperature, MFCs) has these parameters
         for sensorType in ['temperature', 'mfc.air', 'mfc.co2', 'mfc.n2']:
             self.validate(int, sensorType, 'stackLevel',   min=0, max=7)
             self.validate(int, sensorType, 'inputChannel', min=1, max=4)
             self.validate(str, sensorType, 'parameterName')
+
+            # what type of input channel does the sensor use? volts or milliAmps
+            self.validate(str,  sensorType, 'channelType')
+            if self.__erl2conf[sensorType]['channelType'] not in ['volts', 'milliAmps']:
+                raise TypeError(f"{self.__class__.__name__}: [sensorType]['channelType'] = [{self.__erl2conf[sensorType]['channelType']}] must be 'volts' or 'milliAmps'")
 
             # hardwareRange has some extra logic (non-decreasing order)
             self.validateList(float, sensorType, 'hardwareRange', 2)

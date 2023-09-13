@@ -14,7 +14,7 @@ from os import devnull
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
-from Erl2Input4_20 import Erl2Input4_20
+from Erl2Input import Erl2Input
 from Erl2Sensor import Erl2Sensor
 
 # pyroscience pico-pH and pico-o2 sensors
@@ -216,10 +216,10 @@ def main():
     ttk.Label(statusFrame,text='pH last read:',font='Arial 14 bold',justify='right').grid(row=1,column=0,sticky='nse')
     ttk.Label(statusFrame,text='DO last read:',font='Arial 14 bold',justify='right').grid(row=2,column=0,sticky='nse')
 
-    temperature = Erl2Input4_20(sensorType='temperature',
-                                displayLocs=[{'parent':root,'row':1,'column':0}],
-                                statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
-                                correctionLoc={'parent':root,'row':2,'column':0})
+    temperature = Erl2Input(sensorType='temperature',
+                            displayLocs=[{'parent':root,'row':1,'column':0}],
+                            statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
+                            correctionLoc={'parent':root,'row':2,'column':0})
     ph = Erl2Pyro(sensorType='pH',
                   displayLocs=[{'parent':root,'row':1,'column':1}],
                   statusLocs=[{'parent':statusFrame,'row':1,'column':1}],
