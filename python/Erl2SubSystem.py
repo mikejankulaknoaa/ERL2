@@ -326,6 +326,7 @@ class Erl2SubSystem():
                                    #figsize=(3.166,1.345), # sizing doesn't seem to matter if frame is weighted properly
                                    figsize=(2.500,1.000),
                                    displayParameter=self.__displayParameter,
+                                   displayDecimals=self.__displayDecimals,
                                    plotData=plotData,
                                    erl2context=self.erl2context)
 

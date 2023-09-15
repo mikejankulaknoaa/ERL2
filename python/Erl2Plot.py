@@ -22,6 +22,7 @@ class Erl2Plot():
                  statsLoc={},
                  figsize=(5,3),
                  displayParameter=None,
+                 displayDecimals=None,
                  plotData=[],
                  erl2context={}):
 
@@ -30,8 +31,13 @@ class Erl2Plot():
         self.__statsLoc = statsLoc
         self.__figsize = figsize
         self.__displayParameter = displayParameter
+        self.__displayDecimals = displayDecimals
         self.__plotData = plotData
         self.erl2context = erl2context
+
+        # associated statistics displays
+        self.__meanDisplay = None
+        self.__stdDisplay = None
 
         # attributes associated with plotting activity
         self.__fig = None
@@ -75,6 +81,32 @@ class Erl2Plot():
         #plt.style.use('fivethirtyeight')
         #plt.style.use('seaborn-v0_8')
         plt.style.use('seaborn-v0_8-darkgrid')
+
+        # set up the plot statistics frame
+        if 'parent' in self.__statsLoc:
+
+            ttk.Label(self.__statsLoc['parent'], text='Mean:', font='Arial 14'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
+            ttk.Label(self.__statsLoc['parent'], text='Stdev:', font='Arial 14'
+                #, relief='solid', borderwidth=1
+                ).grid(row=1, column=0, sticky='nw')
+            ttk.Label(self.__statsLoc['parent'], text='Target dev:', font='Arial 14'
+                #, relief='solid', borderwidth=1
+                ).grid(row=2, column=0, sticky='nw')
+
+            self.__meanDisplay = ttk.Label(self.__statsLoc['parent'], text='--', font='Arial 14 bold', foreground='#1C4587'
+                #, relief='solid', borderwidth=1
+                )
+            self.__meanDisplay.grid(row=0, column=1, padx='2 0', sticky='ne')
+            self.__stdDisplay = ttk.Label(self.__statsLoc['parent'], text='--', font='Arial 14 bold', foreground='#1C4587'
+                #, relief='solid', borderwidth=1
+                )
+            self.__stdDisplay.grid(row=1, column=1, padx='2 0', sticky='ne')
+
+            ttk.Label(self.__statsLoc['parent'], text='--', font='Arial 14 bold', foreground='#A93226'
+                #, relief='solid', borderwidth=1
+                ).grid(row=2, column=1, padx='2 0', sticky='ne')
 
         # create main Figure
         self.__fig = plt.figure(figsize=self.__figsize, dpi=100, facecolor='#dbdbdb')
@@ -149,30 +181,10 @@ class Erl2Plot():
         self.__plotLoc['parent'].rowconfigure(0,weight=1)
         self.__plotLoc['parent'].columnconfigure(0,weight=1)
 
-        # set up the plot statistics frame
-        if 'parent' in self.__statsLoc:
-
-            ttk.Label(self.__statsLoc['parent'], text='Mean:', font='Arial 14'
-                #, relief='solid', borderwidth=1
-                ).grid(row=0, column=0, sticky='nw')
-            ttk.Label(self.__statsLoc['parent'], text='Stdev:', font='Arial 14'
-                #, relief='solid', borderwidth=1
-                ).grid(row=1, column=0, sticky='nw')
-            ttk.Label(self.__statsLoc['parent'], text='Target dev:', font='Arial 14'
-                #, relief='solid', borderwidth=1
-                ).grid(row=2, column=0, sticky='nw')
-
-            ttk.Label(self.__statsLoc['parent'], text='--', font='Arial 14 bold', foreground='#1C4587'
-                #, relief='solid', borderwidth=1
-                ).grid(row=0, column=1, padx='2 0', sticky='ne')
-            ttk.Label(self.__statsLoc['parent'], text='--', font='Arial 14 bold', foreground='#1C4587'
-                #, relief='solid', borderwidth=1
-                ).grid(row=1, column=1, padx='2 0', sticky='ne')
-            ttk.Label(self.__statsLoc['parent'], text='--', font='Arial 14 bold', foreground='#A93226'
-                #, relief='solid', borderwidth=1
-                ).grid(row=2, column=1, padx='2 0', sticky='ne')
-
     def updatePlotLines(self):
+
+        # keep track of whether stats were updated
+        statsUpdated = False
 
         # loop through subplots
         for ind in range(len(self.__plotData)):
@@ -200,9 +212,6 @@ class Erl2Plot():
 
                 # only proceed if the dataframe has any rows in it
                 if len(data) > 0:
-
-                    #if ind == 0:
-                    #    print (f"{__class__.__name__}: Debug: updatePlotLines(): mean [{data[specs['yName']].mean()}], stdev [{data[specs['yName']].std()}]")
 
                     # divide into plot segments where there are >60min gaps; adapted from
                     # https://towardsdatascience.com/plot-organization-in-matplotlib-your-one-stop-guide-if-you-are-reading-this-it-is-probably-f79c2dcbc801
@@ -242,6 +251,26 @@ class Erl2Plot():
 
                         # increment line for next loop
                         line += 1
+
+                    # check if we can update the mean and stdev readouts
+
+                    # stats only apply to the first/main subplot dataset
+                    if ind == 0:
+
+                        # nothing to do if the label widgets do not exist
+                        if self.__meanDisplay is not None and self.__stdDisplay is not None:
+
+                            # we want the appropriate number formatting, but default to 1 decimal if missing
+                            decPl = self.__displayDecimals if self.__displayDecimals is not None else 1
+                            
+                            self.__meanDisplay.config(text=f"{float(round(data[specs['yName']].mean(),decPl)):.{decPl}f}")
+                            self.__stdDisplay.config(text=f"{float(round(data[specs['yName']].std(),decPl+1)):.{decPl+1}f}")
+                            statsUpdated = True
+
+        # reset stats if they weren't updateable this time through
+        if not statsUpdated:
+            self.__meanDisplay.config(text='--')
+            self.__stdDisplay.config(text='--')
 
     def updatePlot(self):
 
