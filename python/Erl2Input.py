@@ -50,6 +50,17 @@ class Erl2Input(Erl2Sensor):
         self.__hardwareMin = self.erl2context['conf'][self.sensorType]['hardwareRange'][0]
         self.__hardwareMax = self.erl2context['conf'][self.sensorType]['hardwareRange'][1]
 
+        # some measurement constants depend on whether this is 0-10 V or 4-20 mA
+        self.__minVal = self.__maxVal = self.__bufferVal = None
+        if self.__channelType == 'volts':
+            self.__minVal = 0.
+            self.__maxVal = 10.
+            self.__bufferVal = 0.25
+        elif self.__channelType == 'milliAmps':
+            self.__minVal = 4.
+            self.__maxVal = 20.
+            self.__bufferVal = 0.4
+
         # start up the timing loop to update the display widgets
         # (check first if this object is an Erl2Input or a child class)
         if self.__class__.__name__ == 'Erl2Input':
@@ -66,16 +77,10 @@ class Erl2Input(Erl2Sensor):
             if self.__channelType == 'volts':
                 # read volts from the input channel
                 measuredVal = get0_10In(self.__stackLevel, self.__inputChannel)
-                minVal = 0.
-                maxVal = 10.
-                bufferVal = 0.25
 
             elif self.__channelType == 'milliAmps':
                 # read milliAmps from the input channel
                 measuredVal = get4_20In(self.__stackLevel, self.__inputChannel)
-                minVal = 4.
-                maxVal = 20.
-                bufferVal = 0.4
 
             else:
                 measuredVal = float('nan')
@@ -87,14 +92,14 @@ class Erl2Input(Erl2Sensor):
         # (however: allow values slightly outside this range because when
         # legitimately reporting sensor's min or max values there is often
         # some noise around the readings at both edges of the range)
-        if measuredVal >= (minVal-bufferVal) and measuredVal <= (maxVal+bufferVal):
+        if measuredVal >= (self.__minVal-self.__bufferVal) and measuredVal <= (self.__maxVal+self.__bufferVal):
 
             # add raw measurement to the results
             self.value[self.__channelType] = measuredVal
 
             # convert from volts or milliAmps to a value in the defined hardwareRange
-            self.value[self.__parameterName] = ( (measuredVal - minVal)
-                                               / (maxVal-minVal)
+            self.value[self.__parameterName] = ( (measuredVal - self.__minVal)
+                                               / (self.__maxVal-self.__minVal)
                                                * (self.__hardwareMax - self.__hardwareMin)
                                                + self.__hardwareMin
                                                )

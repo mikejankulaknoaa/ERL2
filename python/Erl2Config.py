@@ -13,7 +13,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.20b (2023-09-15)'
+    VERSION = '0.21b (2023-09-15r2)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
