@@ -18,8 +18,6 @@ class Erl2Clock():
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
-            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # create the clock's base frame as a child of its parent
         self.__frame = ttk.Frame(self.__clockLoc['parent'], padding='2 2', relief='flat', borderwidth=0)

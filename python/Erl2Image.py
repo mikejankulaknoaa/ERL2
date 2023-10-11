@@ -13,8 +13,6 @@ class Erl2Image():
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
-            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # determine location of main images directory
         self.__imgDir = self.erl2context['conf']['system']['imgDir']

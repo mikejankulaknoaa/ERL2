@@ -22,8 +22,6 @@ class Erl2State():
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
-            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # state file is based on the location of the main logging directory
         try:
