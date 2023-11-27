@@ -13,10 +13,10 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.23b (2023-10-16)'
+    VERSION = '0.21b (2023-09-15r2)'
 
     # top-level categories in the erl2.conf file
-    CATEGORIES = [ 'system', 'device', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
+    CATEGORIES = [ 'system', 'tank', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
 
     # valid baud rates (borrowed from the pyrolib code)
     BAUDS = [ 1200,  2400,   4800,   9600,  14400,  19200,  28800,  38400,  38400,
@@ -29,12 +29,12 @@ class Erl2Config():
             self.__default[c] = {}
 
         self.__default['system']['project'] = 'Default Project'
+        self.__default['system']['disableFileLogging'] = 'False'
         self.__default['system']['clockWithSeconds'] = 'False'
         self.__default['system']['clockTwoLines'] = 'False'
 
-        self.__default['device']['type'] = 'tank'
-        self.__default['device']['id'] = 'Tank 0'
-        self.__default['device']['location'] = 'Default Location'
+        self.__default['tank']['id'] = 'Tank 0'
+        self.__default['tank']['location'] = 'Default Location'
 
         self.__default['virtualtemp']['enabled'] = 'False'
 
@@ -273,15 +273,13 @@ class Erl2Config():
 
         # system
         self.validate(str,  'system', 'project')
+        self.validate(bool, 'system', 'disableFileLogging')
         self.validate(bool, 'system', 'clockWithSeconds')
         self.validate(bool, 'system', 'clockTwoLines')
 
-        # device
-        self.validate(str, 'device', 'type')
-        if self.__erl2conf['device']['type'] not in ['tank', 'controller']:
-            raise TypeError(f"{self.__class__.__name__}: ['device']['type'] = [{self.__erl2conf['device']['type']}] must be 'tank' or 'controller'")
-        self.validate(str, 'device', 'id')
-        self.validate(str, 'device', 'location')
+        # tank
+        self.validate(str, 'tank', 'id')
+        self.validate(str, 'tank', 'location')
 
         # whether to use a 'virtual' temperature sensor...
         self.validate(bool, 'virtualtemp', 'enabled')

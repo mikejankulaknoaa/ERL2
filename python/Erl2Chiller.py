@@ -33,6 +33,8 @@ class Erl2Chiller(Erl2Toggle):
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # trigger an error if this isn't windows and the hardware lib wasn't found
         assert(_hwLoaded or self.erl2context['conf']['system']['platform'] in ['darwin','win32'])

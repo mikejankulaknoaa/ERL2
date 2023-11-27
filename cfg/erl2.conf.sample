@@ -1,7 +1,7 @@
 [system]
 
 # Project Name
-# project = Default Project
+project = Default Project
 
 # logging to file on/off
 # disableFileLogging = False
@@ -11,16 +11,13 @@
 # clockTwoLines = False
 
 
-[device]
+[tank]
 
-# Device Type (tank or controller)
-# type = tank
-
-# Device Identifier
-# id = Tank 0
+# Tank Identifier
+id = Tank 0
 
 # Physical Location
-# location = Default Location
+location = Default Location
 
 
 [virtualtemp]

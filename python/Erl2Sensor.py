@@ -48,6 +48,8 @@ class Erl2Sensor():
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # load any saved info about the application state
         if 'state' not in self.erl2context:
@@ -66,11 +68,15 @@ class Erl2Sensor():
         self.__offsetFloat = self.erl2context['state'].get(self.sensorType,'offset',self.__offsetDefault)
 
         # and also these system-level Erl2Config parameters
+        self.__disableFileLogging = self.erl2context['conf']['system']['disableFileLogging']
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
 
         # start a data/log file for the sensor
-        self.log = Erl2Log(logType='sensor', logName=self.sensorType, erl2context=self.erl2context)
+        if not self.__disableFileLogging:
+            self.log = Erl2Log(logType='sensor', logName=self.sensorType, erl2context=self.erl2context)
+        else:
+            self.log = None
 
         # loop through the list of needed display widgets for this sensor
         for loc in self.__displayLocs:
@@ -194,27 +200,30 @@ class Erl2Sensor():
         # update the display widgets again after waiting an appropriate number of milliseconds
         self.__displayWidgets[0].after(delay, self.readSensor)
 
-        # if we've passed the next file-writing interval time, write it
-        if self.__nextFileTime is not None and currentTime.timestamp() > self.__nextFileTime:
+        # is this one of the data values that should be written to the log file?
+        if not self.__disableFileLogging:
 
-            # send the new sensor data to the log (in dictionary form)
-            if self.log is not None:
+            # if we've passed the next file-writing interval time, write it
+            if self.__nextFileTime is not None and currentTime.timestamp() > self.__nextFileTime:
 
-                # only log this measurement if the sensor is online
-                if self.online:
-                    self.log.writeData(measurement)
+                # send the new sensor data to the log (in dictionary form)
+                if self.log is not None:
 
-        # if the next file-writing interval time is empty or in the past, update it
-        if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
-            self.__nextFileTime = (
-              (
-                int(
-                  currentTime.timestamp()   # timestamp in seconds
-                  / self.__loggingFrequency # convert to number of intervals of length loggingFrequency
-                )                           # truncate to beginning of previous interval (past)
-              + 1)                          # advance by one time interval (future)
-              * self.__loggingFrequency     # convert back to seconds/timestamp
-            )
+                    # only log this measurement if the sensor is online
+                    if self.online:
+                        self.log.writeData(measurement)
+
+            # if the next file-writing interval time is empty or in the past, update it
+            if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
+                self.__nextFileTime = (
+                  (
+                    int(
+                      currentTime.timestamp()   # timestamp in seconds
+                      / self.__loggingFrequency # convert to number of intervals of length loggingFrequency
+                    )                           # truncate to beginning of previous interval (past)
+                  + 1)                          # advance by one time interval (future)
+                  * self.__loggingFrequency     # convert back to seconds/timestamp
+                )
 
     def updateDisplays(self, displayWidgets, statusWidgets, correctionWidgets):
 

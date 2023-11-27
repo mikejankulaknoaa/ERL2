@@ -33,6 +33,8 @@ class Erl2Tank:
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
+            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
+            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # identify the PID of this process
         self.__myPID = os.getpid()
@@ -205,18 +207,18 @@ class Erl2Tank:
             ).grid(row=r, column=1, sticky='nw')
 
         r += 1
-        ttk.Label(self.__frames['Settings'][0][1], text='Device Id:  ', font=fontleft, justify='right'
+        ttk.Label(self.__frames['Settings'][0][1], text='Tank Id:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['device']['id'], font=fontright
+        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['tank']['id'], font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
 
         r += 1
-        ttk.Label(self.__frames['Settings'][0][1], text='Device Location:  ', font=fontleft, justify='right'
+        ttk.Label(self.__frames['Settings'][0][1], text='Tank Location:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['device']['location'], font=fontright
+        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['tank']['location'], font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
 
@@ -224,7 +226,11 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text='Log Directory:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['system']['logDir'], font=fontright
+        if self.erl2context['conf']['system']['disableFileLogging']:
+            txt = '<disabled>'
+        else:
+            txt = self.erl2context['conf']['system']['logDir']
+        ttk.Label(self.__frames['Settings'][0][1], text=txt, font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
 
@@ -232,26 +238,19 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text='Logging Frequency:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-
-        # elegant way to summarize logging frequency info
-        freq = {}
-        for sens in ['temperature', 'pH', 'DO', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']:
-            if self.erl2context['conf'][sens]['loggingFrequency'] not in freq:
-                freq[self.erl2context['conf'][sens]['loggingFrequency']] = [sens]
-            else:
-                freq[self.erl2context['conf'][sens]['loggingFrequency']].append(sens)
-        if len(freq) == 1:
+        if (    self.erl2context['conf']['temperature']['loggingFrequency']
+             == self.erl2context['conf']['pH']['loggingFrequency']
+             == self.erl2context['conf']['DO']['loggingFrequency']
+             == self.erl2context['conf']['heater']['loggingFrequency']
+             == self.erl2context['conf']['chiller']['loggingFrequency']):
             txt = str(self.erl2context['conf']['temperature']['loggingFrequency']) + ' seconds'
         else:
-            txt = ""
-            num = 0
-            for k, v in sorted(freq.items(), key=lambda item: len(item[1])):
-                num += 1
-                if num < len(freq):
-                    txt += f"{', '.join(v)}: {k} seconds; "
-                else:
-                    txt += f"other sensors: {k} seconds"
-
+            txt = (  'Temperature: ' + self.erl2context['conf']['temperature']['loggingFrequency'] + 'seconds; '
+                   + 'pH: '          + self.erl2context['conf']['pH'         ]['loggingFrequency'] + 'seconds; '
+                   + 'DO: '          + self.erl2context['conf']['DO'         ]['loggingFrequency'] + 'seconds; '
+                   + 'Heater: '      + self.erl2context['conf']['heater'     ]['loggingFrequency'] + 'seconds; '
+                   + 'Chiller: '     + self.erl2context['conf']['chiller'    ]['loggingFrequency'] + 'seconds'
+                  )
         ttk.Label(self.__frames['Settings'][0][1], text=txt, font=fontright, wraplength=300
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
