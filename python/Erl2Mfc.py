@@ -72,8 +72,6 @@ class Erl2Mfc():
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
-            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # trigger an error if this isn't windows and the hardware lib wasn't found
         assert(_hwLoaded or self.erl2context['conf']['system']['platform'] in ['darwin','win32'])
@@ -88,10 +86,7 @@ class Erl2Mfc():
         self.__loggingFrequency = self.erl2context['conf'][self.controlType]['loggingFrequency']
 
         # start a data/log file for the control
-        if not self.erl2context['conf']['system']['disableFileLogging']:
-            self.log = Erl2Log(logType='control', logName=self.controlType, erl2context=self.erl2context)
-        else:
-            self.log = None
+        self.log = Erl2Log(logType='control', logName=self.controlType, erl2context=self.erl2context)
 
         # loop through the list of needed setting display widgets for this control
         for loc in self.__settingDisplayLocs:
@@ -198,25 +193,22 @@ class Erl2Mfc():
         self.allSeconds = []
         self.allValues = []
 
-        # is file logging enabled?
-        if not self.erl2context['conf']['system']['disableFileLogging']:
+        # if we've passed the next file-writing interval time, write it
+        if self.__nextFileTime is not None and currentTime.timestamp() > self.__nextFileTime:
 
-            # if we've passed the next file-writing interval time, write it
-            if self.__nextFileTime is not None and currentTime.timestamp() > self.__nextFileTime:
+            # create a dict of values we want to log
+            m = {'Timestamp.UTC': currentTime.strftime(self.erl2context['conf']['system']['dtFormat']),
+                 'Timestamp.Local': currentTime.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat']),
+                 'Current Flow Setting': self.flowSetting,
+                 'Average Flow Setting': avgSetting,
+                 'Off (seconds)': offTime,
+                 'On (seconds)': onTime,
+                 'Setting Changes (count)':changes,
+                 'Setting Last Changed (Local)': self.settingLastChanged.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat'])}
 
-                # create a dict of values we want to log
-                m = {'Timestamp.UTC': currentTime.strftime(self.erl2context['conf']['system']['dtFormat']),
-                     'Timestamp.Local': currentTime.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat']),
-                     'Current Flow Setting': self.flowSetting,
-                     'Average Flow Setting': avgSetting,
-                     'Off (seconds)': offTime,
-                     'On (seconds)': onTime,
-                     'Setting Changes (count)':changes,
-                     'Setting Last Changed (Local)': self.settingLastChanged.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat'])}
-
-                # send the new sensor data to the log (in dictionary form)
-                if self.log is not None:
-                    self.log.writeData(m)
+            # send the new sensor data to the log (in dictionary form)
+            if self.log is not None:
+                self.log.writeData(m)
 
         # if the next file-writing interval time is empty or in the past, update it
         if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
