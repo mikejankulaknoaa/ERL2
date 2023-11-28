@@ -69,8 +69,6 @@ class Erl2SubSystem():
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
-            #if 'tank' in self.erl2context['conf'].sections() and 'id' in self.erl2context['conf']['tank']:
-            #    print (f"{self.__class__.__name__}: Debug: Tank Id is [{self.erl2context['conf']['tank']['id']}]")
 
         # load any saved info about the application state
         if 'state' not in self.erl2context:
@@ -85,10 +83,7 @@ class Erl2SubSystem():
             self.erl2context['img'].addImage(i,i)
 
         # start a data/log file for the subsystem
-        if not self.erl2context['conf']['system']['disableFileLogging']:
-            self.log = Erl2Log(logType='subsystem', logName=self.subSystemType, erl2context=self.erl2context)
-        else:
-            self.log = None
+        self.log = Erl2Log(logType='subsystem', logName=self.subSystemType, erl2context=self.erl2context)
 
         # borrow the display settings from the sensor config
         self.__displayParameter = self.erl2context['conf'][self.subSystemType]['displayParameter']
