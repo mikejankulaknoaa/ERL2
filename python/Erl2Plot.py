@@ -72,13 +72,31 @@ class Erl2Plot():
         # override default 'math' font type for $...$ expressions (e.g. $CO_2$), which is italics
         matplotlib.rcParams["mathtext.default"] = 'regular'
 
-        # specify style
+        # some styles previously considered
         #plt.style.use('classic')
         #plt.style.use('ggplot')
         #plt.style.use('bmh')
         #plt.style.use('fivethirtyeight')
         #plt.style.use('seaborn-v0_8')
-        plt.style.use('seaborn-v0_8-darkgrid')
+        #plt.style.use('seaborn-v0_8-darkgrid')
+
+        # the matplotlib styles may have slightly different names on different platforms
+        avStyles = plt.style.available
+
+        # narrow down the list of styles in stages
+        bestStyles = [ x for x in avStyles if 'seaborn' in x ]
+        if len(bestStyles):
+            avStyles = bestStyles
+            bestStyles = [ x for x in avStyles if 'dark' in x ]
+            if len(bestStyles):
+                avStyles = bestStyles
+                bestStyles = [ x for x in avStyles if 'darkgrid' in x ]
+
+        # final style selection
+        if len(bestStyles):
+            plt.style.use(bestStyles[0])
+        else:
+            plt.style.use('classic')
 
         # set up the plot statistics frame
         if 'parent' in self.__statsLoc:
