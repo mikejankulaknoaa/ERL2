@@ -13,7 +13,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.26b (2023-12-01)'
+    VERSION = '0.27b (2023-12-01b)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -103,6 +103,9 @@ class Erl2Config():
                                                    '300., 306., 313., 318., 322., 324., '
                                                    '325., 324., 322., 318., 313., 306.]')
 
+        self.__default['DO']['mfc.air.Kp'] = '10000.0'
+        self.__default['DO']['mfc.air.Ki'] = '1000.0'
+        self.__default['DO']['mfc.air.Kd'] = '0.0'
         self.__default['DO']['mfc.n2.Kp'] = '-10000.0'
         self.__default['DO']['mfc.n2.Ki'] = '-1000.0'
         self.__default['DO']['mfc.n2.Kd'] = '0.0'
@@ -352,13 +355,12 @@ class Erl2Config():
             self.validateList(float, sensorType, 'dynamicDefault', 24, min=self.__erl2conf[sensorType]['validRange'][0], max=self.__erl2conf[sensorType]['validRange'][1])
 
         # the pH and DO subsystems require PID parameter values for their controls
-        for param in 'Kp', 'Ki', 'Kd':
-            for gas in 'air', 'co2', 'n2':
-                if gas == 'n2':
-                    sys = 'DO'
-                else:
-                    sys = 'pH'
-                self.validate(float, sys, f"mfc.{gas}.{param}")
+        for sys in 'pH', 'DO':
+            for param in 'Kp', 'Ki', 'Kd':
+                for gas in 'air', 'co2', 'n2':
+                    # only some combinations are valid
+                    if ((gas == 'air') or (gas == 'co2' and sys == 'pH') or (gas == 'n2' and sys == 'DO')):
+                        self.validate(float, sys, f"mfc.{gas}.{param}")
 
         # the virtual temperature sensor might be required even if not explicitly enabled
         self.__erl2conf['virtualtemp'] = {**self.__erl2conf['virtualtemp'], **self.__erl2conf['temperature']}

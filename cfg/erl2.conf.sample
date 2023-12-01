@@ -176,7 +176,10 @@ mfc.co2.Kd = 0.0
 # this is a sine shape running between 275. (6am low point) and 325. (6pm high point)
 # dynamicDefault = [300., 294., 288., 282., 278., 276., 275., 276., 278., 282., 288., 294., 300., 306., 313., 318., 322., 324., 325., 324., 322., 318., 313., 306.]
 
-# PID Tuning Parameters for DO -- right now, pretend that the only control is the N2 MFC
+# PID Tuning Parameters for DO -- right now, ignore that Air is part of both pH and DO subsystems
+mfc.air.Kp = 10000.0
+mfc.air.Ki = 1000.0
+mfc.air.Kd = 0.0
 mfc.n2.Kp = -10000.0
 mfc.n2.Ki = -1000.0
 mfc.n2.Kd = 0.0
