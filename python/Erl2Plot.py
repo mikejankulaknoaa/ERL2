@@ -238,8 +238,9 @@ class Erl2Plot():
                     # Find the gaps larger than the threshold
                     gaps = data.index.to_series().diff() > pd.Timedelta(threshold_ns)
 
-                    # Split the data into segments at the gaps
-                    splits = (data[gaps].index.to_series() - pd.Timedelta(threshold_ns)).tolist()
+                    # Split the data into segments at the gaps (don't convert to list)
+                    #splits = (data[gaps].index.to_series() - pd.Timedelta(threshold_ns)).tolist()
+                    splits = (data[gaps].index.to_series() - pd.Timedelta(threshold_ns))
                     segments = np.split(data, data.index.searchsorted(splits))
 
                     # special case: if there are fewer line segments now than in the past, delete the earliest ones

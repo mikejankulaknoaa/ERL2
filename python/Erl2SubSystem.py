@@ -368,11 +368,11 @@ class Erl2SubSystem():
         # read the current mode of the system
         var = self.__modeVar.get()
 
-        # work in progress: DO subsystem can only do Manual mode for now
-        if self.subSystemType == 'DO':
-            var = 0
-            for r in range(1,len(self.__radioWidgets)):
-                self.__radioWidgets[r].config(state='disabled')
+        ## work in progress: DO subsystem can only do Manual mode for now
+        #if self.subSystemType == 'DO':
+        #    var = 0
+        #    for r in range(1,len(self.__radioWidgets)):
+        #        self.__radioWidgets[r].config(state='disabled')
 
         # if we've just re-clicked the already-active mode, disregard
         if self.__lastModeVar is not None and self.__lastModeVar == var:

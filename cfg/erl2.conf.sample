@@ -83,6 +83,7 @@
 [pH]
 
 # path to the Raspberry Pi serial port to be used for pH communications
+# (use None if no serial port is available for this function)
 # serialPort = /dev/ttyAMA1
 
 # baud rate for communicating with the pH sensor
@@ -136,6 +137,7 @@ mfc.co2.Kd = 0.0
 [DO]
 
 # path to the Raspberry Pi serial port to be used for O2 communications
+# (use None if no serial port is available for this function)
 # serialPort = /dev/ttyAMA2
 
 # baud rate for communicating with the pH sensor

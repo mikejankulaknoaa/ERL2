@@ -471,7 +471,9 @@ class Erl2Tank:
         self.sensors['mfc.air'] = Erl2Input(
             sensorType='mfc.air',
             displayLocs=[{'parent':self.__frames['Data'][1][1],'row':1,'column':0},
-                         {'parent':self.__frames['pH'][0][1],'row':1,'column':0}],
+                         {'parent':self.__frames['pH'][0][1],'row':1,'column':0},
+                         {'parent':self.__frames['Data'][2][1],'row':1,'column':0},
+                         {'parent':self.__frames['DO'][0][1],'row':1,'column':0}],
             statusLocs=airMfcStatusLocs,
             label='Air',
             erl2context=self.erl2context)
@@ -488,8 +490,8 @@ class Erl2Tank:
         # readout displays for the current N2 MFC flow rate
         self.sensors['mfc.n2'] = Erl2Input(
             sensorType='mfc.n2',
-            displayLocs=[{'parent':self.__frames['Data'][2][1],'row':1,'column':0},
-                         {'parent':self.__frames['DO'][0][1],'row':1,'column':0}],
+            displayLocs=[{'parent':self.__frames['Data'][2][1],'row':3,'column':0},
+                         {'parent':self.__frames['DO'][0][1],'row':3,'column':0}],
             statusLocs=n2MfcStatusLocs,
             label=u'N\u2082',
             erl2context=self.erl2context)
@@ -512,7 +514,9 @@ class Erl2Tank:
         self.controls['mfc.air'] = Erl2Mfc(
             controlType='mfc.air',
             settingDisplayLocs=[{'parent':self.__frames['Data'][1][1],'row':2,'column':0},
-                                {'parent':self.__frames['pH'][0][1],'row':2,'column':0}],
+                                {'parent':self.__frames['pH'][0][1],'row':2,'column':0},
+                                {'parent':self.__frames['Data'][2][1],'row':2,'column':0},
+                                {'parent':self.__frames['DO'][0][1],'row':2,'column':0}],
             entryLoc={'parent':self.__frames['pH'][1][1],'row':1,'column':0},
             erl2context=self.erl2context)
 
@@ -527,8 +531,8 @@ class Erl2Tank:
         # readout and control widgets for the N2 MFC
         self.controls['mfc.n2'] = Erl2Mfc(
             controlType='mfc.n2',
-            settingDisplayLocs=[{'parent':self.__frames['Data'][2][1],'row':2,'column':0},
-                                {'parent':self.__frames['DO'][0][1],'row':2,'column':0}],
+            settingDisplayLocs=[{'parent':self.__frames['Data'][2][1],'row':4,'column':0},
+                                {'parent':self.__frames['DO'][0][1],'row':4,'column':0}],
             entryLoc={'parent':self.__frames['DO'][1][1],'row':1,'column':0},
             erl2context=self.erl2context)
 
@@ -589,7 +593,8 @@ class Erl2Tank:
             statsDisplayLoc={'parent':self.__frames['Data'][2][3],'row':0,'column':0},
 
             sensors={'DO':self.sensors['DO']},
-            MFCs={'mfc.n2':self.controls['mfc.n2']},
+            MFCs={'mfc.air':self.controls['mfc.air'],
+                  'mfc.n2':self.controls['mfc.n2']},
             erl2context=self.erl2context)
 
         # standardized labels for some Temp, pH and DO frames
