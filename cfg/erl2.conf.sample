@@ -23,6 +23,23 @@
 # location = Default Location
 
 
+[network]
+
+# tanks: networking is disabled by default
+# tankNetwork = False
+
+# controllers: set ipNetwork to a stub address of private ERL2 Tank subnet
+# (or use None to leave it to ERL2 logic to find the right addresses)
+# ipNetworkStub = '192.168.2.'
+
+# controllers: set ipRange to restrict subnet searches to a subset of addresses
+# (or use None to search all possible addresses in the private ERL2 subnet)
+# ipRange = [2, 63]
+
+# any device: how often to refresh GUI stats about network activity (seconds)
+# updateFrequency = 5
+
+
 [virtualtemp]
 
 # this is a virtual sensor for testing, designed to 'react' to heater and chiller
@@ -126,12 +143,12 @@
 # dynamicDefault = [8.00, 7.99, 7.98, 7.96, 7.96, 7.95, 7.95, 7.95, 7.96, 7.96, 7.98, 7.99, 8.00, 8.01, 8.03, 8.04, 8.04, 8.05, 8.05, 8.05, 8.04, 8.04, 8.03, 8.01]
 
 # PID Tuning Parameters for pH -- controls are the Air and CO2 MFCs
-mfc.air.Kp = 10000.0
-mfc.air.Ki = 1000.0
-mfc.air.Kd = 0.0
-mfc.co2.Kp = -40.0
-mfc.co2.Ki = -4.0
-mfc.co2.Kd = 0.0
+#  mfc.air.Kp = 10000.0
+# mfc.air.Ki = 1000.0
+# mfc.air.Kd = 0.0
+# mfc.co2.Kp = -40.0
+# mfc.co2.Ki = -4.0
+# mfc.co2.Kd = 0.0
 
 
 [DO]
@@ -177,12 +194,12 @@ mfc.co2.Kd = 0.0
 # dynamicDefault = [300., 294., 288., 282., 278., 276., 275., 276., 278., 282., 288., 294., 300., 306., 313., 318., 322., 324., 325., 324., 322., 318., 313., 306.]
 
 # PID Tuning Parameters for DO -- right now, ignore that Air is part of both pH and DO subsystems
-mfc.air.Kp = 10000.0
-mfc.air.Ki = 1000.0
-mfc.air.Kd = 0.0
-mfc.n2.Kp = -10000.0
-mfc.n2.Ki = -1000.0
-mfc.n2.Kd = 0.0
+# mfc.air.Kp = 10000.0
+# mfc.air.Ki = 1000.0
+# mfc.air.Kd = 0.0
+# mfc.n2.Kp = -10000.0
+# mfc.n2.Ki = -1000.0
+# mfc.n2.Kd = 0.0
 
 
 [heater]

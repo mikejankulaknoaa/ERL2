@@ -13,10 +13,10 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.27b (2023-12-01b)'
+    VERSION = '0.28b (2024-02-01)'
 
     # top-level categories in the erl2.conf file
-    CATEGORIES = [ 'system', 'device', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
+    CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
 
     # valid baud rates (borrowed from the pyrolib code)
     BAUDS = [ 1200,  2400,   4800,   9600,  14400,  19200,  28800,  38400,  38400,
@@ -35,6 +35,11 @@ class Erl2Config():
         self.__default['device']['type'] = 'tank'
         self.__default['device']['id'] = 'Tank 0'
         self.__default['device']['location'] = 'Default Location'
+
+        self.__default['network']['tankNetwork'] = 'False'
+        self.__default['network']['ipNetworkStub'] = '192.168.2.'
+        self.__default['network']['ipRange'] = '[2, 63]'
+        self.__default['network']['updateFrequency'] = '5'
 
         self.__default['virtualtemp']['enabled'] = 'False'
 
@@ -286,6 +291,17 @@ class Erl2Config():
         self.validate(str, 'device', 'id')
         self.validate(str, 'device', 'location')
 
+        # network
+        self.validate(bool, 'network', 'tankNetwork')
+        self.validate(str,  'network', 'ipNetworkStub')
+        self.validate(int,  'network', 'updateFrequency', min=1)
+
+        # ipRange has some extra logic (non-decreasing order)
+        self.validateList(int, 'network', 'ipRange', 2)
+        if (self.__erl2conf['network']['ipRange'] is not None
+            and self.__erl2conf['network']['ipRange'][0] > self.__erl2conf['network']['ipRange'][1]):
+            raise TypeError(f"{self.__class__.__name__}: ['network']['ipRange'] = {self.__erl2conf['network']['ipRange']} must specified in increasing order")
+
         # whether to use a 'virtual' temperature sensor...
         self.validate(bool, 'virtualtemp', 'enabled')
 
@@ -341,9 +357,9 @@ class Erl2Config():
 
             self.validate(str,   sensorType, 'displayParameter')
             self.validate(int,   sensorType, 'displayDecimals',  min=0)
-            self.validate(int,   sensorType, 'sampleFrequency',  min=0)
+            self.validate(int,   sensorType, 'sampleFrequency',  min=1)
             self.validate(int,   sensorType, 'memoryRetention',  min=0)
-            self.validate(int,   sensorType, 'loggingFrequency', min=0)
+            self.validate(int,   sensorType, 'loggingFrequency', min=1)
             self.validate(str,   sensorType, 'offsetParameter')
             self.validate(float, sensorType, 'offsetDefault')
 
@@ -372,7 +388,7 @@ class Erl2Config():
 
         # controls (heater, chiller, mfc.air, mfc.co2, mfc.n2) share some parameter logic
         for controlType in ['heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']:
-            self.validate(int, controlType, 'loggingFrequency', min=0)
+            self.validate(int, controlType, 'loggingFrequency', min=1)
             self.validate(int, controlType, 'memoryRetention',  min=0)
 
         # MFCs (mfc.air, mfc.co2, mfc.n2) share some parameter logic

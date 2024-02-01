@@ -5,3 +5,4 @@ erl2.conf
 *.swp
 z*
 log/
+.idea
