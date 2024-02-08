@@ -406,7 +406,7 @@ class Erl2Network():
                 f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nw')
 
                 # add a Label widget to show the current value
-                l = ttk.Label(f, text='--', font='Arial 16', foreground='#1C4587')
+                l = ttk.Label(f, text='--', font='Arial 14')
                 l.grid(row=0, column=0, sticky='nw')
 
                 # keep a list of widgets for this display
@@ -434,9 +434,8 @@ class Erl2Network():
         # current time
         currentTime = dt.now(tz=tz.utc)
 
-        # default formatting
+        # default font
         fnt = 'Arial 14'
-        fgd = '#1C4587'
 
         # loop through all placements of the type widgets
         for w in self.__typeWidgets:
@@ -446,7 +445,7 @@ class Erl2Network():
             else: upd = self.__deviceType
 
             # update the display
-            w.config(text=upd, font=fnt, foreground=fgd)
+            w.config(text=upd, font=fnt)
  
         # loop through all placements of the name widgets
         for w in self.__nameWidgets:
@@ -456,7 +455,7 @@ class Erl2Network():
             else: upd = self.__id
 
             # update the display
-            w.config(text=upd, font=fnt, foreground=fgd)
+            w.config(text=upd, font=fnt)
  
         # loop through all placements of the interface widgets
         for w in self.__interfaceWidgets:
@@ -466,7 +465,7 @@ class Erl2Network():
             else: upd = self.__interface
 
             # update the display
-            w.config(text=upd, font=fnt, foreground=fgd)
+            w.config(text=upd, font=fnt)
  
         # loop through all placements of the ip widgets
         for w in self.__ipWidgets:
@@ -476,7 +475,7 @@ class Erl2Network():
             else: upd = self.__ip
 
             # update the display
-            w.config(text=upd, font=fnt, foreground=fgd)
+            w.config(text=upd, font=fnt)
  
         # loop through all placements of the mac widgets
         for w in self.__macWidgets:
@@ -486,7 +485,7 @@ class Erl2Network():
             else: upd = self.__mac
 
             # update the display
-            w.config(text=upd, font=fnt, foreground=fgd)
+            w.config(text=upd, font=fnt)
 
         # figure out when the last network activity was
         while not self.__statusQueue.empty():
@@ -500,10 +499,10 @@ class Erl2Network():
         # adjust the formatting if the communications have gone quiet
         if self.__lastActive is None or currentTime.timestamp() - self.__lastActive.timestamp() > 300:
             fnt = 'Arial 14 bold'
-            fgd = '#A93226'
+            fgd = '#A93226' # red
         else:
             fnt = 'Arial 14'
-            fgd = '#1C4587'
+            fgd = '#1C4587' # blue
 
         # loop through all placements of the status widgets
         for w in self.__statusWidgets:
