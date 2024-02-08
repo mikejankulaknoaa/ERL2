@@ -25,11 +25,11 @@
 
 [network]
 
-# tanks: networking is disabled by default
+# tanks: networking is disabled by default (controllers ignore this setting)
 # tankNetwork = False
 
-# controllers: set ipNetwork to a stub address of private ERL2 Tank subnet
-# (or use None to leave it to ERL2 logic to find the right addresses)
+# any device: set ipNetworkStub to the stub address of the private ERL2 Tank
+# subnet (or use None to have ERL2 logic find the right addresses)
 # ipNetworkStub = '192.168.2.'
 
 # controllers: set ipRange to restrict subnet searches to a subset of addresses
@@ -143,7 +143,7 @@
 # dynamicDefault = [8.00, 7.99, 7.98, 7.96, 7.96, 7.95, 7.95, 7.95, 7.96, 7.96, 7.98, 7.99, 8.00, 8.01, 8.03, 8.04, 8.04, 8.05, 8.05, 8.05, 8.04, 8.04, 8.03, 8.01]
 
 # PID Tuning Parameters for pH -- controls are the Air and CO2 MFCs
-#  mfc.air.Kp = 10000.0
+# mfc.air.Kp = 10000.0
 # mfc.air.Ki = 1000.0
 # mfc.air.Kd = 0.0
 # mfc.co2.Kp = -40.0

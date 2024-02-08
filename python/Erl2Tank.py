@@ -16,6 +16,7 @@ from Erl2Image import Erl2Image
 from Erl2Input import Erl2Input
 from Erl2Log import Erl2Log
 from Erl2Mfc import Erl2Mfc
+from Erl2Network import Erl2Network
 from Erl2Pyro import Erl2Pyro
 from Erl2State import Erl2State
 from Erl2SubSystem import Erl2SubSystem
@@ -314,11 +315,32 @@ class Erl2Tank:
             ).grid(row=r, column=0, sticky='ne')
         n2MfcStatusLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
 
-        # dummy row
-        r += 1
-        ttk.Label(self.__frames['Settings'][0][1], text='this space intentionally left blank', font='Arial 12'
-            #, relief='solid', borderwidth=1
-            ).grid(row=r, column=0, columnspan=2, sticky='s')
+        # if necessary, include networking details
+        if self.erl2context['conf']['network']['tankNetwork']:
+            r += 1
+            ttk.Label(self.__frames['Settings'][0][1], text='IP Address:  ', font=fontleft, justify='right'
+                #, relief='solid', borderwidth=1
+                ).grid(row=r, column=0, sticky='ne')
+            ipLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
+
+            r += 1
+            ttk.Label(self.__frames['Settings'][0][1], text='MAC Address:  ', font=fontleft, justify='right'
+                #, relief='solid', borderwidth=1
+                ).grid(row=r, column=0, sticky='ne')
+            macLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
+
+            r += 1
+            ttk.Label(self.__frames['Settings'][0][1], text='Last Network Comms:  ', font=fontleft, justify='right'
+                #, relief='solid', borderwidth=1
+                ).grid(row=r, column=0, sticky='ne')
+            netStatusLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
+
+        else:
+            # dummy row at end
+            r += 1
+            ttk.Label(self.__frames['Settings'][0][1], text='this space intentionally left blank', font='Arial 12'
+                #, relief='solid', borderwidth=1
+                ).grid(row=r, column=0, columnspan=2, sticky='s')
 
         for row in range(r-1):
             self.__frames['Settings'][0][1].rowconfigure(row,weight=0)
@@ -596,6 +618,13 @@ class Erl2Tank:
             MFCs={'mfc.air':self.controls['mfc.air'],
                   'mfc.n2':self.controls['mfc.n2']},
             erl2context=self.erl2context)
+
+        # the logic that enables tank networking, if enabled
+        if self.erl2context['conf']['network']['tankNetwork']:
+            self.erl2context['conf']['network']['module'] = Erl2Network(ipLocs=ipLocs,
+                                                                        macLocs=macLocs,
+                                                                        statusLocs=netStatusLocs,
+                                                                       )
 
         # standardized labels for some Temp, pH and DO frames
         for name in ['Temp', 'pH', 'DO']:
