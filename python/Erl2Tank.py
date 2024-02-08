@@ -87,6 +87,9 @@ class Erl2Tank:
         self.controls = {}
         self.systems = {}
 
+        # remember if network module is active
+        self.network = None
+
         # we have a checkbox for changing between fullscreen and back
         self.__fullscreenVar = tk.IntVar()
         self.__fullscreenVar.set(self.erl2context['state'].get('system','fullscreen',1))
@@ -621,10 +624,10 @@ class Erl2Tank:
 
         # the logic that enables tank networking, if enabled
         if self.erl2context['conf']['network']['tankNetwork']:
-            self.erl2context['conf']['network']['module'] = Erl2Network(ipLocs=ipLocs,
-                                                                        macLocs=macLocs,
-                                                                        statusLocs=netStatusLocs,
-                                                                       )
+            self.network = Erl2Network(ipLocs=ipLocs,
+                                       macLocs=macLocs,
+                                       statusLocs=netStatusLocs,
+                                      )
 
         # standardized labels for some Temp, pH and DO frames
         for name in ['Temp', 'pH', 'DO']:
@@ -838,6 +841,10 @@ class Erl2Tank:
             for c in self.controls.values():
                 c.setControl(0,force=True)
             #self.__systemLog.writeMessage(f"Erl2Tank Debug: zeroed out [{len(self.controls)}] controls")
+
+        # terminate subthreads in network module
+        if self.network is not None:
+            self.network.atexitHandler()
 
         # terminate the current system and start it up again (if asked to do so)
         if self.__restart:
