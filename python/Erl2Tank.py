@@ -1,6 +1,8 @@
 #! /usr/bin/python3
 
 import atexit
+from datetime import datetime as dt
+from datetime import timezone as tz
 import fcntl
 import os
 import signal
@@ -59,6 +61,9 @@ class Erl2Tank:
         # start a system log
         self.__systemLog = Erl2Log(logType='system', logName='Erl2Tank', erl2context=self.erl2context)
         self.__systemLog.writeMessage('Erl2Tank system startup')
+
+        # keep track of when the next file-writing interval is
+        self.__nextFileTime = None
 
         # load any saved info about the application state
         if 'state' not in self.erl2context:
@@ -213,14 +218,6 @@ class Erl2Tank:
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
         ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['device']['id'], font=fontright
-            #, relief='solid', borderwidth=1
-            ).grid(row=r, column=1, sticky='nw')
-
-        r += 1
-        ttk.Label(self.__frames['Settings'][0][1], text='Device Location:  ', font=fontleft, justify='right'
-            #, relief='solid', borderwidth=1
-            ).grid(row=r, column=0, sticky='ne')
-        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['device']['location'], font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
 
@@ -738,6 +735,99 @@ class Erl2Tank:
             for r in range(4):
                 f.rowconfigure(r, weight=1)
             f.columnconfigure(0, weight=1)
+
+        # start up the timing loop to update the system log
+        self.updateLog()
+
+    def updateLog(self):
+
+        # record the current timestamp
+        currentTime = dt.now(tz=tz.utc)
+
+        # if we've passed the next file-writing interval time, write it
+        if self.__nextFileTime is not None and currentTime.timestamp() > self.__nextFileTime:
+
+            # send the new sensor data to the log (in dictionary form)
+            if self.__systemLog is not None:
+
+                # create a composite 'measurement' made up of sensor and control data
+                m = {'Timestamp.UTC': currentTime.strftime(self.erl2context['conf']['system']['dtFormat']),
+                     'Timestamp.Local': currentTime.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat'])}
+
+                # sensor / temperature : 'temp.degC'
+                if ('temperature' in self.sensors
+                    and hasattr(self.sensors['temperature'], 'value')
+                    and 'temp.degC' in self.sensors['temperature'].value):
+                    m['temperature'] = self.sensors['temperature'].value['temp.degC']
+                else:
+                    m['temperature'] = None
+
+                # sensor / pH : 'pH'
+                if ('pH' in self.sensors
+                    and hasattr(self.sensors['pH'], 'value')
+                    and 'pH' in self.sensors['pH'].value):
+                    m['pH'] = self.sensors['pH'].value['pH']
+                else:
+                    m['pH'] = None
+
+                # sensor / DO : 'uM'
+                if ('DO' in self.sensors
+                    and hasattr(self.sensors['DO'], 'value')
+                    and 'uM' in self.sensors['DO'].value):
+                    m['DO'] = self.sensors['DO'].value['uM']
+                else:
+                    m['DO'] = None
+
+                # control / chiller : 'On (seconds)'
+                if ('chiller' in self.controls
+                    and hasattr(self.controls['chiller'], 'value')
+                    and 'On (seconds)' in self.controls['chiller'].value):
+                    m['chiller'] = self.controls['chiller'].value['On (seconds)']
+                else:
+                    m['chiller'] = None
+
+                # control / heater : 'On (seconds)'
+                if ('heater' in self.controls
+                    and hasattr(self.controls['heater'], 'value')
+                    and 'On (seconds)' in self.controls['heater'].value):
+                    m['heater'] = self.controls['heater'].value['On (seconds)']
+                else:
+                    m['heater'] = None
+
+                # control / mfc.air : 'Average Flow Setting'
+                if ('mfc.air' in self.controls
+                    and hasattr(self.controls['mfc.air'], 'value')
+                    and 'Average Flow Setting' in self.controls['mfc.air'].value):
+                    m['mfc.air'] = self.controls['mfc.air'].value['Average Flow Setting']
+                else:
+                    m['mfc.air'] = None
+
+                # control / mfc.co2 : 'Average Flow Setting'
+                if ('mfc.co2' in self.controls
+                    and hasattr(self.controls['mfc.co2'], 'value')
+                    and 'Average Flow Setting' in self.controls['mfc.co2'].value):
+                    m['mfc.co2'] = self.controls['mfc.co2'].value['Average Flow Setting']
+                else:
+                    m['mfc.co2'] = None
+
+                # control / mfc.n2 : 'Average Flow Setting'
+                if ('mfc.n2' in self.controls
+                    and hasattr(self.controls['mfc.n2'], 'value')
+                    and 'Average Flow Setting' in self.controls['mfc.n2'].value):
+                    m['mfc.n2'] = self.controls['mfc.n2'].value['Average Flow Setting']
+                else:
+                    m['mfc.n2'] = None
+
+                # write out the composite log record for the tank
+                self.__systemLog.writeData(m)
+
+        # if the next file-writing interval time is empty or in the past, update it
+        if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
+            self.__nextFileTime = Erl2Log.nextIntervalTime(currentTime, self.erl2context['conf']['system']['loggingFrequency'])
+
+        # update the log again after waiting an appropriate number of milliseconds
+        delay = int((self.__nextFileTime - currentTime.timestamp())*1000)
+        self.__frames['Settings'][0][1].after(delay, self.updateLog)
 
     # a method to call whenever we detect a tab change
     def changeTabs(self, event):

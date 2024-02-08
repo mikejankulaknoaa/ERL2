@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=ERL2
+Comment=start up the ERL2 python programs at login
+Exec=/opt/ERL2/bin/startERL2.sh
+NotShowIn=GNOME;KDE;XFCE;
+

@@ -13,6 +13,7 @@ from tkinter import ttk
 from tkinter import messagebox as mb
 from Erl2Config import Erl2Config
 from Erl2Image import Erl2Image
+from Erl2Log import Erl2Log
 
 # Erl2Network needs some functions defined outside of the class, because
 # in macOS and Windows, you cannot start a process in a subthread if it is
@@ -580,19 +581,8 @@ class Erl2Network():
         if scheduleNext:
 
             # update on schedule
-            delay = (int(
-                      (
-                        (
-                          int(
-                            currentTime.timestamp()  # timestamp in seconds
-                            / self.__updateFrequency # convert to number of intervals of length updateFrequency
-                          )                          # truncate to beginning of previous interval (past)
-                        + 1)                         # advance by one time interval (future)
-                        * self.__updateFrequency     # convert back to seconds/timestamp
-                        - currentTime.timestamp()    # calculate how many seconds from now to next interval
-                        )
-                      * 1000)                        # convert to milliseconds, then truncate to integer
-                    ) 
+            nextUpdateTime = Erl2Log.nextIntervalTime(currentTime, self.__updateFrequency)
+            delay = int((nextUpdateTime - currentTime.timestamp())*1000)
         
             # update the display widgets again after waiting an appropriate number of milliseconds
             self.__ipWidgets[0].after(delay, self.updateDisplayWidgets)

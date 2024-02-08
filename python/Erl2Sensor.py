@@ -177,19 +177,8 @@ class Erl2Sensor():
         self.updateDisplays(self.__displayWidgets,self.__statusWidgets,self.__correctionWidgets)
 
         # how long before we should update the display widgets again?
-        delay = (int(
-                  (
-                    (
-                      int(
-                        currentTime.timestamp()  # timestamp in seconds
-                        / self.__sampleFrequency # convert to number of intervals of length sampleFrequency
-                      )                          # truncate to beginning of previous interval (past)
-                    + 1)                         # advance by one time interval (future)
-                    * self.__sampleFrequency     # convert back to seconds/timestamp
-                    - currentTime.timestamp()    # calculate how many seconds from now to next interval
-                    )
-                  * 1000)                        # convert to milliseconds, then truncate to integer
-                )
+        nextSampleTime = Erl2Log.nextIntervalTime(currentTime, self.__sampleFrequency)
+        delay = int((nextSampleTime - currentTime.timestamp())*1000)
 
         # update the display widgets again after waiting an appropriate number of milliseconds
         self.__displayWidgets[0].after(delay, self.readSensor)
@@ -206,15 +195,7 @@ class Erl2Sensor():
 
         # if the next file-writing interval time is empty or in the past, update it
         if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
-            self.__nextFileTime = (
-              (
-                int(
-                  currentTime.timestamp()   # timestamp in seconds
-                  / self.__loggingFrequency # convert to number of intervals of length loggingFrequency
-                )                           # truncate to beginning of previous interval (past)
-              + 1)                          # advance by one time interval (future)
-              * self.__loggingFrequency     # convert back to seconds/timestamp
-            )
+            self.__nextFileTime = Erl2Log.nextIntervalTime(currentTime, self.__loggingFrequency)
 
     def updateDisplays(self, displayWidgets, statusWidgets, correctionWidgets):
 

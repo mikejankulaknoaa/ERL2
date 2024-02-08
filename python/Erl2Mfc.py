@@ -212,15 +212,7 @@ class Erl2Mfc():
 
         # if the next file-writing interval time is empty or in the past, update it
         if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
-            self.__nextFileTime = (
-              (
-                int(
-                  currentTime.timestamp()   # timestamp in seconds
-                  / self.__loggingFrequency # convert to number of intervals of length loggingFrequency
-                )                           # truncate to beginning of previous interval (past)
-              + 1)                          # advance by one time interval (future)
-              * self.__loggingFrequency     # convert back to seconds/timestamp
-            )
+            self.__nextFileTime = Erl2Log.nextIntervalTime(currentTime, self.__loggingFrequency)
 
         # when should this method be called next? (milliseconds)
         delay = int((self.__nextFileTime - currentTime.timestamp())*1000)

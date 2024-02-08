@@ -13,7 +13,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.31b (2024-02-07c)'
+    VERSION = '0.32b (2024-02-08)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -28,13 +28,13 @@ class Erl2Config():
         for c in self.CATEGORIES:
             self.__default[c] = {}
 
-        self.__default['system']['project'] = 'Default Project'
         self.__default['system']['clockWithSeconds'] = 'False'
         self.__default['system']['clockTwoLines'] = 'False'
+        self.__default['system']['loggingFrequency'] = '300'
+        self.__default['system']['memoryRetention'] = '86400'
 
         self.__default['device']['type'] = 'tank'
         self.__default['device']['id'] = 'Tank 0'
-        self.__default['device']['location'] = 'Default Location'
 
         self.__default['network']['tankNetwork'] = 'False'
         self.__default['network']['ipNetworkStub'] = '192.168.2.'
@@ -52,7 +52,6 @@ class Erl2Config():
         self.__default['temperature']['displayParameter'] = 'temp.degC'
         self.__default['temperature']['displayDecimals'] = '1'
         self.__default['temperature']['sampleFrequency'] = '5'
-        self.__default['temperature']['memoryRetention'] = '86400'
         self.__default['temperature']['loggingFrequency'] = '300'
         self.__default['temperature']['offsetParameter'] = 'temp.degC'
         self.__default['temperature']['offsetDefault'] = '0.0'
@@ -71,7 +70,6 @@ class Erl2Config():
         self.__default['pH']['displayParameter'] = 'pH'
         self.__default['pH']['displayDecimals'] = '2'
         self.__default['pH']['sampleFrequency'] = '60'
-        self.__default['pH']['memoryRetention'] = '86400'
         self.__default['pH']['loggingFrequency'] = '300'
         self.__default['pH']['offsetParameter'] = 'pH'
         self.__default['pH']['offsetDefault'] = '0.00'
@@ -96,7 +94,6 @@ class Erl2Config():
         self.__default['DO']['displayParameter'] = 'uM'
         self.__default['DO']['displayDecimals'] = '0'
         self.__default['DO']['sampleFrequency'] = '60'
-        self.__default['DO']['memoryRetention'] = '86400'
         self.__default['DO']['loggingFrequency'] = '300'
         self.__default['DO']['offsetParameter'] = 'uM'
         self.__default['DO']['offsetDefault'] = '0.'
@@ -118,7 +115,6 @@ class Erl2Config():
         self.__default['generic']['displayParameter'] = 'generic'
         self.__default['generic']['displayDecimals'] = '3'
         self.__default['generic']['sampleFrequency'] = '5'
-        self.__default['generic']['memoryRetention'] = '86400'
         self.__default['generic']['loggingFrequency'] = '300'
         self.__default['generic']['offsetParameter'] = 'generic'
         self.__default['generic']['offsetDefault'] = '0.000'
@@ -132,12 +128,10 @@ class Erl2Config():
 
         self.__default['heater']['gpioChannel'] = '23'
         self.__default['heater']['loggingFrequency'] = '300'
-        self.__default['heater']['memoryRetention'] = '86400'
 
         self.__default['chiller']['stackLevel'] = '0'
         self.__default['chiller']['outputPwmChannel'] = '1'
         self.__default['chiller']['loggingFrequency'] = '300'
-        self.__default['chiller']['memoryRetention'] = '86400'
 
         self.__default['mfc.air']['stackLevel'] = '0'
         self.__default['mfc.air']['inputChannel'] = '2'
@@ -147,7 +141,6 @@ class Erl2Config():
         self.__default['mfc.air']['displayParameter'] = 'flow.mLperMin'
         self.__default['mfc.air']['displayDecimals'] = '0'
         self.__default['mfc.air']['sampleFrequency'] = '5'
-        self.__default['mfc.air']['memoryRetention'] = '86400'
         self.__default['mfc.air']['loggingFrequency'] = '300'
         self.__default['mfc.air']['offsetParameter'] = 'flow.mLperMin'
         self.__default['mfc.air']['offsetDefault'] = '0.'
@@ -163,7 +156,6 @@ class Erl2Config():
         self.__default['mfc.co2']['displayParameter'] = 'flow.mLperMin'
         self.__default['mfc.co2']['displayDecimals'] = '1'
         self.__default['mfc.co2']['sampleFrequency'] = '5'
-        self.__default['mfc.co2']['memoryRetention'] = '86400'
         self.__default['mfc.co2']['loggingFrequency'] = '300'
         self.__default['mfc.co2']['offsetParameter'] = 'flow.mLperMin'
         self.__default['mfc.co2']['offsetDefault'] = '0.0'
@@ -179,7 +171,6 @@ class Erl2Config():
         self.__default['mfc.n2']['displayParameter'] = 'flow.mLperMin'
         self.__default['mfc.n2']['displayDecimals'] = '0'
         self.__default['mfc.n2']['sampleFrequency'] = '5'
-        self.__default['mfc.n2']['memoryRetention'] = '86400'
         self.__default['mfc.n2']['loggingFrequency'] = '300'
         self.__default['mfc.n2']['offsetParameter'] = 'flow.mLperMin'
         self.__default['mfc.n2']['offsetDefault'] = '0.'
@@ -280,16 +271,16 @@ class Erl2Config():
         self.__setDefaults()
 
         # system
-        self.validate(str,  'system', 'project')
         self.validate(bool, 'system', 'clockWithSeconds')
         self.validate(bool, 'system', 'clockTwoLines')
+        self.validate(int,  'system', 'loggingFrequency', min=1)
+        self.validate(int,  'system', 'memoryRetention',  min=300)
 
         # device
         self.validate(str, 'device', 'type')
         if self.__erl2conf['device']['type'] not in ['tank', 'controller']:
             raise TypeError(f"{self.__class__.__name__}: ['device']['type'] = [{self.__erl2conf['device']['type']}] must be 'tank' or 'controller'")
         self.validate(str, 'device', 'id')
-        self.validate(str, 'device', 'location')
 
         # network
         self.validate(bool, 'network', 'tankNetwork')
@@ -358,7 +349,6 @@ class Erl2Config():
             self.validate(str,   sensorType, 'displayParameter')
             self.validate(int,   sensorType, 'displayDecimals',  min=0)
             self.validate(int,   sensorType, 'sampleFrequency',  min=1)
-            self.validate(int,   sensorType, 'memoryRetention',  min=0)
             self.validate(int,   sensorType, 'loggingFrequency', min=1)
             self.validate(str,   sensorType, 'offsetParameter')
             self.validate(float, sensorType, 'offsetDefault')
@@ -389,7 +379,6 @@ class Erl2Config():
         # controls (heater, chiller, mfc.air, mfc.co2, mfc.n2) share some parameter logic
         for controlType in ['heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']:
             self.validate(int, controlType, 'loggingFrequency', min=1)
-            self.validate(int, controlType, 'memoryRetention',  min=0)
 
         # MFCs (mfc.air, mfc.co2, mfc.n2) share some parameter logic
         for controlType in ['mfc.air', 'mfc.co2', 'mfc.n2']:

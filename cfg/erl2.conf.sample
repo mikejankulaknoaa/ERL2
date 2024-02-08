@@ -1,14 +1,19 @@
 [system]
 
-# Project Name
-# project = Default Project
-
 # logging to file on/off
 # disableFileLogging = False
 
 # configure the system's clock display
 # clockWithSeconds = False
 # clockTwoLines = False
+
+# logging: frequency (seconds)
+# controls how often data from the sensors and controls are saved in memory and written to log files
+# loggingFrequency = 300
+
+# data retention in memory (seconds)
+# how long the data from the sensors and controls are held in memory; 86400s is one day
+# memoryRetention = 86400
 
 
 [device]
@@ -18,9 +23,6 @@
 
 # Device Identifier
 # id = Tank 0
-
-# Physical Location
-# location = Default Location
 
 
 [network]
@@ -68,10 +70,6 @@
 # how often the sensor is sampled; not all values may be saved in memory/files
 # sampleFrequency = 5
 
-# sampling: retention (seconds)
-# how long data from the sensor are held in memory; 86400s is one day
-# memoryRetention = 86400
-
 # logging: frequency (seconds)
 # controls how often measured values are saved in memory and written to log files
 # loggingFrequency = 300
@@ -113,10 +111,6 @@
 # sampling: frequency (seconds)
 # how often the sensor is sampled; not all values may be saved in memory/files
 # sampleFrequency = 60
-
-# sampling: retention (seconds)
-# how long data from the sensor are held in memory; 86400s is one day
-# memoryRetention = 86400
 
 # logging: frequency (seconds)
 # controls how often measured values are saved in memory and written to log files
@@ -168,10 +162,6 @@
 # how often the sensor is sampled; not all values may be saved in memory/files
 # sampleFrequency = 60
 
-# sampling: retention (seconds)
-# how long data from the sensor are held in memory; 86400s is one day
-# memoryRetention = 86400
-
 # logging: frequency (seconds)
 # controls how often measured values are saved in memory and written to log files
 # loggingFrequency = 300
@@ -212,10 +202,6 @@
 # controls how often metrics from the heater are saved in memory and written to log files
 # loggingFrequency = 300
 
-# sampling: retention (seconds)
-# how long metrics from the heater are held in memory; 86400s is one day
-# memoryRetention = 86400
-
 
 [chiller]
 
@@ -228,10 +214,6 @@
 # logging: frequency (seconds)
 # controls how often metrics from the chiller are saved in memory and written to log files
 # loggingFrequency = 300
-
-# sampling: retention (seconds)
-# how long metrics from the chiller are held in memory; 86400s is one day
-# memoryRetention = 86400
 
 
 [mfc.air]
@@ -256,10 +238,6 @@
 # how often the MFC is asked for its current setting;
 # not all values may be saved in memory/files
 # sampleFrequency = 5
-
-# sampling: retention (seconds)
-# how long the data from the MFC are held in memory; 86400s is one day
-# memoryRetention = 86400
 
 # logging: frequency (seconds)
 # controls how often metrics from the MFC are saved in memory and written to log files
@@ -304,10 +282,6 @@
 # not all values may be saved in memory/files
 # sampleFrequency = 5
 
-# sampling: retention (seconds)
-# how long the data from the MFC are held in memory; 86400s is one day
-# memoryRetention = 86400
-
 # logging: frequency (seconds)
 # controls how often metrics from the MFC are saved in memory and written to log files
 # loggingFrequency = 300
@@ -350,10 +324,6 @@
 # how often the MFC is asked for its current setting;
 # not all values may be saved in memory/files
 # sampleFrequency = 5
-
-# sampling: retention (seconds)
-# how long the data from the MFC are held in memory; 86400s is one day
-# memoryRetention = 86400
 
 # logging: frequency (seconds)
 # controls how often metrics from the MFC are saved in memory and written to log files

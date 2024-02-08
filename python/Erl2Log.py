@@ -24,6 +24,7 @@ class Erl2Log():
 
         # we'll keep a certain number of measurements resident in-memory for plotting
         self.history = []
+        self.historyTS = None
 
         # this module requires Python 3.7 or higher
         # (the release when dictionaries are guaranteed to be ordered)
@@ -75,9 +76,16 @@ class Erl2Log():
                 r = DictReader(lines, dialect='unix')
                 self.history = list(r)
 
+            # make a note of the earliest timestamp in the history file, before trimming what's kept in memory
+            if len(self.history) > 0:
+                ts = dt.strptime(self.history[0]['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat'])
+                if self.historyTS is None or ts.timestamp() < self.historyTS.timestamp():
+                    self.historyTS = ts
+                    #print (f"{__class__.__name__}: Debug: __init__({self.__logType},{self.__logName}): self.historyTS [{self.historyTS}]")
+
             # calculate the oldest timestamp that should be kept in memory
-            #oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
-            oldest = dt.utcnow().timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
+            #oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf']['system']['memoryRetention']
+            oldest = dt.utcnow().timestamp() - self.erl2context['conf']['system']['memoryRetention']
 
             # delete any historical data older than the retention timeframe
             self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).timestamp() > oldest ]
@@ -91,12 +99,19 @@ class Erl2Log():
 
     def writeData(self, data):
 
+        # see if self.historyTS needs to be set
+        if 'Timestamp.UTC' in data:
+            ts = dt.strptime(data['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat'])
+            if self.historyTS is None or ts.timestamp() < self.historyTS.timestamp():
+                self.historyTS = ts
+                #print (f"{__class__.__name__}: Debug: writeData({self.__logType},{self.__logName}): self.historyTS [{self.historyTS}]")
+
         # first, add the new data point to in-memory history
         self.history.append(data)
 
         # calculate the oldest timestamp that should be kept in memory
-        #oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
-        oldest = dt.utcnow().timestamp() - self.erl2context['conf'][self.__logName]['memoryRetention']
+        #oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf']['system']['memoryRetention']
+        oldest = dt.utcnow().timestamp() - self.erl2context['conf']['system']['memoryRetention']
 
         # delete any historical data older than the retention timeframe
         self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).timestamp() > oldest ]
@@ -163,6 +178,21 @@ class Erl2Log():
     def logDir(self):
 
         return self.__logDir
+
+    # not a class method but just a useful calculation
+    def nextIntervalTime(currentTime, interval):
+
+        retval = (
+                   (
+                     int(
+                       currentTime.timestamp() # timestamp in seconds
+                       / interval              # convert to number of intervals of length loggingFrequency
+                     )                         # truncate to beginning of previous interval (past)
+                   + 1)                        # advance by one time interval (future)
+                   * interval                  # convert back to seconds/timestamp
+                 )
+
+        return retval
 
 def main():
 
