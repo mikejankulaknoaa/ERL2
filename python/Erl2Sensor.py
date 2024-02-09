@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 from datetime import datetime as dt
 from datetime import timezone as tz
 from random import random as random

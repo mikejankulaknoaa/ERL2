@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 from ast import literal_eval
 from configparser import ConfigParser
 from datetime import datetime as dt
@@ -13,7 +11,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.32b (2024-02-08)'
+    VERSION = '0.33b (2024-02-09)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']

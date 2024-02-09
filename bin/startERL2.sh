@@ -9,5 +9,5 @@ if [ ! -d ${logdir} ]; then
     mkdir -p ${logdir}
 fi
 
-# start the Erl2Tank.py module
-/usr/bin/python3 /opt/ERL2/python/Erl2Tank.py > ${logdir}/$(/bin/date +%Y%m%d-%H%M%S-%3N).log 2>&1
+# start the Erl2Startup.py module
+/usr/bin/python3 /opt/ERL2/python/Erl2Startup.py > ${logdir}/$(/bin/date +%Y%m%d-%H%M%S-%3N).log 2>&1

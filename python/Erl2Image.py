@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config

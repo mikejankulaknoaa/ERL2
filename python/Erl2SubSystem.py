@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 from datetime import datetime as dt
 from datetime import timezone as tz
 from math import isnan
@@ -169,7 +167,7 @@ class Erl2SubSystem():
                                text=' '+text,
                                command=self.applyMode
                                )
-            r.grid(row=value,column=0,ipadx=2,ipady=2,sticky='w')
+            r.grid(row=value,column=0,ipadx=2,ipady=1,sticky='w')
 
             self.__radioWidgets.append(r)
 

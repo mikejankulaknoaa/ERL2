@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 from csv import DictReader
 from datetime import datetime as dt
 from datetime import timedelta as td
@@ -50,24 +48,6 @@ class Erl2Plot():
         # x axis limits
         currentTime = dt.now()
         dayAgo = currentTime + self.__timeRange
-
-        ## try to import some junk data if nothing was passed
-        #if self.__displayParameter == 'junk' and self.__plotData == []:
-
-        #    # read in one day's worth of data from a test file on the system
-        #    with open(self.erl2context['conf']['system']['rootDir'] + '/test/temp.dat', 'r', newline='') as f:
-        #        r = DictReader(f, dialect='unix')
-        #        self.__plotData.append({'name':'temperature', 'data':list(r)})
-
-        #    # create a fake Erl2Log instance
-        #    log = Erl2Log(self.erl2context)
-
-        #    # adjust the displayParameter to match what's in the test file
-        #    self.__displayParameter = 'temp.degC'
-
-        #    # fudge the time axis so that the file's data will be displayed
-        #    currentTime = dt.strptime("2023-08-14 08:45:01","%Y-%m-%d %H:%M:%S")
-        #    dayAgo = currentTime + self.__timeRange
 
         # override default 'math' font type for $...$ expressions (e.g. $CO_2$), which is italics
         matplotlib.rcParams["mathtext.default"] = 'regular'

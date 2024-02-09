@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 from csv import DictReader,DictWriter,writer
 from datetime import datetime as dt
 from datetime import timezone as tz

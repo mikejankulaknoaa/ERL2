@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 from ast import literal_eval
 from csv import reader,writer
 from os import makedirs,path,remove,rename,stat

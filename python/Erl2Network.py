@@ -316,7 +316,7 @@ class Erl2Network():
             self.updateDisplayWidgets()
 
             # run a subnet scan during initialization
-            self.rescanSubnet()
+            self.rescanSubnet(init=True)
 
         # if tank, listen for connections from controller
         elif self.__deviceType == 'tank':
@@ -587,14 +587,14 @@ class Erl2Network():
             # update the display widgets again after waiting an appropriate number of milliseconds
             self.__ipWidgets[0].after(delay, self.updateDisplayWidgets)
 
-    def rescanSubnet(self, event=None):
+    def rescanSubnet(self, event=None, init=False):
 
         if self.__scanProcess is not None and self.__scanProcess.is_alive():
             mb.showinfo(title='Rescan ERL2 Subnet', message="Another scan is already running.")
 
         else:
-            # ask for confirmation if this request came from the user interface
-            if (event is None) or (mb.askyesno(title='Rescan ERL2 Subnet', message="Are you sure you want to scan for new tanks on the ERL2 subnet?")):
+            # ask for confirmation unless this is the first scan during initialization
+            if init or (mb.askyesno(title='Rescan ERL2 Subnet', message="Are you sure you want to scan for new tanks on the ERL2 subnet?")):
 
                 # do this in a separate process thread
                 self.__scanProcess = Process(target=tankScan,

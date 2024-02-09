@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 # ignore any failure to load hardware libraries on windows
 _hwLoaded = True
 try:

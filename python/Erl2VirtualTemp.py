@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 from datetime import datetime as dt
 from math import ceil,cos,pi
 import tkinter as tk

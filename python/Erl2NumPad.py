@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 from math import floor
 import tkinter as tk
 from tkinter import ttk

@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 import tkinter as tk
 from tkinter import ttk
 from datetime import datetime as dt
