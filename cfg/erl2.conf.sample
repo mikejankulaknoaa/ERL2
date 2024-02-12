@@ -29,7 +29,7 @@
 
 # controllers by default are expected to be found at the .1 address of the ERL2
 # subnet (which is the default behavior if this setting is None); you can override 
-# this behavior by specifying a full IP address here (e.g. '192.168.2.25')
+# this behavior by specifying a full IP address here (without quotation marks)
 # controllerIP = None
 
 # tanks: networking is disabled by default (controllers ignore this setting)
@@ -37,7 +37,7 @@
 
 # any device: set ipNetworkStub to the stub address of the private ERL2 Tank
 # subnet (or use None to have ERL2 logic find the right addresses)
-# ipNetworkStub = '192.168.2.'
+# ipNetworkStub = 192.168.2.
 
 # controllers: set ipRange to restrict subnet searches to a subset of addresses
 # (or use None to search all possible addresses in the private ERL2 subnet)

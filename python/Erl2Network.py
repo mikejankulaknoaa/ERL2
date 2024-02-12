@@ -233,10 +233,9 @@ class Erl2Network():
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
 
-        # if the user has overridden the ipRange with None, scan all useful addresses
-        # (reserve .1 for controller and .255 for subnet broadcast)
+        # if the user has overridden the ipRange with None, scan all addresses
         if self.__ipRange is None:
-            self.__ipRange = [2, 254]
+            self.__ipRange = [1, 255]
 
         # if necessary, create an object to hold/remember image objects
         if 'img' not in self.erl2context:
