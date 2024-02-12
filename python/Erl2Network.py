@@ -224,6 +224,7 @@ class Erl2Network():
         # read these useful parameters from Erl2Config
         self.__deviceType = self.erl2context['conf']['device']['type']
         self.__id = self.erl2context['conf']['device']['id']
+        self.__controllerIP = self.erl2context['conf']['network']['controllerIP']
         self.__ipNetworkStub = self.erl2context['conf']['network']['ipNetworkStub']
         self.__ipRange = self.erl2context['conf']['network']['ipRange']
         self.__updateFrequency = self.erl2context['conf']['network']['updateFrequency']
@@ -393,11 +394,11 @@ class Erl2Network():
                             if netifaces.AF_LINK in ifList.keys() and len(ifList[netifaces.AF_LINK]) > 0 and 'addr' in ifList[netifaces.AF_LINK][0]:
                                 mac = ifList[netifaces.AF_LINK][0]['addr']
 
-                            # addresses that already end in .1 represent networks that
-                            # a controller can scan for tanks
-                            if re.search('\.1$', adr['addr']) is not None:
+                            # addresses that already end in .1 represent networks that a controller can scan for tanks
+                            # (also, the user can override this .1 logic and hardcode the controller IP address)
+                            if re.search('\.1$', adr['addr']) is not None or (self.__controllerIP is not None and adr['addr'] == self.__controllerIP):
                                 # strip off the 1 and save the network stub
-                                self.__networkStubs.append({'IF':i, 'IP':adr['addr'], 'MAC':mac, 'STUB':re.sub('\.1$', '.', adr['addr'])})
+                                self.__networkStubs.append({'IF':i, 'IP':adr['addr'], 'MAC':mac, 'STUB':re.sub('\.[0-9]+$', '.', adr['addr'])})
 
                             # addresses that don't end in .1 are interfaces that
                             # a tank can listen on for connections from a controller
