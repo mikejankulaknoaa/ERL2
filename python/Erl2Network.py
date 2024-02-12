@@ -24,6 +24,9 @@ from Erl2Log import Erl2Log
 # port to communicate on
 PORT = 65432
 
+# datetime format used to share dates
+DTFMT = '%Y-%m-%d %H:%M:%S.%f %Z'
+
 def tankScan(stub,
              interface,
              ip,
@@ -43,28 +46,42 @@ def tankScan(stub,
                 s.settimeout(.5)
                 ret = s.connect_ex((host, PORT))
 
+                # something is answering!
                 if ret == 0:
+
+                    # update controller's time of last network activity
                     t = dt.now(tz=tz.utc)
-                    print (f"Erl2Network|tankScan: Debug: adding [{t}] to statusQ")
                     statusQ.put(t)
                     print (f"Erl2Network|tankScan: Debug: successfully connected to [{host}] from [{interface}][{ip}][{mac}]")
 
-                    print (f"Erl2Network|tankScan: Debug: sending [ID]")
+                    # ask connected device for identifying details
                     s.sendall(b"ID")
+
+                    # process device's reply and prepare report for childrenQ
                     data = s.recv(1024)
-                    print (f"Erl2Network|tankScan: Debug: received reply: [{data}]")
+                    #print (f"Erl2Network|tankScan: Debug: sent [ID], received reply: [{data}]")
                     val = '\n'.join([data.decode(), host])
 
-                    print (f"Erl2Network|tankScan: Debug: sending [TIME]")
+                    # ask device for its current time
                     s.sendall(b"TIME")
-                    data = s.recv(1024)
-                    t = pickle.loads(data)
-                    latency = str((t-dt.now(tz=tz.utc)).total_seconds())
-                    val = '\n'.join([val,latency])
-                    print (f"Erl2Network|tankScan: Debug: latency is: [{latency}]")
 
+                    # unpack reply, which is a pickled datetime instance
+                    data = s.recv(1024)
+                    deviceT = pickle.loads(data)
+
+                    # refresh local time and calculate difference in controller/device clocks
+                    t = dt.now(tz=tz.utc)
+                    latency = str((deviceT-t).total_seconds())
+                    val = '\n'.join([val,latency])
+                    #print (f"Erl2Network|tankScan: Debug: sent [TIME], received [{deviceT}], latency is: [{latency}]")
+
+                    # add UTC controller time to the report for childrenQ
+                    val = '\n'.join([val,t.astimezone(tz.utc).strftime(DTFMT)])
+
+                    # add device report the queue (deviceType, id, mac, ip, latency, lastActive)
                     childrenQ.put(val)
-                    print (f"Erl2Network|tankScan: Debug: adding [{val}] to childrenQ")
+                    #print (f"Erl2Network|tankScan: Debug: adding [{val}] to childrenQ")
+
                 else:
                     pass
                     #print (f"Erl2Network|tankScan: Debug: cannot connect to [{host}] from [{interface}][{ip}][{mac}]: ret [{ret}]")
@@ -99,7 +116,6 @@ def listen(deviceType,
         while True:
             events = sel.select(timeout=None)
             t = dt.now(tz=tz.utc)
-            print (f"Erl2Network|listen: Debug: adding [{t}] to statusQ")
             statusQ.put(t)
 
             for key, mask in events:
@@ -249,8 +265,8 @@ class Erl2Network():
 
         # determine what IP address(es) are associated with this system's network interfaces
         self.getAddresses()
-        print (f"{self.__class__.__name__}: Debug: __init: self.__tankAddresses is [{self.__tankAddresses}]")
-        print (f"{self.__class__.__name__}: Debug: __init: self.__networkStubs is [{self.__networkStubs}]")
+        print (f"{self.__class__.__name__}: Debug: __init: self.__tankAddresses is {self.__tankAddresses}")
+        print (f"{self.__class__.__name__}: Debug: __init: self.__networkStubs is {self.__networkStubs}")
 
         # provide a 'rescan' button (controller only) if given a place for it
         if self.__deviceType == 'controller' and 'parent' in self.__buttonLoc:
@@ -346,7 +362,8 @@ class Erl2Network():
                                                  self.__ip,
                                                  self.__mac,
                                                  self.__tankAddresses[0]['IP'],
-                                                 self.__statusQueue, ))
+                                                 self.__statusQueue,
+                                                 ))
             self.__listenProcess.start()
 
     def getAddresses(self):
@@ -491,7 +508,7 @@ class Erl2Network():
         # figure out when the last network activity was
         while not self.__statusQueue.empty():
             self.__lastActive = self.__statusQueue.get_nowait()
-            print (f"{self.__class__.__name__}: updateDisplayWidgets: retrieved [{self.__lastActive}] from statusQ")
+            #print (f"{self.__class__.__name__}: updateDisplayWidgets: retrieved [{self.__lastActive}] from statusQ")
  
         # set the update value
         if self.__lastActive is None: upd = 'never'
@@ -517,12 +534,19 @@ class Erl2Network():
             # grab any newly-reported children and add them to our list
             while not self.__childrenQueue.empty():
                 ch = self.__childrenQueue.get_nowait()
-                print (f"{self.__class__.__name__}: updateDisplayWidgets: retrieved [{ch}] from childrenQ")
+                #print (f"{self.__class__.__name__}: updateDisplayWidgets: retrieved [{ch}] from childrenQ")
 
-                chvals = ch.split('\n') # 0:type, 1:id, 2:mac, 3:host, 4:latency
+                # device report from the queue is: 0:deviceType, 1:id, 2:mac, 3:ip, 4:latency, 5:lastActive
+                chvals = ch.split('\n')
 
                 # children dict is keyed off the mac address
                 self.__childrenDict[chvals[2]] = {'type':chvals[0], 'id':chvals[1], 'ip':chvals[3], 'latency':float(chvals[4])}
+
+                # store lastActive as a datetime
+                self.__childrenDict[chvals[2]]['lastActive'] = dt.strptime(chvals[5], DTFMT)
+
+                # strptime seems to drop timezone info, so add it back explicitly
+                self.__childrenDict[chvals[2]]['lastActive'] = self.__childrenDict[chvals[2]]['lastActive'].replace(tzinfo=tz.utc)
 
             # complicated sort to properly order e.g. 'Tank 2' before 'Tank 13'
             self.__sortedMacs = sorted(self.__childrenDict, key=lambda x: re.sub(r'0*([0-9]{9,})', r'\1', re.sub(r'([0-9]+)',r'0000000000\1',self.__childrenDict[x]['id'])))
@@ -546,7 +570,7 @@ class Erl2Network():
 
                 f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
                 f.grid(row=0, column=3, padx='1', pady='1', sticky='nesw')
-                ttk.Label(f, text='Type', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
+                ttk.Label(f, text='Last Active', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
 
                 f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
                 f.grid(row=0, column=4, padx='1', pady='1', sticky='nesw')
@@ -569,13 +593,31 @@ class Erl2Network():
                     f.grid(row=thisrow, column=2, padx='1', pady='1', sticky='nesw')
                     ttk.Label(f, text=mac, font='Arial 14').grid(row=0, column=0, sticky='nw')
 
+                    # lastActive gets updated over time, so right now just create an empty widget
                     f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
                     f.grid(row=thisrow, column=3, padx='1', pady='1', sticky='nesw')
-                    ttk.Label(f, text=self.__childrenDict[mac]['type'],font='Arial 14').grid(row=0, column=0, sticky='nw')
+                    l = ttk.Label(f, text='--')
+                    l.grid(row=0, column=0, sticky='nw')
+                    self.__childrenDict[mac]['widget'] = l
 
                     f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
                     f.grid(row=thisrow, column=4, padx='1', pady='1', sticky='nesw')
                     ttk.Label(f, text=round(self.__childrenDict[mac]['latency'],5),font='Arial 14').grid(row=0, column=0, sticky='nw')
+
+        # loop through child widgets and update/color the lastActive status
+        for mac in self.__sortedMacs:
+
+            # special formatting for lastActive
+            lastA = self.__childrenDict[mac]['lastActive']
+            upd = lastA.astimezone(self.__timezone).strftime(self.__dtFormat)
+            if lastA is None or currentTime.timestamp() - lastA.timestamp() > 300:
+                fnt = 'Arial 14 bold'
+                fgd = '#A93226' # red
+            else:
+                fnt = 'Arial 14'
+                fgd = '#1C4587' # blue
+
+            self.__childrenDict[mac]['widget'].config(text=upd, font=fnt, foreground=fgd)
 
         # if asked to, schedule the next display update
         if scheduleNext:
@@ -604,7 +646,8 @@ class Erl2Network():
                                                    self.__mac,
                                                    self.__ipRange,
                                                    self.__statusQueue,
-                                                   self.__childrenQueue, ))
+                                                   self.__childrenQueue,
+                                                   ))
                 self.__scanProcess.start()
 
     # atexit.register() handler

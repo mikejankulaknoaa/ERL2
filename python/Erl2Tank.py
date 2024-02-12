@@ -44,7 +44,6 @@ class Erl2Tank:
         s = ttk.Style()
         s.configure('TNotebook',tabposition='nw',borderwidth=1,relief='solid')
         s.configure('TNotebook.Tab',font='Arial 16 italic',borderwidth=1,relief='solid',padding='3 3',tabmargins='2 2 2 0',width=8)
-        s.configure('TRadiobutton',font='Arial 16')
 
         # these dicts will hold the objects in this module
         self.__tabs = {}
