@@ -36,7 +36,7 @@ def tankScan(stub,
              childrenQ):
 
     # quietly terminate if ipRange is empty
-    if ipRange is None or len(ipRange != 2):
+    if ipRange is None or len(ipRange) != 2:
         return
 
     # scan the specified range of addressed on the subnet
@@ -277,7 +277,7 @@ class Erl2Network():
 
             # create a frame for the button
             if 'columnspan' in self.__buttonLoc: cspan = self.__buttonLoc['columnspan']
-            else: cspan = 0
+            else: cspan = 1
             rescanFrame = ttk.Frame(self.__buttonLoc['parent'])
             rescanFrame.grid(row=self.__buttonLoc['row'], column=self.__buttonLoc['column'], columnspan=cspan, sticky='nwse')
 

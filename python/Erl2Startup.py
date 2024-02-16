@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox as mb
 from Erl2Config import Erl2Config
-#from Erl2Controller import Erl2Controller
+from Erl2Controller import Erl2Controller
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
 from Erl2State import Erl2State
@@ -79,8 +79,8 @@ class Erl2Startup:
         # start up the main device module
         if self.__deviceType == 'tank':
             self.__device = Erl2Tank(root=self.root, parent=self)
-        #elif self.__deviceType == 'controller':
-        #    self.__device = Erl2Controller()
+        elif self.__deviceType == 'controller':
+            self.__device = Erl2Controller(root=self.root, parent=self)
 
     def locDefaults (self, loc):
 
