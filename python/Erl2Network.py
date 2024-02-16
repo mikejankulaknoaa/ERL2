@@ -35,6 +35,10 @@ def tankScan(stub,
              statusQ,
              childrenQ):
 
+    # quietly terminate if ipRange is empty
+    if ipRange is None or len(ipRange != 2):
+        return
+
     # scan the specified range of addressed on the subnet
     for addr in range(ipRange[0], ipRange[1]+1):
 
@@ -213,10 +217,6 @@ class Erl2Network():
         # last network activity of any kind for this device (less useful for a controller)
         self.__lastActive = None
 
-        # this is the main compendium of information about child tanks, and their sort order
-        self.__childrenDict = {}
-        self.__sortedMacs = []
-
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
@@ -232,6 +232,10 @@ class Erl2Network():
         # and also these system-level Erl2Config parameters
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
+
+        # this is the main compendium of information about child tanks, and their sort order
+        self.__childrenDict = {}
+        self.__sortedMacs = []
 
         # if the user has overridden the ipRange with None, scan all addresses
         if self.__ipRange is None:
@@ -310,8 +314,8 @@ class Erl2Network():
             f1.columnconfigure(0,weight=0)
             f1.columnconfigure(1,weight=1)
 
-        # if controller, start scanning for tanks
-        if self.__deviceType == 'controller':
+        # if controller, start scanning for tanks (only if networkStubs were found)
+        if self.__deviceType == 'controller' and len(self.__networkStubs) > 0:
 
             # populate the display fields with controller-type details
             self.__interface = self.__networkStubs[0]['IF']
@@ -334,8 +338,8 @@ class Erl2Network():
             # run a subnet scan during initialization
             self.rescanSubnet(init=True)
 
-        # if tank, listen for connections from controller
-        elif self.__deviceType == 'tank':
+        # if tank, listen for connections from controller (only if tankAddresses were found)
+        elif self.__deviceType == 'tank' and len(self.__tankAddresses) > 0:
 
             # default to using the first interface found...
             self.__interface = self.__tankAddresses[0]['IF']
@@ -396,7 +400,7 @@ class Erl2Network():
                             # addresses that already end in .1 represent networks that a controller can scan for tanks
                             # (also, the user can override this .1 logic and hardcode the controller IP address)
                             if re.search('\.1$', adr['addr']) is not None or (self.__controllerIP is not None and adr['addr'] == self.__controllerIP):
-                                # strip off the 1 and save the network stub
+                                # strip off the last octet and remember the network 'stub'
                                 self.__networkStubs.append({'IF':i, 'IP':adr['addr'], 'MAC':mac, 'STUB':re.sub('\.[0-9]+$', '.', adr['addr'])})
 
                             # addresses that don't end in .1 are interfaces that
