@@ -35,8 +35,8 @@ def tankScan(stub,
              statusQ,
              childrenQ):
 
-    # quietly terminate if ipRange is empty
-    if ipRange is None or len(ipRange) != 2:
+    # quietly terminate if necessary arguments are empty
+    if stub is None or ipRange is None or len(ipRange) != 2:
         return
 
     # scan the specified range of addressed on the subnet
@@ -278,7 +278,7 @@ class Erl2Network():
             # create a frame for the button
             if 'columnspan' in self.__buttonLoc: cspan = self.__buttonLoc['columnspan']
             else: cspan = 1
-            rescanFrame = ttk.Frame(self.__buttonLoc['parent'])
+            rescanFrame = ttk.Frame(self.__buttonLoc['parent']) #, padding='0', relief='solid', borderwidth=1)
             rescanFrame.grid(row=self.__buttonLoc['row'], column=self.__buttonLoc['column'], columnspan=cspan, sticky='nwse')
 
             # frame within the frame? for placement (pad with side frames to force it to center)
@@ -445,8 +445,10 @@ class Erl2Network():
             for loc in self.__childrenLocs:
 
                 # create an empty Frame widget
+                if 'columnspan' in loc: cspan = loc['columnspan']
+                else: cspan = 1
                 f = ttk.Frame(loc['parent'], padding='2', relief='solid', borderwidth=1)
-                f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nw')
+                f.grid(row=loc['row'], column=loc['column'], columnspan=cspan, padx='2', pady='0', sticky='nw')
 
                 # keep a list of children widgets
                 self.__childrenWidgets.append(f)

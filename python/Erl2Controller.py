@@ -75,8 +75,8 @@ class Erl2Controller():
         displaySettings.grid(row=0, column=1, padx='2', pady='2', sticky='nesw')
 
         # create subframes for settings: network, controls, power, about
-        displayNetwork = ttk.Frame(displaySettings, padding='2', relief='solid', borderwidth=1)
-        displayNetwork.grid(row=0, column=0, columnspan=2, padx='2', pady='2', sticky='nesw')
+        #displayNetwork = ttk.Frame(displaySettings, padding='2', relief='solid', borderwidth=1)
+        #displayNetwork.grid(row=0, column=0, columnspan=2, padx='2', pady='2', sticky='nesw')
         displayControls = ttk.Frame(displaySettings, padding='2', relief='solid', borderwidth=1)
         displayControls.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')
         displayPower = ttk.Frame(displaySettings, padding='2', relief='solid', borderwidth=1)
@@ -104,9 +104,9 @@ class Erl2Controller():
         #    ).grid(row=0, column=0, sticky='nw')
 
         # labels for the frames in displaySettings
-        ttk.Label(displayNetwork, text='Network', font='Arial 12 bold'
-            #, relief='solid', borderwidth=1
-            ).grid(row=0, column=0, sticky='nw')
+        #ttk.Label(displayNetwork, text='Network', font='Arial 12 bold'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=0, column=0, sticky='nw')
         ttk.Label(displayControls, text='Controls', font='Arial 12 bold'
             #, relief='solid', borderwidth=1
             ).grid(row=0, column=0, sticky='nw')
@@ -154,7 +154,7 @@ class Erl2Controller():
             self.parent.createNumPadWidget(loc={'parent':displayControls,'row':r})
 
             r += 1
-            rescanLoc={'parent':displayControls,'row':r,'column':1}
+            rescanLoc={'parent':displayControls,'row':r,'column':0}
 
             # add a control to restart the app
             r = 1
@@ -273,7 +273,8 @@ class Erl2Controller():
                                            ipLocs=ipLocs,
                                            macLocs=macLocs,
                                            statusLocs=netStatusLocs,
-                                           childrenLocs=[{'parent':displayNetwork,'row':1,'column':0}],
+                                           #childrenLocs=[{'parent':displayNetwork,'row':1,'column':0}],
+                                           childrenLocs=[{'parent':displaySettings,'row':0,'column':0,'columnspan':2}],
                                            buttonLoc=rescanLoc,
                                           )
 

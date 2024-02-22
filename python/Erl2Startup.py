@@ -1,5 +1,15 @@
+# the file-locking library is OS-dependent
+try:
+    import fcntl
+    _pkg = "fcntl"
+except:
+    try:
+        import msvcrt
+        _pkg = "msvcrt"
+    except:
+        _pkg = None
+
 import atexit
-import fcntl
 import os
 import signal
 import sys
@@ -32,21 +42,36 @@ class Erl2Startup:
         # identify the PID of this process
         self.__myPID = os.getpid()
 
+        # file-locking only works if we loaded one of these packages
+        assert _pkg in ("fcntl", "msvcrt")
+
         # try to get an exclusive lock on the PID file, if it exists
         self.__lockname = self.erl2context['conf']['system']['lockDir'] + '/Erl2Startup.pid'
         if os.path.isfile(self.__lockname):
             self.__lockfile = open(self.__lockname, 'r+')
             try:
-                fcntl.lockf(self.__lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                if _pkg == "fcntl":
+                    fcntl.lockf(self.__lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                elif _pkg == "msvcrt":
+                    msvcrt.locking(self.__lockfile.fileno(), msvcrt.LK_NBLCK, 1)
             except:
-                somePID = self.__lockfile.readline().rstrip()
-                mb.showerror(title='Fatal Error', message=f"Cannot start Erl2Startup because PID [{somePID}] is already running")
+                # some OSes seem to disallow reading while locked
+                try:
+                    somePID = self.__lockfile.readline().rstrip()
+                    errmsg = f"Cannot start Erl2Startup because PID [{somePID}] is already running"
+                except:
+                    errmsg = "Cannot start Erl2Startup because another process is already running"
+
+                mb.showerror(title='Fatal Error', message=errmsg)
                 sys.exit()
             self.__lockfile.close()
 
         # reopen lockfile to write new PID
         self.__lockfile = open(self.__lockname, 'w')
-        fcntl.lockf(self.__lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if _pkg == "fcntl":
+            fcntl.lockf(self.__lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        elif _pkg == "msvcrt":
+            msvcrt.locking(self.__lockfile.fileno(), msvcrt.LK_NBLCK, 1)
         self.__lockfile.write(str(self.__myPID))
         self.__lockfile.flush()
 
@@ -348,7 +373,8 @@ def main():
 
     # set things up for graceful termination
     atexit.register(startup.atexitHandler)
-    signal.signal(signal.SIGHUP,startup.signalHandler)
+    if hasattr(signal, 'SIGHUP'):
+        signal.signal(signal.SIGHUP,startup.signalHandler)
     signal.signal(signal.SIGINT,startup.signalHandler)
     signal.signal(signal.SIGTERM,startup.signalHandler)
 
