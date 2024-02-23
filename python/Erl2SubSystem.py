@@ -1,6 +1,7 @@
 from datetime import datetime as dt
 from datetime import timezone as tz
 from math import isnan
+from re import sub
 from simple_pid import PID
 import tkinter as tk
 from tkinter import ttk
@@ -14,6 +15,15 @@ from Erl2Plot import Erl2Plot
 from Erl2State import Erl2State
 from Erl2VirtualTemp import Erl2VirtualTemp
 
+# control constants
+LOCAL=0
+CONTROLLER=1
+
+# mode constants
+MANUAL=0
+AUTO_STATIC=1
+AUTO_DYNAMIC=2
+
 class Erl2SubSystem():
 
     def __init__(self,
@@ -21,7 +31,8 @@ class Erl2SubSystem():
                  logic='generic',
 
                  # these controls are unique and aren't cloned to more than one frame
-                 radioLoc={},
+                 ctrlRadioLoc={},
+                 modeRadioLoc={},
                  staticSetpointLoc={},
                  hysteresisLoc=None,
                  dynamicSetpointsLoc={},
@@ -42,7 +53,8 @@ class Erl2SubSystem():
         self.__logic = logic
         assert(self.__logic in ('generic','hysteresis','PID'))
 
-        self.__radioLoc = radioLoc
+        self.__ctrlRadioLoc = ctrlRadioLoc
+        self.__modeRadioLoc = modeRadioLoc
         self.__staticSetpointLoc = staticSetpointLoc
         self.__hysteresisLoc = hysteresisLoc
         self.__dynamicSetpointsLoc = dynamicSetpointsLoc
@@ -63,6 +75,9 @@ class Erl2SubSystem():
         self.__pidParams = {}
         self.__pidLastUpdated = {}
         self.erl2context = erl2context
+
+        # keep a list of Entry widgets
+        self.allEntries = []
 
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
@@ -113,7 +128,8 @@ class Erl2SubSystem():
             self.hysteresisFloat = self.erl2context['state'].get(self.subSystemType,'hysteresis',self.__hysteresisDefault)
 
         # remember what radio widgets and entry fields are active for this control
-        self.__radioWidgets = []
+        self.__ctrlRadioWidgets = []
+        self.__modeRadioWidgets = []
         self.staticSetpointEntry = None
         self.dynamicSetpointsEntry = []
         if self.__logic == 'hysteresis':
@@ -127,7 +143,9 @@ class Erl2SubSystem():
         self.__controlsEnabled = None
 
         # the state of this subsystem is described by its mode and active setpoint
+        self.__ctrlVar = tk.IntVar()
         self.__modeVar = tk.IntVar()
+        self.__lastCtrlVar = None
         self.__lastModeVar = None
         self.__activeSetpoint = self.__setpointDefault
 
@@ -137,61 +155,98 @@ class Erl2SubSystem():
         self.__modeLastChanged = None
         self.__setpointLastChanged = None
 
-        # and here is the list of all possible modes
-        self.__modeDict = {0:'Manual',
-                           1:'Child',
-                           2:'Auto Static',
-                           3:'Auto Dynamic'}
+        # a list of choices for the control radio buttons
+        self.__ctrlDict = {LOCAL:'Local',
+                           CONTROLLER:'Controller'}
 
-        # during initialization, the default mode is 2 (auto static)
-        # (but see if there's a different mode set in the system saved state)
-        self.__modeVar.set(self.erl2context['state'].get(self.subSystemType,'mode',2))
+        # during initialization, the default is local control
+        # (but see if there's a different setting in the system saved state)
+        self.__ctrlVar.set(self.erl2context['state'].get(self.subSystemType,'ctrl',LOCAL))
 
-        # add radio buttons to control this subsystem's operating mode
-        for value , text in self.__modeDict.items():
-            r = tk.Radiobutton(self.__radioLoc['parent'],
-                               indicatoron=0,
-                               image=self.erl2context['img'][self.radioImages[0]],
-                               selectimage=self.erl2context['img'][self.radioImages[1]],
-                               compound='left',
-                               font='Arial 16',
-                               bd=0,
-                               highlightthickness=0,
-                               activebackground='#DBDBDB',
-                               highlightcolor='#DBDBDB',
-                               highlightbackground='#DBDBDB',
-                               #bg='#DBDBDB',
-                               selectcolor='#DBDBDB',
-                               variable=self.__modeVar,
-                               value=value,
-                               text=' '+text,
-                               command=self.applyMode
-                               )
-            r.grid(row=value,column=0,ipadx=2,ipady=1,sticky='w')
+        # add radio buttons to toggle this subsystem's control mode
+        if 'parent' in self.__ctrlRadioLoc:
+            for value , text in self.__ctrlDict.items():
+                r = tk.Radiobutton(self.__ctrlRadioLoc['parent'],
+                                   indicatoron=0,
+                                   image=self.erl2context['img'][self.radioImages[0]],
+                                   selectimage=self.erl2context['img'][self.radioImages[1]],
+                                   compound='left',
+                                   font='Arial 16',
+                                   bd=0,
+                                   highlightthickness=0,
+                                   activebackground='#DBDBDB',
+                                   highlightcolor='#DBDBDB',
+                                   highlightbackground='#DBDBDB',
+                                   #bg='#DBDBDB',
+                                   selectcolor='#DBDBDB',
+                                   variable=self.__ctrlVar,
+                                   value=value,
+                                   text=' '+text,
+                                   command=self.applyMode
+                                   )
+                r.grid(row=ctrlRadioLoc['row']+value,column=0,ipadx=2,ipady=2,sticky='w')
 
-            self.__radioWidgets.append(r)
+                self.__ctrlRadioWidgets.append(r)
+
+        # a list of choices for the mode radio buttons
+        self.__modeDict = {MANUAL:'Manual',
+                           AUTO_STATIC:'Auto Static',
+                           AUTO_DYNAMIC:'Auto Dynamic'}
+
+        # during initialization, the default is auto static mode
+        # (but see if there's a different setting in the system saved state)
+        self.__modeVar.set(self.erl2context['state'].get(self.subSystemType,'mode',AUTO_STATIC))
+
+        # add radio buttons to select this subsystem's mode setting
+        if 'parent' in self.__modeRadioLoc:
+            for value , text in self.__modeDict.items():
+                r = tk.Radiobutton(self.__modeRadioLoc['parent'],
+                                   indicatoron=0,
+                                   image=self.erl2context['img'][self.radioImages[0]],
+                                   selectimage=self.erl2context['img'][self.radioImages[1]],
+                                   compound='left',
+                                   font='Arial 16',
+                                   bd=0,
+                                   highlightthickness=0,
+                                   activebackground='#DBDBDB',
+                                   highlightcolor='#DBDBDB',
+                                   highlightbackground='#DBDBDB',
+                                   #bg='#DBDBDB',
+                                   selectcolor='#DBDBDB',
+                                   variable=self.__modeVar,
+                                   value=value,
+                                   text=' '+text,
+                                   command=self.applyMode
+                                   )
+                r.grid(row=modeRadioLoc['row']+value,column=0,ipadx=2,ipady=2,sticky='w')
+
+                self.__modeRadioWidgets.append(r)
 
         # create the static setpoint entry widget's base frame as a child of its parent
-        f = ttk.Frame(self.__staticSetpointLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
-        f.grid(row=self.__staticSetpointLoc['row'], column=self.__staticSetpointLoc['column'], padx='2', pady='0', sticky='nwse')
+        if 'parent' in self.__staticSetpointLoc:
+            f = ttk.Frame(self.__staticSetpointLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
+            f.grid(row=self.__staticSetpointLoc['row'], column=self.__staticSetpointLoc['column'], padx='2', pady='0', sticky='nwse')
 
-        f.rowconfigure(0,weight=1)
-        f.columnconfigure(0,weight=1)
-        f.columnconfigure(2,weight=0)
+            f.rowconfigure(0,weight=1)
+            f.columnconfigure(0,weight=1)
+            f.columnconfigure(2,weight=0)
 
-        # create the entry field for the static setpoint
-        self.staticSetpointEntry = Erl2Entry(entryLoc={'parent':f,'row':0,'column':1},
-                                             labelLoc={'parent':f,'row':0,'column':0},
-                                             label='Static\nSetpoint',
-                                             width=4,
-                                             displayDecimals=self.__displayDecimals,
-                                             validRange=self.__validRange,
-                                             initValue=self.staticSetpointFloat,
-                                             onChange=self.changeStaticSetpoint,
-                                             erl2context=self.erl2context)
+            # create the entry field for the static setpoint
+            self.staticSetpointEntry = Erl2Entry(entryLoc={'parent':f,'row':0,'column':1},
+                                                 labelLoc={'parent':f,'row':0,'column':0},
+                                                 label='Static\nSetpoint',
+                                                 width=4,
+                                                 displayDecimals=self.__displayDecimals,
+                                                 validRange=self.__validRange,
+                                                 initValue=self.staticSetpointFloat,
+                                                 onChange=self.changeStaticSetpoint,
+                                                 erl2context=self.erl2context)
+
+            # expose a list of all entry fields so it can be seen by other modules
+            self.allEntries.append(self.staticSetpointEntry)
 
         # hysteresis is only used in certain subsystems
-        if self.__logic == 'hysteresis' and self.__hysteresisLoc is not None:
+        if self.__logic == 'hysteresis' and self.__hysteresisLoc is not None and 'parent' in self.__hysteresisLoc:
 
             # create the hysteresis entry widget's base frame as a child of its parent
             f = ttk.Frame(self.__hysteresisLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
@@ -212,54 +267,61 @@ class Erl2SubSystem():
                                              onChange=self.changeHysteresis,
                                              erl2context=self.erl2context)
 
+            # expose a list of all entry fields so it can be seen by other modules
+            self.allEntries.append(self.hysteresisEntry)
+
         # add dynamic setpoint entry fields
 
         # create the dynamic setpoint grid's base frame as a child of its parent
-        f = ttk.Frame(self.__dynamicSetpointsLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
-        f.grid(row=self.__dynamicSetpointsLoc['row'], column=self.__dynamicSetpointsLoc['column'], padx='2', pady='2', sticky='nwse')
+        if 'parent' in self.__dynamicSetpointsLoc:
+            f = ttk.Frame(self.__dynamicSetpointsLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
+            f.grid(row=self.__dynamicSetpointsLoc['row'], column=self.__dynamicSetpointsLoc['column'], padx='2', pady='2', sticky='nwse')
 
-        f.rowconfigure(0,weight=1)
-        f.columnconfigure(0,weight=1)
-        f.columnconfigure(2,weight=0)
+            f.rowconfigure(0,weight=1)
+            f.columnconfigure(0,weight=1)
+            f.columnconfigure(2,weight=0)
 
-        hourNum = 0
-        for hourVal in self.dynamicSetpointsFloat:
+            hourNum = 0
+            for hourVal in self.dynamicSetpointsFloat:
 
-            # lay them out in two rows, 12 boxes each
-            if hourNum < 12:
-                hourRow = 0
-                hourCol = hourNum
-                valRow = 1
-                valCol = hourNum
-                hourPady = '0 0'
-            else:
-                hourRow = 2
-                hourCol = hourNum-12
-                valRow = 3
-                valCol = hourNum-12
-                hourPady = '4 0'
+                # lay them out in two rows, 12 boxes each
+                if hourNum < 12:
+                    hourRow = 0
+                    hourCol = hourNum
+                    valRow = 1
+                    valCol = hourNum
+                    hourPady = '0 0'
+                else:
+                    hourRow = 2
+                    hourCol = hourNum-12
+                    valRow = 3
+                    valCol = hourNum-12
+                    hourPady = '4 0'
 
-            # hour label for dynamic setpoints
-            ttk.Label(f, text=str(hourNum), font='Arial 12 bold'
-                #, relief='solid', borderwidth=1
-                ).grid(row=hourRow, column=hourCol, pady=hourPady, sticky='s')
+                # hour label for dynamic setpoints
+                ttk.Label(f, text=str(hourNum), font='Arial 12 bold'
+                    #, relief='solid', borderwidth=1
+                    ).grid(row=hourRow, column=hourCol, pady=hourPady, sticky='s')
 
-            # create the entry field for each dynamic setpoint
-            e = Erl2Entry(entryLoc={'parent':f,'row':valRow,'column':valCol},
-                          #labelLoc={'parent':f,'row':0,'column':0},
-                          #label='Static\nSetpoint',
-                          width=5,
-                          font='Arial 16',
-                          displayDecimals=self.__displayDecimals,
-                          validRange=self.__validRange,
-                          initValue=hourVal,
-                          onChange=self.changeDynamicSetpoint,
-                          onChangeArg=hourNum,
-                          erl2context=self.erl2context)
+                # create the entry field for each dynamic setpoint
+                e = Erl2Entry(entryLoc={'parent':f,'row':valRow,'column':valCol},
+                              #labelLoc={'parent':f,'row':0,'column':0},
+                              #label='Static\nSetpoint',
+                              width=5,
+                              font='Arial 16',
+                              displayDecimals=self.__displayDecimals,
+                              validRange=self.__validRange,
+                              initValue=hourVal,
+                              onChange=self.changeDynamicSetpoint,
+                              onChangeArg=hourNum,
+                              erl2context=self.erl2context)
 
-            self.dynamicSetpointsEntry.append(e)
+                self.dynamicSetpointsEntry.append(e)
 
-            hourNum += 1
+                hourNum += 1
+
+            # expose a list of all entry fields so it can be seen by other modules (first field only)
+            self.allEntries.append(self.dynamicSetpointsEntry[0])
 
         # loop through the list of needed setpoint display widgets for this sensor
         for loc in self.__setpointDisplayLocs:
@@ -268,8 +330,10 @@ class Erl2SubSystem():
             f = ttk.Frame(loc['parent'], padding='0 0', relief='flat', borderwidth=0)
             f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='n')
 
-            # add a Label widget to show the current sensor value
-            l = ttk.Label(f, text=self.__activeSetpoint, font='Arial 20')
+            # add a Label widget to show the current setpoint value
+            l = ttk.Label(f, text=self.__activeSetpoint, font='Arial 20'
+                #, relief='solid', borderwidth=1
+                )
             l.grid(row=0, column=0, sticky='nesw')
 
             f.rowconfigure(0,weight=1)
@@ -285,8 +349,12 @@ class Erl2SubSystem():
             f = ttk.Frame(loc['parent'], padding='0 0', relief='flat', borderwidth=0)
             f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='n')
 
-            # add a Label widget to show the current sensor value
-            l = ttk.Label(f, text=self.__modeDict[self.__modeVar.get()] + ' mode', font='Arial 10 bold italic')
+            # add a Label widget to show the current mode setting
+            #txt = self.__modeDict[self.__modeVar.get()] + ' mode'
+            txt = self.__ctrlDict[self.__ctrlVar.get()] + '/' + sub('^Auto ','',self.__modeDict[self.__modeVar.get()])
+            l = ttk.Label(f, text=txt, font='Arial 10 bold italic'
+                #, relief='solid', borderwidth=1
+                )
             l.grid(row=0, column=0, sticky='nesw')
 
             f.rowconfigure(0,weight=1)
@@ -302,8 +370,8 @@ class Erl2SubSystem():
         for ctl in self.__controls.values():
             ctl.subSystem = self
 
-        # set the focus to the first radio button
-        self.__radioWidgets[0].focus()
+        # set the focus to the first mode radio button
+        self.__modeRadioWidgets[0].focus()
 
         # build a list of logs for plotting
         plotData = []
@@ -364,22 +432,18 @@ class Erl2SubSystem():
     def applyMode(self, loopCount=0):
 
         # read the current mode of the system
-        var = self.__modeVar.get()
-
-        ## work in progress: DO subsystem can only do Manual mode for now
-        #if self.subSystemType == 'DO':
-        #    var = 0
-        #    for r in range(1,len(self.__radioWidgets)):
-        #        self.__radioWidgets[r].config(state='disabled')
+        ctrlVar = self.__ctrlVar.get()
+        modeVar = self.__modeVar.get()
 
         # if we've just re-clicked the already-active mode, disregard
-        if self.__lastModeVar is not None and self.__lastModeVar == var:
+        if (    self.__lastCtrlVar is not None and self.__lastCtrlVar == ctrlVar
+            and self.__lastModeVar is not None and self.__lastModeVar == modeVar):
             return
 
         # enable/disable this subsystem's associated controls as appropriate
         for c in self.__controls.values():
-            #print (f"{__class__.__name__}: Debug: applyMode({self.subSystemType}) calling setActive({int(var==0)}) for [{c.controlType}]")
-            c.setActive(int(var==0))
+            #print (f"{__class__.__name__}: Debug: applyMode({self.subSystemType}) calling setActive({int(crtlVar==LOCAL and modeVar==MANUAL)}) for [{c.controlType}]")
+            c.setActive(int(ctrlVar==LOCAL and modeVar==MANUAL))
 
         # special case: if we are leaving Manual mode, reset all MFCs to zero
         for m in self.__MFCs.values():
@@ -387,43 +451,45 @@ class Erl2SubSystem():
 
         # enable/disable the static setpoint entry field as appropriate
         if self.staticSetpointEntry is not None:
-            if var==2:
+            if ctrlVar==LOCAL and modeVar==AUTO_STATIC:
                 self.staticSetpointEntry.setActive(1)
             else:
                 self.staticSetpointEntry.setActive(0)
 
         # enable/disable the hysteresis entry field as appropriate
         if self.__logic == 'hysteresis' and self.hysteresisEntry is not None:
-            if var!=0:
+            if ctrlVar==LOCAL and modeVar!=MANUAL:
                 self.hysteresisEntry.setActive(1)
             else:
                 self.hysteresisEntry.setActive(0)
 
         # enable/disable the dynamic setpoint entry fields as appropriate
         for w in self.dynamicSetpointsEntry:
-            if var==3:
+            if ctrlVar==LOCAL and modeVar==AUTO_DYNAMIC:
                 w.setActive(1)
             else:
                 w.setActive(0)
 
-        # if in Manual mode, reset all hardware controls to off
-        if var==0:
+        # if in Manual mode (either local or controller), reset all hardware controls to off
+        if modeVar==MANUAL:
             for c in self.__controls.values():
                 c.setControl(0)
 
-        # disable "Child" mode for now
-        self.__radioWidgets[1].config(state='disabled')
+        # disable "Controller" mode for now
+        #self.__ctrlRadioWidgets[CONTROLLER].config(state='disabled')
 
         # make a note of this change in the logs (unless this is system startup)
         if self.log is not None and self.__lastModeVar is not None:
-            self.log.writeMessage(f"mode changed from [{self.__modeDict[self.__lastModeVar]}] to [{self.__modeDict[var]}]")
+            self.log.writeMessage(f"mode changed from [{self.__modeDict[self.__lastModeVar]}] to [{self.__modeDict[modeVar]}]")
 
         # remember the last known mode
-        self.__lastModeVar = var
+        self.__lastCtrlVar = ctrlVar
+        self.__lastModeVar = modeVar
         self.__modeChanged = True
 
         # save the new mode setting to system state
-        self.erl2context['state'].set(self.subSystemType,'mode',var)
+        self.erl2context['state'].set(self.subSystemType,'ctrl',ctrlVar)
+        self.erl2context['state'].set(self.subSystemType,'mode',modeVar)
 
         # update display widgets to show to current mode and setpoint
         self.updateDisplays()
@@ -436,13 +502,14 @@ class Erl2SubSystem():
     def updateDisplays(self):
 
         # read the current mode of the system
-        var = self.__modeVar.get()
+        ctrlVar = self.__ctrlVar.get()
+        modeVar = self.__modeVar.get()
 
         # format the setpoint for the display widgets
         upd = f"{float(round(self.__activeSetpoint,self.__displayDecimals)):.{self.__displayDecimals}f}"
 
         # note that in Manual mode, the setpoint is meaningless
-        if var==0:
+        if modeVar==MANUAL:
             upd = '--'
 
         # update the setpoint displays
@@ -450,8 +517,10 @@ class Erl2SubSystem():
             w.config(text=upd)
 
         # update the mode displays
+        #txt = self.__modeDict[modeVar] + ' mode'
+        txt = self.__ctrlDict[ctrlVar] + '/' + sub('^Auto ','',self.__modeDict[modeVar])
         for w in self.__modeDisplayWidgets:
-            w.config(text=self.__modeDict[var] + ' mode')
+            w.config(text=txt)
 
     def monitorSystem(self, loopCount=0):
 
@@ -465,7 +534,8 @@ class Erl2SubSystem():
         currentHour = int(currentTime.strftime('%H'))
 
         # read the current mode of the system
-        var = self.__modeVar.get()
+        ctrlVar = self.__ctrlVar.get()
+        modeVar = self.__modeVar.get()
 
         # try to get the sensor's current value
         currVal, currTime, currOnline = self.getCurrentValue()
@@ -474,11 +544,11 @@ class Erl2SubSystem():
         if (currVal is None):
 
             # change to Manual mode if not already there
-            if var>0:
+            if modeVar!=MANUAL:
 
                 # change to Manual mode and trigger a data record to the log
-                self.__modeVar.set(0)
-                var=0
+                self.__modeVar.set(MANUAL)
+                modeVar=MANUAL
                 writeNow = True
 
                 # apply the new mode, but make absolutely certain this isn't an infinite loop
@@ -487,15 +557,11 @@ class Erl2SubSystem():
                     self.applyMode(loopCount+1)
 
         # no logic to carry out if in Manual mode
-        if var==0:
+        if modeVar==MANUAL:
             pass
 
-        # child mode isn't coded yet
-        elif var==1:
-            raise SystemError(f"{self.__class__.__name__}: Error: monitorSystem() in [{var}][{self.__modeDict[var]}] mode which is not yet implemented")
-
         # static and dynamic modes share some logic
-        elif var in [2,3]:
+        elif modeVar in [AUTO_STATIC,AUTO_DYNAMIC]:
 
             # keep track of whether the active setpoint changed
             newSetpoint = None
@@ -506,7 +572,7 @@ class Erl2SubSystem():
                 writeNow = True
 
             # static setpoint
-            if var==2:
+            if modeVar==AUTO_STATIC:
                 newSetpoint = float(self.staticSetpointEntry.stringVar.get())
 
             # dynamic setpoint
@@ -531,7 +597,7 @@ class Erl2SubSystem():
                 else:
                     hysteresis = float('nan')
 
-                #print (f"{__class__.__name__}: Debug: monitorSystem() var is [{var}], currVal is [{currVal}], setpoint is [{self.__activeSetpoint}], hysteresis is [{hysteresis}]")
+                #print (f"{__class__.__name__}: Debug: monitorSystem() modeVar is [{modeVar}], currVal is [{currVal}], setpoint is [{self.__activeSetpoint}], hysteresis is [{hysteresis}]")
 
                 # determine the correct course of action
                 if currVal < self.__activeSetpoint-hysteresis:
@@ -552,7 +618,7 @@ class Erl2SubSystem():
 
         # unrecognized mode
         else:
-            raise SystemError(f"{self.__class__.__name__}: Error: monitorSystem() invalid mode [{var}]")
+            raise SystemError(f"{self.__class__.__name__}: Error: monitorSystem() invalid mode [{modeVar}]")
 
         # PID logic -- uses the simple_pid library to set the MFCs to gas
         # rates that will raise or lower the current value of the system
@@ -562,7 +628,7 @@ class Erl2SubSystem():
             for mfc in self.__MFCs:
 
                 # sometimes the PID isn't needed
-                if (currVal is None or not currOnline or var == 0):
+                if (currVal is None or not currOnline or modeVar == MANUAL):
 
                     # disable the PID if it exists (if it wasn't created yet, then ignore it)
                     if mfc in self.__PIDs and self.__PIDs[mfc].auto_mode:
@@ -570,7 +636,7 @@ class Erl2SubSystem():
                         self.__PIDs[mfc].auto_mode = False
 
                 # explicitly check if the system is in auto (static or dynamic) mode
-                elif var in [2,3]:
+                elif modeVar in [AUTO_STATIC,AUTO_DYNAMIC]:
 
                     # remember if we've given the PID new instructions
                     newSetpoint = False
@@ -613,14 +679,31 @@ class Erl2SubSystem():
                         # remember the last time we updated the PID
                         self.__pidLastUpdated[mfc] = currTime
 
-        # sensors come and go, so make sure the setpoint-related
-        # radio buttons are enabled if-and-only-if the sensor is available
-        if (currVal is not None and currOnline):
-            self.__radioWidgets[2].config(state='normal')
-            self.__radioWidgets[3].config(state='normal')
+        # if this is controller mode, then all mode buttons should be disabled
+        if ctrlVar==CONTROLLER:
+            self.__modeRadioWidgets[MANUAL].config(state='disabled')
+            self.__modeRadioWidgets[AUTO_STATIC].config(state='disabled')
+            self.__modeRadioWidgets[AUTO_DYNAMIC].config(state='disabled')
+
+        # otherwise: sensors come and go, so make sure the setpoint-related
+        # mode radio buttons are enabled if-and-only-if the sensor is available
         else:
-            self.__radioWidgets[2].config(state='disabled')
-            self.__radioWidgets[3].config(state='disabled')
+            if (currVal is not None and currOnline):
+                self.__modeRadioWidgets[MANUAL].config(state='normal')
+                self.__modeRadioWidgets[AUTO_STATIC].config(state='normal')
+                self.__modeRadioWidgets[AUTO_DYNAMIC].config(state='normal')
+            else:
+                self.__modeRadioWidgets[MANUAL].config(state='normal')
+                self.__modeRadioWidgets[AUTO_STATIC].config(state='disabled')
+                self.__modeRadioWidgets[AUTO_DYNAMIC].config(state='disabled')
+
+        # also, disable/enable the offset entry field depending on controller mode
+        if ctrlVar==CONTROLLER: actv = 0
+        else:                   actv = 1
+        for s in self.__sensors.values():
+            if hasattr(s, 'allEntries'):
+                for e in s.allEntries:
+                    e.setActive(actv)
 
         # if the mode has changed, always trigger a data record
         if self.__modeChanged:
@@ -644,7 +727,8 @@ class Erl2SubSystem():
                 {'Timestamp.UTC': currentTime.strftime(self.__dtFormat),
                  'Timestamp.Local': currentTime.astimezone(self.__timezone).strftime(self.__dtFormat),
                  'Hour.Local': self.__hour,
-                 'Active Mode': var,
+                 'Control': ctrlVar,
+                 'Active Mode': modeVar,
                  'Active Setpoint': self.__activeSetpoint,
                  'Mode Last Changed (Local)': self.__modeLastChanged.astimezone(self.__timezone).strftime(self.__dtFormat),
                  'Septpoint Last Changed (Local)': self.__setpointLastChanged.astimezone(self.__timezone).strftime(self.__dtFormat)}
@@ -664,7 +748,7 @@ class Erl2SubSystem():
                 self.__plotTracker += 1
 
         # wake up every five seconds and see if anything needs adjustment
-        self.__radioWidgets[0].after(5000, self.monitorSystem)
+        self.__modeRadioWidgets[0].after(5000, self.monitorSystem)
 
     # wrapper methods for changeEntry()
     def changeStaticSetpoint(self):
@@ -739,7 +823,7 @@ class Erl2SubSystem():
         if self.log is not None:
 
             # only act if this is Manual mode
-            if self.__modeVar.get() == 0:
+            if self.__modeVar.get() == MANUAL:
 
                 # send the control's update to the subsystem log
                 self.log.writeMessage(message)
@@ -759,6 +843,12 @@ def main():
     radioFrame = ttk.Frame(root, padding='2', relief='flat', borderwidth=0)
     radioFrame.grid(row=1, column=1, padx='2', pady='2', sticky='nesw')
 
+    ctrlRadioFrame = ttk.Frame(radioFrame, padding='2', relief='flat', borderwidth=0)
+    ctrlRadioFrame.grid(row=0, column=0, padx='2', pady='2', sticky='nesw')
+
+    modeRadioFrame = ttk.Frame(radioFrame, padding='2', relief='flat', borderwidth=0)
+    modeRadioFrame.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')
+
     controlFrame = ttk.Frame(root, padding='2', relief='flat', borderwidth=0)
     controlFrame.grid(row=1, column=2, padx='2', pady='2', sticky='nesw')
 
@@ -772,14 +862,15 @@ def main():
                                   statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
                                   correctionLoc={'parent':subSysFrame,'row':0,'column':0})
 
-    heater = Erl2Heater(displayLocs=[{'parent':controlFrame,'row':1,'column':0}],
-                        buttonLoc={'parent':controlFrame,'row':3,'column':0})
-    chiller = Erl2Chiller(displayLocs=[{'parent':controlFrame,'row':2,'column':0}],
-                          buttonLoc={'parent':controlFrame,'row':4,'column':0})
+    heater = Erl2Heater(displayLocs=[{'parent':controlFrame,'row':0,'column':0}],
+                        buttonLoc={'parent':controlFrame,'row':2,'column':0})
+    chiller = Erl2Chiller(displayLocs=[{'parent':controlFrame,'row':1,'column':0}],
+                          buttonLoc={'parent':controlFrame,'row':3,'column':0})
 
     subsystem = Erl2SubSystem(subSystemType='temperature',
                               logic='hysteresis',
-                              radioLoc={'parent':radioFrame,'row':0,'column':0},
+                              ctrlRadioLoc={'parent':ctrlRadioFrame,'row':0,'column':0},
+                              modeRadioLoc={'parent':modeRadioFrame,'row':0,'column':0},
                               staticSetpointLoc={'parent':subSysFrame,'row':1,'column':0},
                               hysteresisLoc={'parent':subSysFrame,'row':2,'column':0},
                               dynamicSetpointsLoc={'parent':dynamicFrame,'row':0,'column':0},

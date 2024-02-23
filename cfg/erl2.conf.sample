@@ -32,8 +32,8 @@
 # this behavior by specifying a full IP address here (without quotation marks)
 # controllerIP = None
 
-# tanks: networking is disabled by default (controllers ignore this setting)
-# tankNetwork = False
+# networking is disabled by default
+# enabled = False
 
 # any device: set ipNetworkStub to the stub address of the private ERL2 Tank
 # subnet (or use None to have ERL2 logic find the right addresses)

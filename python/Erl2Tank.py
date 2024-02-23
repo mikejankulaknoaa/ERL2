@@ -50,7 +50,7 @@ class Erl2Tank:
         self.__frames = {}
         self.sensors = {}
         self.controls = {}
-        self.systems = {}
+        self.subsystems = {}
 
         # remember if network module is active
         self.network = None
@@ -87,18 +87,19 @@ class Erl2Tank:
                 for c in range(4):
 
                     # some pages have frames that span more than one row or column
-                    if (p in ['Temp','pH','DO'] and r==0 and c==3):
-                        self.__frames[p][r][c] = ttk.Frame(self.__tabs[p], padding='2', relief='solid', borderwidth=1)
-                        self.__frames[p][r][c].grid(row=r, column=c, rowspan=2, padx='2', pady='2', sticky='nesw')
-                    #elif (p in ['Temp','pH','DO'] and r==1 and c==0):
+                    #if (p in ['Temp','pH','DO'] and r==0 and c==3):
                     #    self.__frames[p][r][c] = ttk.Frame(self.__tabs[p], padding='2', relief='solid', borderwidth=1)
-                    #    self.__frames[p][r][c].grid(row=r, column=c, columnspan=2, padx='2', pady='2', sticky='nesw')
-                    elif (p in ['Temp','pH','DO'] and r==2 and c==0):
+                    #    self.__frames[p][r][c].grid(row=r, column=c, rowspan=2, padx='2', pady='2', sticky='nesw')
+                    ##elif (p in ['Temp','pH','DO'] and r==1 and c==0):
+                    ##    self.__frames[p][r][c] = ttk.Frame(self.__tabs[p], padding='2', relief='solid', borderwidth=1)
+                    ##    self.__frames[p][r][c].grid(row=r, column=c, columnspan=2, padx='2', pady='2', sticky='nesw')
+                    #elif (p in ['Temp','pH','DO'] and r==2 and c==0):
+                    if (p in ['Temp','pH','DO'] and r==2 and c==0):
                         self.__frames[p][r][c] = ttk.Frame(self.__tabs[p], padding='2', relief='solid', borderwidth=1)
                         self.__frames[p][r][c].grid(row=r, column=c, columnspan=4, padx='2', pady='2', sticky='nesw')
                     #elif (p in ['Temp','pH','DO'] and (r,c) in [(1,1),(1,3),(2,1),(2,2),(2,3)]):
-                    #    pass
-                    elif (p in ['Temp','pH','DO'] and (r,c) in [(1,3),(2,1),(2,2),(2,3)]):
+                    #elif (p in ['Temp','pH','DO'] and (r,c) in [(1,3),(2,1),(2,2),(2,3)]):
+                    elif (p in ['Temp','pH','DO'] and (r,c) in [(2,1),(2,2),(2,3)]):
                         pass
                     else:
                         self.__frames[p][r][c] = ttk.Frame(self.__tabs[p], padding='2', relief='solid', borderwidth=1)
@@ -134,10 +135,11 @@ class Erl2Tank:
         # I need some placeholder text for the Error Report frames
         dummyError = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed'
         dummyError += ' do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
-        dummyError += ' Ut enim ad minim veniam, quis nostrud exercitation ullamco'
-        dummyError += ' laboris nisi ut aliquip ex ea commodo consequat.'
-        dummyError += ' Duis aute irure dolor in reprehenderit in voluptate velit'
-        dummyError += ' esse cillum'
+        dummyError += ' Ut enim ad minim'
+        #dummyError += ' veniam, quis nostrud exercitation ullamco'
+        #dummyError += ' laboris nisi ut aliquip ex ea commodo consequat.'
+        #dummyError += ' Duis aute irure dolor in reprehenderit in voluptate velit'
+        #dummyError += ' esse cillum'
         #dummyError += ' dolore eu fugiat nulla pariatur.'
         #dummyError += ' Excepteur sint occaecat cupidatat non proident, sunt in'
         #dummyError += ' culpa qui officia deserunt mollit anim id est laborum.'
@@ -268,7 +270,7 @@ class Erl2Tank:
         n2MfcStatusLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
 
         # if necessary, include networking details
-        if self.erl2context['conf']['network']['tankNetwork']:
+        if self.erl2context['conf']['network']['enabled']:
             r += 1
             ttk.Label(self.__frames['Settings'][0][1], text='IP Address:  ', font=fontleft, justify='right'
                 #, relief='solid', borderwidth=1
@@ -326,7 +328,7 @@ class Erl2Tank:
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
                 statusLocs=tempStatusLocs,
-                correctionLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
+                correctionLoc={'parent':self.__frames['Temp'][0][3],'row':1,'column':0},
                 erl2context=self.erl2context)
         else:
             self.sensors['temperature'] = Erl2Input(
@@ -334,7 +336,7 @@ class Erl2Tank:
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
                 statusLocs=tempStatusLocs,
-                correctionLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
+                correctionLoc={'parent':self.__frames['Temp'][0][3],'row':1,'column':0},
                 erl2context=self.erl2context)
 
         # readout displays for the current pH, as reported by the pico-pH
@@ -343,7 +345,7 @@ class Erl2Tank:
             displayLocs=[{'parent':self.__frames['Data'][1][0],'row':1,'column':0},
                          {'parent':self.__frames['pH'][0][0],'row':1,'column':0}],
             statusLocs=pHStatusLocs,
-            correctionLoc={'parent':self.__frames['pH'][0][2],'row':1,'column':0},
+            correctionLoc={'parent':self.__frames['pH'][0][3],'row':1,'column':0},
             tempSensor=self.sensors['temperature'],
             erl2context=self.erl2context)
 
@@ -353,7 +355,7 @@ class Erl2Tank:
             displayLocs=[{'parent':self.__frames['Data'][2][0],'row':1,'column':0},
                          {'parent':self.__frames['DO'][0][0],'row':1,'column':0}],
             statusLocs=doStatusLocs,
-            correctionLoc={'parent':self.__frames['DO'][0][2],'row':1,'column':0},
+            correctionLoc={'parent':self.__frames['DO'][0][3],'row':1,'column':0},
             tempSensor=self.sensors['temperature'],
             erl2context=self.erl2context)
 
@@ -390,14 +392,14 @@ class Erl2Tank:
         self.controls['heater'] = Erl2Heater(
             displayLocs=[{'parent':self.__frames['Data'][0][1],'row':0,'column':0},
                          {'parent':self.__frames['Temp'][0][1],'row':0,'column':0}],
-            buttonLoc={'parent':self.__frames['Temp'][1][1],'row':1,'column':0},
+            buttonLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
             erl2context=self.erl2context)
 
         # readout and control widgets for the Chiller solenoid
         self.controls['chiller'] = Erl2Chiller(
             displayLocs=[{'parent':self.__frames['Data'][0][1],'row':1,'column':0},
                          {'parent':self.__frames['Temp'][0][1],'row':1,'column':0}],
-            buttonLoc={'parent':self.__frames['Temp'][1][1],'row':2,'column':0},
+            buttonLoc={'parent':self.__frames['Temp'][0][2],'row':2,'column':0},
             erl2context=self.erl2context)
 
         # readout and control widgets for the Air MFC
@@ -407,7 +409,7 @@ class Erl2Tank:
                                 {'parent':self.__frames['pH'][0][1],'row':2,'column':0},
                                 {'parent':self.__frames['Data'][2][1],'row':2,'column':0},
                                 {'parent':self.__frames['DO'][0][1],'row':2,'column':0}],
-            entryLoc={'parent':self.__frames['pH'][1][1],'row':1,'column':0},
+            entryLoc={'parent':self.__frames['pH'][0][2],'row':1,'column':0},
             erl2context=self.erl2context)
 
         # readout and control widgets for the CO2 MFC
@@ -415,7 +417,7 @@ class Erl2Tank:
             controlType='mfc.co2',
             settingDisplayLocs=[{'parent':self.__frames['Data'][1][1],'row':4,'column':0},
                                 {'parent':self.__frames['pH'][0][1],'row':4,'column':0}],
-            entryLoc={'parent':self.__frames['pH'][1][1],'row':2,'column':0},
+            entryLoc={'parent':self.__frames['pH'][0][2],'row':2,'column':0},
             erl2context=self.erl2context)
 
         # readout and control widgets for the N2 MFC
@@ -423,14 +425,15 @@ class Erl2Tank:
             controlType='mfc.n2',
             settingDisplayLocs=[{'parent':self.__frames['Data'][2][1],'row':4,'column':0},
                                 {'parent':self.__frames['DO'][0][1],'row':4,'column':0}],
-            entryLoc={'parent':self.__frames['DO'][1][1],'row':1,'column':0},
+            entryLoc={'parent':self.__frames['DO'][0][2],'row':1,'column':0},
             erl2context=self.erl2context)
 
         # the logic that implements the overarching temperature subsystem (and its controls)
-        self.systems['temperature'] = Erl2SubSystem(
+        self.subsystems['temperature'] = Erl2SubSystem(
             subSystemType='temperature',
             logic='hysteresis',
-            radioLoc={'parent':self.__frames['Temp'][1][0],'row':0,'column':0},
+            ctrlRadioLoc={'parent':self.__frames['Temp'][1][0],'row':1,'column':0},
+            modeRadioLoc={'parent':self.__frames['Temp'][1][1],'row':1,'column':0},
             staticSetpointLoc={'parent':self.__frames['Temp'][1][2],'row':1,'column':0},
             hysteresisLoc={'parent':self.__frames['Temp'][1][2],'row':2,'column':0},
             dynamicSetpointsLoc={'parent':self.__frames['Temp'][2][0],'row':1,'column':0},
@@ -448,10 +451,11 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # the logic that implements the overarching pH subsystem (and its controls)
-        self.systems['pH'] = Erl2SubSystem(
+        self.subsystems['pH'] = Erl2SubSystem(
             subSystemType='pH',
             logic='PID',
-            radioLoc={'parent':self.__frames['pH'][1][0],'row':0,'column':0},
+            ctrlRadioLoc={'parent':self.__frames['pH'][1][0],'row':1,'column':0},
+            modeRadioLoc={'parent':self.__frames['pH'][1][1],'row':1,'column':0},
             staticSetpointLoc={'parent':self.__frames['pH'][1][2],'row':1,'column':0},
             dynamicSetpointsLoc={'parent':self.__frames['pH'][2][0],'row':1,'column':0},
 
@@ -468,10 +472,11 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # the logic that implements the overarching DO subsystem (and its controls)
-        self.systems['DO'] = Erl2SubSystem(
+        self.subsystems['DO'] = Erl2SubSystem(
             subSystemType='DO',
             logic='PID',
-            radioLoc={'parent':self.__frames['DO'][1][0],'row':0,'column':0},
+            ctrlRadioLoc={'parent':self.__frames['DO'][1][0],'row':1,'column':0},
+            modeRadioLoc={'parent':self.__frames['DO'][1][1],'row':1,'column':0},
             staticSetpointLoc={'parent':self.__frames['DO'][1][2],'row':1,'column':0},
             dynamicSetpointsLoc={'parent':self.__frames['DO'][2][0],'row':1,'column':0},
 
@@ -487,8 +492,8 @@ class Erl2Tank:
                   'mfc.n2':self.controls['mfc.n2']},
             erl2context=self.erl2context)
 
-        # the logic that enables tank networking, if enabled
-        if self.erl2context['conf']['network']['tankNetwork']:
+        # the logic that enables networking, if enabled
+        if self.erl2context['conf']['network']['enabled']:
 
             # don't do this if Erl2Tank was called directly
             if self.parent is not None:
@@ -499,10 +504,16 @@ class Erl2Tank:
 
         # standardized labels for some Temp, pH and DO frames
         for name in ['Temp', 'pH', 'DO']:
-            ttk.Label(self.__frames[name][0][2], text=name+' Correction', font='Arial 12 bold'
+            ttk.Label(self.__frames[name][0][3], text=name+' Correction', font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
-            ttk.Label(self.__frames[name][1][1], text='Manual Controls', font='Arial 12 bold'
+            ttk.Label(self.__frames[name][1][0], text='Control', font='Arial 12 bold'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
+            ttk.Label(self.__frames[name][1][1], text='Mode', font='Arial 12 bold'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
+            ttk.Label(self.__frames[name][0][2], text='Manual Controls', font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
             ttk.Label(self.__frames[name][1][2], text='Auto Controls', font='Arial 12 bold'
@@ -511,10 +522,10 @@ class Erl2Tank:
             ttk.Label(self.__frames[name][2][0], text='Auto Dynamic Setpoints (by hour of day)', font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
-            ttk.Label(self.__frames[name][0][3], text='Error Report', font='Arial 12 bold'
+            ttk.Label(self.__frames[name][1][3], text='Error Report', font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
-            ttk.Label(self.__frames[name][0][3], text=dummyError, font='Arial 14', wraplength=250
+            ttk.Label(self.__frames[name][1][3], text=dummyError, font='Arial 14', wraplength=250
                 #, relief='solid', borderwidth=1
                 ).grid(row=1, column=0, sticky='nw')
 
@@ -671,10 +682,11 @@ class Erl2Tank:
         # set focus to an arbitrary frame to avoid seeing focus on entry or button widgets
         self.__frames[p][0][0].focus()
 
-        # explicitly deselect the sensor's firstEntry field
-        for s in self.sensors.values():
-            if s.firstEntry is not None:
-                s.firstEntry.widget.select_clear()
+        # explicitly deselect all entry fields
+        for s in list(self.sensors.values()) + list(self.controls.values()) + list(self.subsystems.values()):
+            if hasattr(s, 'allEntries'):
+                for e in s.allEntries:
+                    e.widget.select_clear()
 
         #for row in range(3):
         #   print (f"{self.__class__.__name__}: Debug: changeTabs({p}): frame width is [{self.__frames['Data'][row][2].winfo_width()}], frame height is [{self.__frames['Data'][row][2].winfo_height()}]")

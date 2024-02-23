@@ -11,7 +11,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.38b (2024-02-22)'
+    VERSION = '0.39b (2024-02-23)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -35,7 +35,7 @@ class Erl2Config():
         self.__default['device']['id'] = 'Tank 0'
 
         self.__default['network']['controllerIP'] = 'None'
-        self.__default['network']['tankNetwork'] = 'False'
+        self.__default['network']['enabled'] = 'False'
         self.__default['network']['ipNetworkStub'] = '192.168.2.'
         self.__default['network']['ipRange'] = '[2, 63]'
         self.__default['network']['updateFrequency'] = '5'
@@ -283,7 +283,7 @@ class Erl2Config():
 
         # network
         self.validate(str,  'network', 'controllerIP')
-        self.validate(bool, 'network', 'tankNetwork')
+        self.validate(bool, 'network', 'enabled')
         self.validate(str,  'network', 'ipNetworkStub')
         self.validate(int,  'network', 'updateFrequency', min=1)
 

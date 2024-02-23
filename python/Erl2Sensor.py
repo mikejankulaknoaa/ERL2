@@ -32,7 +32,9 @@ class Erl2Sensor():
         self.__statusWidgets = []
         self.__correctionWidgets = []
         self.__offsetEntry = None
-        self.firstEntry = None
+
+        # keep a list of entry widgets
+        self.allEntries = []
 
         # for a sensor, we track current value and last valid update time
         # (be careful to update these values only in the measure() method)
@@ -138,8 +140,8 @@ class Erl2Sensor():
                                            onChange=self.changeOffset,
                                            erl2context=self.erl2context)
 
-            # right now the offset Entry is the first Entry field in all tabs
-            self.firstEntry = self.__offsetEntry
+            # expose a list of all entry fields so it can be seen by other modules
+            self.allEntries.append(self.__offsetEntry)
 
             # add a Label widget to show the raw sensor value
             l = ttk.Label(f, text='--', font='Arial 16', justify='right')

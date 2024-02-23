@@ -1,7 +1,3 @@
-from datetime import datetime as dt
-from datetime import timezone as tz
-import pickle
-import re
 import sys
 import tkinter as tk
 from tkinter import ttk
@@ -261,7 +257,7 @@ class Erl2Controller():
             ).grid(row=r, column=0, columnspan=2, sticky='s')
 
         # the logic that enables tank networking, if enabled
-        if self.erl2context['conf']['network']['tankNetwork']:
+        if self.erl2context['conf']['network']['enabled']:
             pass
 
             # don't do this if Erl2Controller was called directly

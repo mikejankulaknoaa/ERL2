@@ -33,6 +33,9 @@ class Erl2Mfc():
         self.__width = width
         self.erl2context = erl2context
 
+        # keep a list of entry widgets
+        self.allEntries = []
+
         # if no label supplied, try to deduce from MFC control type
         if self.__label is None:
             if self.controlType == 'mfc.air':
@@ -128,6 +131,9 @@ class Erl2Mfc():
                       initValue=self.flowSetting,
                       onChange=self.changeFlow,
                       erl2context=self.erl2context)
+
+        # expose a list of all entry fields so it can be seen by other modules
+        self.allEntries.append(e)
 
         f.rowconfigure(0,weight=1)
         f.columnconfigure(0,weight=0)
