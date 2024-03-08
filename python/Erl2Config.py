@@ -4,14 +4,12 @@ from datetime import datetime as dt
 from datetime import timezone as tz
 from os import path
 from sys import platform
-import tkinter as tk
-from tkinter import ttk
 from tzlocal import get_localzone
 
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.39b (2024-02-23)'
+    VERSION = '0.40b (2024-03-08)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -509,11 +507,8 @@ class Erl2Config():
 
 def main():
 
-    root = tk.Tk()
     config = Erl2Config()
-    ttk.Label(root,text='Erl2Config',font='Arial 30 bold').grid(row=0,column=0)
-    ttk.Label(root,text=config['system']['version']).grid(row=1,column=0)
-    root.mainloop()
+    print ("Erl2Config module (no GUI)")
 
 if __name__ == "__main__": main()
 

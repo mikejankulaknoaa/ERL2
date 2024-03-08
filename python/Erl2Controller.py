@@ -1,3 +1,4 @@
+from multiprocessing import Queue
 import sys
 import tkinter as tk
 from tkinter import ttk
@@ -6,7 +7,6 @@ from Erl2Clock import Erl2Clock
 from Erl2Config import Erl2Config
 from Erl2Log import Erl2Log
 from Erl2Network import Erl2Network
-from Erl2State import Erl2State
 
 class Erl2Controller():
 
@@ -44,9 +44,8 @@ class Erl2Controller():
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
 
-        # this is the main compendium of information about child tanks, and their sort order
-        self.__childrenDict = {}
-        self.__sortedMacs = []
+        # the heart of this module is its list of child devices
+        self.__masterList = {}
 
         # remember if network module is active
         self.network = None
@@ -244,11 +243,11 @@ class Erl2Controller():
             ).grid(row=r, column=0, sticky='ne')
         macLocs=[{'parent':displayAbout,'row':r,'column':1}]
 
-        r += 1
-        ttk.Label(displayAbout, text='Last Network Comms:  ', font=fontleft, justify='right'
-            #, relief='solid', borderwidth=1
-            ).grid(row=r, column=0, sticky='ne')
-        netStatusLocs=[{'parent':displayAbout,'row':r,'column':1}]
+        #r += 1
+        #ttk.Label(displayAbout, text='Last Network Comms:  ', font=fontleft, justify='right'
+        #    #, relief='solid', borderwidth=1
+        #    ).grid(row=r, column=0, sticky='ne')
+        #netStatusLocs=[{'parent':displayAbout,'row':r,'column':1}]
 
         # dummy row at end
         r += 1
@@ -256,23 +255,68 @@ class Erl2Controller():
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, columnspan=2, sticky='s')
 
+        for row in range(r-1):
+            displayAbout.rowconfigure(row,weight=0)
+        displayAbout.rowconfigure(r,weight=1)
+        displayAbout.columnconfigure(0,weight=1)
+        displayAbout.columnconfigure(1,weight=1)
+
         # the logic that enables tank networking, if enabled
         if self.erl2context['conf']['network']['enabled']:
-            pass
 
             # don't do this if Erl2Controller was called directly
             if self.parent is not None:
-                self.network = Erl2Network(
-            #                               typeLocs=[{'parent':root,'row':1,'column':1}],
-            #                               nameLocs=[{'parent':root,'row':2,'column':1}],
-            #                               interfaceLocs=[{'parent':root,'row':3,'column':1}],
-                                           ipLocs=ipLocs,
+                self.network = Erl2Network(ipLocs=ipLocs,
                                            macLocs=macLocs,
-                                           statusLocs=netStatusLocs,
-                                           #childrenLocs=[{'parent':displayNetwork,'row':1,'column':0}],
                                            childrenLocs=[{'parent':displaySettings,'row':0,'column':0,'columnspan':2}],
                                            buttonLoc=rescanLoc,
+                                           erl2context=self.erl2context,
                                           )
+
+        # start up the main processing routine to manage child devices and update displays
+        self.updateDisplays()
+
+    def updateDisplays(self):
+
+        # don't run device updates during a device scan
+        if not self.network.scanning():
+
+            # messaging depends on whether we are starting from scratch (startup)
+            if len(self.__masterList) == 0: startup = True
+            else:                           startup = False
+
+            # loop through currently-networked devices; compare to master list
+            for mac in self.network.sortedMacs:
+
+                # get this mac's id
+                id = self.network.childrenDict[mac]['id']
+
+                # add to master list if it's not already there
+                if id not in self.__masterList:
+                    self.__masterList[id] = {'mac':mac}
+
+            # loop through master list
+            for id in self.__masterList:
+
+                # get this id's mac
+                if 'mac' in self.__masterList[id]: mac = self.__masterList[id]['mac']
+                else:                              mac = None
+
+                # set up a reply queue for this request, if needed
+                if 'replyQ' not in self.__masterList[id]:
+                    self.__masterList[id]['replyQ'] = Queue()
+
+                # get this device's state
+                state = self.network.getState(mac, self.__masterList[id]['replyQ'])
+
+            # 1. is the device active? "ID"
+            # 2. what is the device's state? "GET.STATE"
+            # 3. collect any new data "GET.DATA | YYYYMMDDHHMMSS"
+
+            # 4. update displays -- last comms, state, new data
+
+        # set up the next call to this method (wait 30s)
+        self.__displayTanks.after(30000, self.updateDisplays)
 
     # for a graceful shutdown
     def gracefulExit(self):

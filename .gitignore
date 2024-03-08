@@ -6,3 +6,4 @@ erl2.conf
 z*
 log/
 .idea
+bin/startup/*

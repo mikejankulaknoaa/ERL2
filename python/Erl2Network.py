@@ -7,7 +7,8 @@ import pickle
 import re
 import selectors
 import socket
-import types
+from time import sleep
+from types import SimpleNamespace
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox as mb
@@ -27,13 +28,18 @@ PORT = 65432
 # datetime format used to share dates
 DTFMT = '%Y-%m-%d %H:%M:%S.%f %Z'
 
-def tankScan(stub,
-             interface,
-             ip,
-             mac,
-             ipRange,
-             statusQ,
-             childrenQ):
+# counter for tracking requests + replies
+RQID = 0
+
+def processScan(stub,
+                interface,
+                ip,
+                mac,
+                ipRange,
+                childrenQ,
+                incomingQ,
+                outgoingQ,
+                ):
 
     # quietly terminate if necessary arguments are empty
     if stub is None or ipRange is None or len(ipRange) != 2:
@@ -53,17 +59,17 @@ def tankScan(stub,
                 # something is answering!
                 if ret == 0:
 
-                    # update controller's time of last network activity
-                    t = dt.now(tz=tz.utc)
-                    statusQ.put(t)
-                    print (f"Erl2Network|tankScan: Debug: successfully connected to [{host}] from [{interface}][{ip}][{mac}]")
+                    print (f"Erl2Network|processScan: Debug: successfully connected to [{host}] from [{interface}][{ip}][{mac}]")
+
+                    # once socket is successfully connected, lengthen timeout to 10s
+                    s.settimeout(10)
 
                     # ask connected device for identifying details
                     s.sendall(b"ID")
 
                     # process device's reply and prepare report for childrenQ
                     data = s.recv(1024)
-                    #print (f"Erl2Network|tankScan: Debug: sent [ID], received reply: [{data}]")
+                    #print (f"Erl2Network|processScan: Debug: sent [ID], received reply: [{data}]")
                     val = '\n'.join([data.decode(), host])
 
                     # ask device for its current time
@@ -77,99 +83,187 @@ def tankScan(stub,
                     t = dt.now(tz=tz.utc)
                     latency = str((deviceT-t).total_seconds())
                     val = '\n'.join([val,latency])
-                    #print (f"Erl2Network|tankScan: Debug: sent [TIME], received [{deviceT}], latency is: [{latency}]")
+                    #print (f"Erl2Network|processScan: Debug: sent [TIME], received [{deviceT}], latency is: [{latency}]")
 
                     # add UTC controller time to the report for childrenQ
                     val = '\n'.join([val,t.astimezone(tz.utc).strftime(DTFMT)])
 
                     # add device report the queue (deviceType, id, mac, ip, latency, lastActive)
                     childrenQ.put(val)
-                    #print (f"Erl2Network|tankScan: Debug: adding [{val}] to childrenQ")
+                    #print (f"Erl2Network|processScan: Debug: adding [{val}] to childrenQ")
 
                 else:
                     pass
-                    #print (f"Erl2Network|tankScan: Debug: cannot connect to [{host}] from [{interface}][{ip}][{mac}]: ret [{ret}]")
+                    #print (f"Erl2Network|processScan: Debug: cannot connect to [{host}] from [{interface}][{ip}][{mac}]: ret [{ret}]")
 
             except Exception as e:
-                print (f"Erl2Network|tankScan: Error: unexpected error when connecting to [{host}] from [{interface}][{ip}][{mac}]: [{e}]")
+                print (f"Erl2Network|processScan: Error: unexpected error when connecting to [{host}] from [{interface}][{ip}][{mac}]: [{e}]")
 
             finally:
                 s.close()
 
-def listen(deviceType,
-           id,
-           interface,
-           ip,
-           mac,
-           tankAddress,
-           statusQ):
-
-    print (f"Erl2Network|listen: Debug: tank listening on address [{interface}][{ip}][{mac}], port [{PORT}]")
+def processListen(
+                  deviceAddress,
+                  incomingQ,
+                  outgoingQ,
+                  ):
 
     # initialize selector
     sel = selectors.DefaultSelector()
 
+    # open socket and bind it for listening (non-blocking)
     lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    lsock.bind((tankAddress, PORT))
+    lsock.bind((deviceAddress, PORT))
     lsock.listen()
-    print (f"Erl2Network|listen: Debug: listening on {(tankAddress, PORT)}")
     lsock.setblocking(False)
+    print (f"Erl2Network|processListen: Debug: listening on {(deviceAddress, PORT)}")
+
+    # register the socket with the selector for listening only (and data set to None)
     sel.register(lsock, selectors.EVENT_READ, data=None)
 
     try:
         while True:
+            # this is a blocking call and should only return when something is received;
+            # returns a list of (key, events) tuples where key is a SelectorKey instance
             events = sel.select(timeout=None)
-            t = dt.now(tz=tz.utc)
-            statusQ.put(t)
 
+            # loop through list of ready file objects for this selector
             for key, mask in events:
+
+                # no data -- this is the main (READ only) listener socket, receiving a new connection
                 if key.data is None:
 
                     # code formerly part of acceptWrapper
                     sock = key.fileobj
 
                     conn, addr = sock.accept()  # Should be ready to read
-                    print (f"Erl2Network|listen: Debug: accepted connection from {addr}")
+                    print (f"Erl2Network|processListen: Debug: accepted connection from {addr}")
                     conn.setblocking(False)
-                    data = types.SimpleNamespace(addr=addr, inb=b"", outb=b"")
+
+                    # once a connection is made from a controller, register it for READ and WRITE events
                     events = selectors.EVENT_READ | selectors.EVENT_WRITE
+                    data = SimpleNamespace(addr=addr, inb=b"", outb=b"", status=b"CONNECTED")
                     sel.register(conn, events, data=data)
 
+                # data object is present -- so this is a READ / WRITE open connection with a controller
                 else:
                     # code formerly part of serviceConnection
                     sock = key.fileobj
                     data = key.data
 
+                    # if this socket was registered with a bitmask including READ events
                     if mask & selectors.EVENT_READ:
 
+                        # receive data from the socket (assumption: requests will never exceed 1024 bytes)
                         recv_data = sock.recv(1024)  # Should be ready to read
 
+                        # something was received
                         if recv_data:
 
-                            print (f"Erl2Network|listen: Debug: received data {recv_data}")
+                            print (f"Erl2Network|processListen: Debug: received data {recv_data}")
+                            data.inb = recv_data
 
-                            if recv_data == b"ID":
-                                data.outb = '\n'.join([deviceType, id, mac]).encode()
+                            # create a request object, add it to the incoming queue
+                            rq = SimpleNamespace(addr=addr, inb=recv_data, outb=b"")
+                            incomingQ.put(rq)
 
-                            elif recv_data == b"TIME":
-                                t = dt.now(tz=tz.utc)
-                                data.outb = pickle.dumps(t)
+                            # update the selectorKey with incoming bytes and status
+                            data.outb = b""
+                            data.status = b"QUEUED"
+
                         else:
-                            print (f"Erl2Network|listen: Debug: closing connection to {data.addr}")
+                            print (f"Erl2Network|processListen: Debug: closing connection to {data.addr}")
                             sel.unregister(sock)
                             sock.close()
 
+                    # if this socket was registered with a bitmask including READ events
                     if mask & selectors.EVENT_WRITE:
+
+                        # check if we're waiting for a reply
+                        if data.status == b"QUEUED":
+
+                            # wait up to 10s for a reply
+                            countdown=10
+                            while countdown>0:
+                                 if not outgoingQ.empty():
+                                     rq = outgoingQ.get_nowait()
+                                     data.outb = rq.outb
+                                     print (f"Erl2Network|processListen: Debug: read {data.outb} from outgoingQ")
+                                     break
+                                 else:
+                                     countdown -= 0.5
+                                     sleep(0.5)
+
+                        # if we have a reply
                         if data.outb:
-                            print (f"Erl2Network|listen: Debug: replying {data.outb!r} to {data.addr}")
+
+                            print (f"Erl2Network|processListen: Debug: replying {data.outb!r} to {data.addr}")
                             sent = sock.send(data.outb)  # Should be ready to write
                             data.outb = data.outb[sent:]
 
     except KeyboardInterrupt:
-        print (f"Erl2Network|listen: Debug: caught keyboard interrupt, exiting")
+        print (f"Erl2Network|processListen: Debug: caught keyboard interrupt, exiting")
 
     finally:
         sel.close()
+
+def processSendCommand(host,
+                       command,
+                       replyQ,
+                       childrenQ,
+                       ):
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+
+        try:
+            s.settimeout(.5)
+            ret = s.connect_ex((host, PORT))
+
+            # something is answering!
+            if ret == 0:
+
+                print (f"Erl2Network|processSendCommand: Debug: successfully connected to [{host}]")
+
+                # once socket is successfully connected, lengthen timeout to 10s
+                s.settimeout(10)
+
+                # ask connected device for identifying details
+                s.sendall(b"ID")
+
+                # process device's reply and prepare report for childrenQ
+                data = s.recv(1024)
+                #print (f"Erl2Network|processSendCommand: Debug: sent [ID], received reply: [{data}]")
+                val = '\n'.join([data.decode(), host])
+
+                # ask device for its current time
+                s.sendall(b"TIME")
+
+                # unpack reply, which is a pickled datetime instance
+                data = s.recv(1024)
+                deviceT = pickle.loads(data)
+
+                # refresh local time and calculate difference in controller/device clocks
+                t = dt.now(tz=tz.utc)
+                latency = str((deviceT-t).total_seconds())
+                val = '\n'.join([val,latency])
+                #print (f"Erl2Network|processSendCommand: Debug: sent [TIME], received [{deviceT}], latency is: [{latency}]")
+
+                # add UTC controller time to the report for childrenQ
+                val = '\n'.join([val,t.astimezone(tz.utc).strftime(DTFMT)])
+
+                # add device report the queue (deviceType, id, mac, ip, latency, lastActive)
+                childrenQ.put(val)
+                #print (f"Erl2Network|processSendCommand: Debug: adding [{val}] to childrenQ")
+
+            else:
+                pass
+                print (f"Erl2Network|processSendCommand: Debug: cannot connect to [{host}]: ret [{ret}]")
+
+        except Exception as e:
+            print (f"Erl2Network|processSendCommand: Error: unexpected error when connecting to [{host}]: [{e}]")
+
+        finally:
+            s.close()
 
 #-----
 
@@ -207,12 +301,15 @@ class Erl2Network():
         self.__macWidgets = []
         self.__statusWidgets = []
         self.__childrenWidgets = []
+        self.__allWidgets = []
 
         # multithreading: what processes are running, queues for sharing data, received data
         self.__listenProcess = None
         self.__scanProcess = None
-        self.__statusQueue = Queue()
+        self.__childProcesses = {}
         self.__childrenQueue = Queue()
+        self.__incomingQueue = Queue()
+        self.__outgoingQueue = Queue()
 
         # last network activity of any kind for this device (less useful for a controller)
         self.__lastActive = None
@@ -233,9 +330,9 @@ class Erl2Network():
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
 
-        # this is the main compendium of information about child tanks, and their sort order
-        self.__childrenDict = {}
-        self.__sortedMacs = []
+        # this is the main compendium of information about child devices, and their sort order
+        self.childrenDict = {}
+        self.sortedMacs = []
 
         # if the user has overridden the ipRange with None, scan all addresses
         if self.__ipRange is None:
@@ -249,7 +346,7 @@ class Erl2Network():
         self.erl2context['img'].addImage('rescan', 'network-25.png')
 
         # details of the network connection(s)
-        self.__tankAddresses = []
+        self.__deviceAddresses = []
         self.__networkStubs = []
 
         # details of this device's active network connection
@@ -259,17 +356,17 @@ class Erl2Network():
         self.__stub = None
 
         # start by creating the display widgets, if needed
-        self.createDisplayWidgets('type')
-        self.createDisplayWidgets('name')
-        self.createDisplayWidgets('interface')
-        self.createDisplayWidgets('ip')
-        self.createDisplayWidgets('mac')
-        self.createDisplayWidgets('status')
-        self.createDisplayWidgets('children')
+        self.createDisplays('type')
+        self.createDisplays('name')
+        self.createDisplays('interface')
+        self.createDisplays('ip')
+        self.createDisplays('mac')
+        self.createDisplays('status')
+        self.createDisplays('children')
 
         # determine what IP address(es) are associated with this system's network interfaces
         self.getAddresses()
-        print (f"{self.__class__.__name__}: Debug: __init: self.__tankAddresses is {self.__tankAddresses}")
+        print (f"{self.__class__.__name__}: Debug: __init: self.__deviceAddresses is {self.__deviceAddresses}")
         print (f"{self.__class__.__name__}: Debug: __init: self.__networkStubs is {self.__networkStubs}")
 
         # provide a 'rescan' button (controller only) if given a place for it
@@ -314,7 +411,7 @@ class Erl2Network():
             f1.columnconfigure(0,weight=0)
             f1.columnconfigure(1,weight=1)
 
-        # if controller, start scanning for tanks (only if networkStubs were found)
+        # if controller, start scanning for child devices (only if networkStubs were found)
         if self.__deviceType == 'controller' and len(self.__networkStubs) > 0:
 
             # populate the display fields with controller-type details
@@ -324,56 +421,49 @@ class Erl2Network():
             self.__stub = self.__networkStubs[0]['STUB']
 
             # ...however, try to match ipNetworkStub if multiple subnet candidates were found
-            if len(self.__tankAddresses) > 1:
-                for ind in range(0, len(self.__tankAddresses)):
-                    if self.__ipNetworkStub in self.__tankAddresses[ind]:
+            if len(self.__deviceAddresses) > 1:
+                for ind in range(0, len(self.__deviceAddresses)):
+                    if self.__ipNetworkStub in self.__deviceAddresses[ind]:
                         self.__interface = self.__networkStubs[ind]['IF']
                         self.__ip = self.__networkStubs[ind]['IP']
                         self.__mac = self.__networkStubs[ind]['MAC']
                         self.__stub = self.__networkStubs[ind]['STUB']
                         break
 
-            self.updateDisplayWidgets()
+            self.updateDisplays()
 
             # run a subnet scan during initialization
             self.rescanSubnet(init=True)
 
-        # if tank, listen for connections from controller (only if tankAddresses were found)
-        elif self.__deviceType == 'tank' and len(self.__tankAddresses) > 0:
+        # if tank, listen for connections from controller (only if deviceAddresses were found)
+        elif self.__deviceType == 'tank' and len(self.__deviceAddresses) > 0:
 
             # default to using the first interface found...
-            self.__interface = self.__tankAddresses[0]['IF']
-            self.__ip = self.__tankAddresses[0]['IP']
-            self.__mac = self.__tankAddresses[0]['MAC']
+            self.__interface = self.__deviceAddresses[0]['IF']
+            self.__ip = self.__deviceAddresses[0]['IP']
+            self.__mac = self.__deviceAddresses[0]['MAC']
 
-            # ...however, try to match ipNetworkStub if multiple tank addresses were found
-            if len(self.__tankAddresses) > 1:
-                for ind in range(0, len(self.__tankAddresses)):
-                    if self.__ipNetworkStub in self.__tankAddresses[ind]:
-                        self.__interface = self.__tankAddresses[0]['IF']
-                        self.__ip = self.__tankAddresses[0]['IP']
-                        self.__mac = self.__tankAddresses[0]['MAC']
+            # ...however, try to match ipNetworkStub if multiple child device addresses were found
+            if len(self.__deviceAddresses) > 1:
+                for ind in range(0, len(self.__deviceAddresses)):
+                    if self.__ipNetworkStub in self.__deviceAddresses[ind]:
+                        self.__interface = self.__deviceAddresses[0]['IF']
+                        self.__ip = self.__deviceAddresses[0]['IP']
+                        self.__mac = self.__deviceAddresses[0]['MAC']
                         break
 
-            # update the display fields with info about the chosen network interface
-            self.updateDisplayWidgets()
+            # start up the process that will answer requests
+            self.replyToRequests()
 
-            # do this in a separate process thread
-            self.__listenProcess = Process(target=listen,
-                                           args=(self.__deviceType,
-                                                 self.__id,
-                                                 self.__interface,
-                                                 self.__ip,
-                                                 self.__mac,
-                                                 self.__tankAddresses[0]['IP'],
-                                                 self.__statusQueue,
-                                                 ))
-            self.__listenProcess.start()
+            # update the display fields with info about the chosen network interface
+            self.updateDisplays()
+
+            self.wrapperListen()
 
     def getAddresses(self):
 
         # reset lists
-        self.__tankAddresses = []
+        self.__deviceAddresses = []
         self.__networkStubs = []
 
         # come up with a list of all possible IPv4 interface addresses
@@ -397,18 +487,18 @@ class Erl2Network():
                             if netifaces.AF_LINK in ifList.keys() and len(ifList[netifaces.AF_LINK]) > 0 and 'addr' in ifList[netifaces.AF_LINK][0]:
                                 mac = ifList[netifaces.AF_LINK][0]['addr']
 
-                            # addresses that already end in .1 represent networks that a controller can scan for tanks
+                            # addresses that already end in .1 represent networks that a controller can scan for child devices
                             # (also, the user can override this .1 logic and hardcode the controller IP address)
                             if re.search('\.1$', adr['addr']) is not None or (self.__controllerIP is not None and adr['addr'] == self.__controllerIP):
                                 # strip off the last octet and remember the network 'stub'
                                 self.__networkStubs.append({'IF':i, 'IP':adr['addr'], 'MAC':mac, 'STUB':re.sub('\.[0-9]+$', '.', adr['addr'])})
 
                             # addresses that don't end in .1 are interfaces that
-                            # a tank can listen on for connections from a controller
+                            # a child device can listen on for connections from a controller
                             else:
-                                self.__tankAddresses.append({'IF':i, 'IP':adr['addr'], 'MAC':mac})
+                                self.__deviceAddresses.append({'IF':i, 'IP':adr['addr'], 'MAC':mac})
 
-    def createDisplayWidgets(self, displayType):
+    def createDisplays(self, displayType):
 
         locations = None
 
@@ -439,6 +529,9 @@ class Erl2Network():
                 elif displayType == 'mac': self.__macWidgets.append(l)
                 elif displayType == 'status': self.__statusWidgets.append(l)
 
+                # keep a separate list of all widgets
+                self.__allWidgets.append(l)
+
         # children widgets are a little different
         if displayType == 'children' and len(self.__childrenLocs) > 0:
 
@@ -453,7 +546,10 @@ class Erl2Network():
                 # keep a list of children widgets
                 self.__childrenWidgets.append(f)
 
-    def updateDisplayWidgets(self, scheduleNext=True):
+                # keep a separate list of all widgets
+                self.__allWidgets.append(f)
+
+    def updateDisplays(self, scheduleNext=True):
 
         # current time
         currentTime = dt.now(tz=tz.utc)
@@ -511,11 +607,6 @@ class Erl2Network():
             # update the display
             w.config(text=upd, font=fnt)
 
-        # figure out when the last network activity was
-        while not self.__statusQueue.empty():
-            self.__lastActive = self.__statusQueue.get_nowait()
-            #print (f"{self.__class__.__name__}: updateDisplayWidgets: retrieved [{self.__lastActive}] from statusQ")
- 
         # set the update value
         if self.__lastActive is None: upd = 'never'
         else: upd = self.__lastActive.astimezone(self.__timezone).strftime(self.__dtFormat)
@@ -540,22 +631,22 @@ class Erl2Network():
             # grab any newly-reported children and add them to our list
             while not self.__childrenQueue.empty():
                 ch = self.__childrenQueue.get_nowait()
-                #print (f"{self.__class__.__name__}: updateDisplayWidgets: retrieved [{ch}] from childrenQ")
+                #print (f"{self.__class__.__name__}: updateDisplays: retrieved [{ch}] from childrenQ")
 
                 # device report from the queue is: 0:deviceType, 1:id, 2:mac, 3:ip, 4:latency, 5:lastActive
                 chvals = ch.split('\n')
 
                 # children dict is keyed off the mac address
-                self.__childrenDict[chvals[2]] = {'type':chvals[0], 'id':chvals[1], 'ip':chvals[3], 'latency':float(chvals[4])}
+                self.childrenDict[chvals[2]] = {'type':chvals[0], 'id':chvals[1], 'ip':chvals[3], 'latency':float(chvals[4])}
 
                 # store lastActive as a datetime
-                self.__childrenDict[chvals[2]]['lastActive'] = dt.strptime(chvals[5], DTFMT)
+                self.childrenDict[chvals[2]]['lastActive'] = dt.strptime(chvals[5], DTFMT)
 
                 # strptime seems to drop timezone info, so add it back explicitly
-                self.__childrenDict[chvals[2]]['lastActive'] = self.__childrenDict[chvals[2]]['lastActive'].replace(tzinfo=tz.utc)
+                self.childrenDict[chvals[2]]['lastActive'] = self.childrenDict[chvals[2]]['lastActive'].replace(tzinfo=tz.utc)
 
             # complicated sort to properly order e.g. 'Tank 2' before 'Tank 13'
-            self.__sortedMacs = sorted(self.__childrenDict, key=lambda x: re.sub(r'0*([0-9]{9,})', r'\1', re.sub(r'([0-9]+)',r'0000000000\1',self.__childrenDict[x]['id'])))
+            self.sortedMacs = sorted(self.childrenDict, key=lambda x: re.sub(r'0*([0-9]{9,})', r'\1', re.sub(r'([0-9]+)',r'0000000000\1',self.childrenDict[x]['id'])))
 
             # loop through all placements of the children widgets
             for w in self.__childrenWidgets:
@@ -583,17 +674,17 @@ class Erl2Network():
                 ttk.Label(f, text='Latency', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
 
                 thisrow = 0
-                for mac in self.__sortedMacs:
+                for mac in self.sortedMacs:
                     thisrow += 1
 
                     # add Label widgets as table headers (each within its own bordered frame)
                     f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
                     f.grid(row=thisrow, column=0, padx='1', pady='1', sticky='nesw')
-                    ttk.Label(f, text=self.__childrenDict[mac]['id'],font='Arial 14').grid(row=0, column=0, sticky='nw')
+                    ttk.Label(f, text=self.childrenDict[mac]['id'],font='Arial 14').grid(row=0, column=0, sticky='nw')
 
                     f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
                     f.grid(row=thisrow, column=1, padx='1', pady='1', sticky='nesw')
-                    ttk.Label(f, text=self.__childrenDict[mac]['ip'],font='Arial 14').grid(row=0, column=0, sticky='nw')
+                    ttk.Label(f, text=self.childrenDict[mac]['ip'],font='Arial 14').grid(row=0, column=0, sticky='nw')
 
                     f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
                     f.grid(row=thisrow, column=2, padx='1', pady='1', sticky='nesw')
@@ -604,17 +695,17 @@ class Erl2Network():
                     f.grid(row=thisrow, column=3, padx='1', pady='1', sticky='nesw')
                     l = ttk.Label(f, text='--')
                     l.grid(row=0, column=0, sticky='nw')
-                    self.__childrenDict[mac]['widget'] = l
+                    self.childrenDict[mac]['widget'] = l
 
                     f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
                     f.grid(row=thisrow, column=4, padx='1', pady='1', sticky='nesw')
-                    ttk.Label(f, text=round(self.__childrenDict[mac]['latency'],5),font='Arial 14').grid(row=0, column=0, sticky='nw')
+                    ttk.Label(f, text=round(self.childrenDict[mac]['latency'],5),font='Arial 14').grid(row=0, column=0, sticky='nw')
 
         # loop through child widgets and update/color the lastActive status
-        for mac in self.__sortedMacs:
+        for mac in self.sortedMacs:
 
             # special formatting for lastActive
-            lastA = self.__childrenDict[mac]['lastActive']
+            lastA = self.childrenDict[mac]['lastActive']
             upd = lastA.astimezone(self.__timezone).strftime(self.__dtFormat)
             if lastA is None or currentTime.timestamp() - lastA.timestamp() > 300:
                 fnt = 'Arial 14 bold'
@@ -623,7 +714,7 @@ class Erl2Network():
                 fnt = 'Arial 14'
                 fgd = '#1C4587' # blue
 
-            self.__childrenDict[mac]['widget'].config(text=upd, font=fnt, foreground=fgd)
+            self.childrenDict[mac]['widget'].config(text=upd, font=fnt, foreground=fgd)
 
         # if asked to, schedule the next display update
         if scheduleNext:
@@ -633,28 +724,97 @@ class Erl2Network():
             delay = int((nextUpdateTime - currentTime.timestamp())*1000)
         
             # update the display widgets again after waiting an appropriate number of milliseconds
-            self.__ipWidgets[0].after(delay, self.updateDisplayWidgets)
+            self.__allWidgets[0].after(delay, self.updateDisplays)
 
     def rescanSubnet(self, event=None, init=False):
 
-        if self.__scanProcess is not None and self.__scanProcess.is_alive():
+        if self.scanning():
             mb.showinfo(title='Rescan ERL2 Subnet', message="Another scan is already running.")
 
         else:
             # ask for confirmation unless this is the first scan during initialization
-            if init or (mb.askyesno(title='Rescan ERL2 Subnet', message="Are you sure you want to scan for new tanks on the ERL2 subnet?")):
+            if init or (mb.askyesno(title='Rescan ERL2 Subnet', message="Are you sure you want to scan for new devices on the ERL2 subnet?")):
+                self.wrapperScan()
 
-                # do this in a separate process thread
-                self.__scanProcess = Process(target=tankScan,
-                                             args=(self.__stub,
-                                                   self.__interface,
-                                                   self.__ip,
-                                                   self.__mac,
-                                                   self.__ipRange,
-                                                   self.__statusQueue,
-                                                   self.__childrenQueue,
-                                                   ))
-                self.__scanProcess.start()
+    def wrapperListen(self):
+
+        # do this in a separate process thread
+        self.__listenProcess = Process(target=processListen,
+                                       args=(self.__deviceAddresses[0]['IP'],
+                                             self.__incomingQueue,
+                                             self.__outgoingQueue,
+                                             ))
+        self.__listenProcess.start()
+
+    def wrapperScan(self):
+
+        # do this in a separate process thread
+        self.__scanProcess = Process(target=processScan,
+                                     args=(self.__stub,
+                                           self.__interface,
+                                           self.__ip,
+                                           self.__mac,
+                                           self.__ipRange,
+                                           self.__childrenQueue,
+                                           self.__incomingQueue,
+                                           self.__outgoingQueue,
+                                           ))
+        self.__scanProcess.start()
+
+    def wrapperSendCommand(self, mac, command, replyQ):
+
+        # do this in a separate process thread
+        self.__childProcesses[mac] = Process(target=processSendCommand,
+                                       args=(self.childrenDict[mac]['ip'],
+                                             command,
+                                             replyQ,
+                                             self.__childrenQueue, # temporary
+                                             ))
+        self.__childProcesses[mac].start()
+
+    def replyToRequests(self):
+
+        # are there any new requests to process?
+        if not self.__incomingQueue.empty():
+
+            # loop through all pending requests
+            while not self.__incomingQueue.empty():
+                rq = self.__incomingQueue.get_nowait()
+                print (f"{self.__class__.__name__}: replyToRequests: retrieved [{rq}] from self.__incomingQueue")
+
+                # ID: n/a, this is answered directly within the listen() process
+                if rq.inb == b"ID":
+                    rq.outb = '\n'.join([self.__deviceType, self.__id, f"{self.__mac}"]).encode()
+
+                # TIME: answer with a datetime instance (pickled)
+                elif rq.inb == b"TIME":
+                    t = dt.now(tz=tz.utc)
+                    rq.outb = pickle.dumps(t)
+
+                # unrecognized request: answer with error
+                else:
+                    rq.outb = 'error: unrecognized request'.encode()
+
+                # add reply to the outgoing queue
+                self.__outgoingQueue.put(rq)
+
+                # update time of last device comms
+                self.__lastActive = dt.now(tz=tz.utc)
+
+        # call this method again after waiting 1s
+        self.__allWidgets[1].after(1000, self.replyToRequests)
+
+    def scanning(self):
+        return self.__scanProcess is not None and self.__scanProcess.is_alive()
+
+    def getState(self, mac, replyQ):
+
+        # limit network comms to one child at a time
+        if mac in self.__childProcesses and self.__childProcesses[mac] is not None and self.__childProcesses[mac].is_alive():
+            return b"BUSY"
+
+        # send GETSTATE and wait for reply
+        return self.wrapperSendCommand(mac, b"GETSTATE", replyQ)
 
     # atexit.register() handler
     def atexitHandler(self):
@@ -665,7 +825,7 @@ class Erl2Network():
         if self.__listenProcess is not None and self.__listenProcess.is_alive():
             self.__listenProcess.kill()
 
-        # kill off the forked process scanning for child tanks
+        # kill off the forked process scanning for child devices
         if self.__scanProcess is not None and self.__scanProcess.is_alive():
             self.__scanProcess.kill()
 

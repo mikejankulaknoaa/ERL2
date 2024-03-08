@@ -103,9 +103,9 @@ class Erl2Startup:
 
         # start up the main device module
         if self.__deviceType == 'tank':
-            self.__device = Erl2Tank(root=self.root, parent=self)
+            self.__device = Erl2Tank(root=self.root, parent=self, erl2context=self.erl2context)
         elif self.__deviceType == 'controller':
-            self.__device = Erl2Controller(root=self.root, parent=self)
+            self.__device = Erl2Controller(root=self.root, parent=self, erl2context=self.erl2context)
 
     def locDefaults (self, loc):
 

@@ -500,6 +500,7 @@ class Erl2Tank:
                 self.network = Erl2Network(ipLocs=ipLocs,
                                            macLocs=macLocs,
                                            statusLocs=netStatusLocs,
+                                           erl2context=self.erl2context,
                                           )
 
         # standardized labels for some Temp, pH and DO frames

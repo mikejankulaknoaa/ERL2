@@ -163,6 +163,10 @@ class Erl2SubSystem():
         # (but see if there's a different setting in the system saved state)
         self.__ctrlVar.set(self.erl2context['state'].get(self.subSystemType,'ctrl',LOCAL))
 
+        # make sure we're not exceeding array bounds
+        if self.__ctrlVar.get() > len(self.__ctrlDict):
+            self.__ctrlVar.set(len(self.__ctrlDict))
+
         # add radio buttons to toggle this subsystem's control mode
         if 'parent' in self.__ctrlRadioLoc:
             for value , text in self.__ctrlDict.items():
@@ -196,6 +200,10 @@ class Erl2SubSystem():
         # during initialization, the default is auto static mode
         # (but see if there's a different setting in the system saved state)
         self.__modeVar.set(self.erl2context['state'].get(self.subSystemType,'mode',AUTO_STATIC))
+
+        # make sure we're not exceeding array bounds
+        if self.__modeVar.get() > len(self.__modeDict):
+            self.__modeVar.set(len(self.__modeDict))
 
         # add radio buttons to select this subsystem's mode setting
         if 'parent' in self.__modeRadioLoc:

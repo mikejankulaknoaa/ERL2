@@ -1,8 +1,6 @@
 from ast import literal_eval
 from csv import reader,writer
 from os import makedirs,path,remove,rename,stat
-import tkinter as tk
-from tkinter import ttk
 from Erl2Config import Erl2Config
 from Erl2Log import Erl2Log
 
@@ -138,11 +136,8 @@ class Erl2State():
 
 def main():
 
-    root = tk.Tk()
     state = Erl2State()
-    ttk.Label(root,text='Erl2State',font='Arial 30 bold').grid(row=0,column=0)
-    ttk.Label(root,text=state.get('system','fullscreen',1)).grid(row=1,column=0)
-    root.mainloop()
+    print ("Erl2State module (no GUI)")
 
 if __name__ == "__main__": main()
 

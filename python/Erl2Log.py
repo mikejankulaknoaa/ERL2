@@ -3,8 +3,6 @@ from datetime import datetime as dt
 from datetime import timezone as tz
 from os import makedirs,path,stat
 from sys import version_info
-import tkinter as tk
-from tkinter import ttk
 from Erl2Config import Erl2Config
 
 class Erl2Log():
@@ -194,11 +192,8 @@ class Erl2Log():
 
 def main():
 
-    root = tk.Tk()
     log = Erl2Log()
-    ttk.Label(root,text='Erl2Log',font='Arial 30 bold').grid(row=0,column=0)
-    ttk.Label(root,text=log.logDir()).grid(row=1,column=0)
-    root.mainloop()
+    print ("Erl2Log module (no GUI)")
 
 if __name__ == "__main__": main()
 
