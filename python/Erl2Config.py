@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.41b (2024-03-29)'
+    VERSION = '0.42b (2024-03-29b)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -37,6 +37,7 @@ class Erl2Config():
         self.__default['network']['ipNetworkStub'] = '192.168.2.'
         self.__default['network']['ipRange'] = '[2, 63]'
         self.__default['network']['updateFrequency'] = '5'
+        self.__default['network']['hardcoding'] = 'None'
 
         self.__default['virtualtemp']['enabled'] = 'False'
 
@@ -285,6 +286,8 @@ class Erl2Config():
         self.validate(str,  'network', 'ipNetworkStub')
         self.validate(int,  'network', 'updateFrequency', min=1)
 
+        self.validateList(str, 'network', 'hardcoding')
+
         # ipRange has some extra logic (non-decreasing order)
         self.validateList(int, 'network', 'ipRange', 2)
         if (self.__erl2conf['network']['ipRange'] is not None
@@ -440,7 +443,7 @@ class Erl2Config():
             raise TypeError(f"{self.__class__.__name__}: [{cat}][{param}] = [{self.in_conf[cat][param]}] is not {tp}{msg}") #from None
 
 
-    def validateList(self, cl, cat, param, cnt, min=None, max=None):
+    def validateList(self, cl, cat, param, cnt=None, min=None, max=None):
 
         #print (f"{self.__class__.__name__}: Debug: validateList({cl.__name__},{cat},{param},{cnt},{min},{max})")
 
@@ -458,9 +461,13 @@ class Erl2Config():
             # convert a string that looks like a Python list into an actual Python list
             self.__erl2conf[cat][param] = literal_eval(self.in_conf[cat][param])
 
-            # is it a list? is it the expected length?
-            if (   type(self.__erl2conf[cat][param]) is not list
-                or len(self.__erl2conf[cat][param]) != cnt):
+            # is it a list?
+            if type(self.__erl2conf[cat][param]) is not list:
+                raise
+
+            # if length is specified, is it the expected length?
+            if (    cnt is not None
+                and len(self.__erl2conf[cat][param]) != cnt):
                 raise
 
             # explicitly convert values to requested class

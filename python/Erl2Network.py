@@ -47,7 +47,7 @@ def subthreadSendCommand(host,
             # something is answering!
             if ret == 0:
 
-                print (f"Erl2Network|subthreadSendCommand: Debug: successfully connected to [{host}]")
+                print (f"Erl2Network|subthreadSendCommand: Debug: successfully connected to [{host}][{PORT}]")
 
                 # once socket is successfully connected, lengthen timeout to 10s
                 s.settimeout(10)
@@ -87,10 +87,10 @@ def subthreadSendCommand(host,
 
             else:
                 pass
-                #print (f"Erl2Network|subthreadSendCommand: Debug: cannot connect to [{host}]: ret [{ret}]")
+                #print (f"Erl2Network|subthreadSendCommand: Debug: cannot connect to [{host}][{PORT}]: ret [{ret}]")
 
         except Exception as e:
-            print (f"Erl2Network|subthreadSendCommand: Error: unexpected error when connecting to [{host}]: [{e}]")
+            print (f"Erl2Network|subthreadSendCommand: Error: unexpected error when connecting to [{host}][{PORT}]: [{e}]")
 
         finally:
             s.close()
@@ -106,17 +106,25 @@ def subthreadScan(stub,
                   ip,
                   mac,
                   ipRange,
+                  hardcoding,
                   scanResultsQ,
                   ):
 
     # quietly terminate if necessary arguments are empty
-    if stub is None or ipRange is None or len(ipRange) != 2:
+    if (stub is None or ipRange is None or len(ipRange) != 2) and hardcoding is None:
         return
 
-    # scan the specified range of addressed on the subnet
-    for addr in range(ipRange[0], ipRange[1]+1):
+    # if we're hardcoding a list of child IP addresses, use it
+    addressesToScan = hardcoding
 
-        host = stub + str(addr)
+    # otherwise, build the list from stub and range
+    if addressesToScan is None:
+        addressesToScan = []
+    for addr in range(ipRange[0], ipRange[1]+1):
+            addressesToScan.append(stub + str(addr))
+
+    # scan the specified range of addressed on the subnet
+    for host in addressesToScan:
 
         # ask connected device for identifying details
         idReplyObj = subthreadSendCommand(host, b"GETID")
@@ -137,7 +145,7 @@ def subthreadScan(stub,
 
         else:
             pass
-            #print (f"Erl2Network|subthreadScan: Debug: cannot connect to [{host}] from [{interface}][{ip}][{mac}]")
+            #print (f"Erl2Network|subthreadScan: Debug: cannot connect to [{host}][{PORT}] from [{interface}][{ip}][{mac}]")
 
 def subthreadListen(
                     deviceAddress,
@@ -314,6 +322,7 @@ class Erl2Network():
         self.__ipNetworkStub = self.erl2context['conf']['network']['ipNetworkStub']
         self.__ipRange = self.erl2context['conf']['network']['ipRange']
         self.__updateFrequency = self.erl2context['conf']['network']['updateFrequency']
+        self.__hardcoding = self.erl2context['conf']['network']['hardcoding']
 
         # and also these system-level Erl2Config parameters
         self.__timezone = self.erl2context['conf']['system']['timezone']
@@ -359,6 +368,7 @@ class Erl2Network():
         self.getAddresses()
         print (f"{self.__class__.__name__}: Debug: __init: self.__deviceAddresses is {self.__deviceAddresses}")
         print (f"{self.__class__.__name__}: Debug: __init: self.__networkStubs is {self.__networkStubs}")
+        print (f"{self.__class__.__name__}: Debug: __init: self.__hardcoding is {self.__hardcoding}")
 
         # provide a 'rescan' button (controller only) if given a place for it
         if self.__deviceType == 'controller' and 'parent' in self.__buttonLoc:
@@ -815,6 +825,7 @@ class Erl2Network():
                                            self.__ip,
                                            self.__mac,
                                            self.__ipRange,
+                                           self.__hardcoding,
                                            self.__scanResultsQueue,
                                            ))
         self.__scanProcess.start()
