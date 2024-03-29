@@ -44,9 +44,6 @@ class Erl2Controller():
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
 
-        # the heart of this module is its list of child devices
-        self.__masterList = {}
-
         # remember if network module is active
         self.network = None
 
@@ -278,42 +275,7 @@ class Erl2Controller():
 
     def updateDisplays(self):
 
-        # don't run device updates during a device scan
-        if not self.network.scanning():
-
-            # messaging depends on whether we are starting from scratch (startup)
-            if len(self.__masterList) == 0: startup = True
-            else:                           startup = False
-
-            # loop through currently-networked devices; compare to master list
-            for mac in self.network.sortedMacs:
-
-                # get this mac's id
-                id = self.network.childrenDict[mac]['id']
-
-                # add to master list if it's not already there
-                if id not in self.__masterList:
-                    self.__masterList[id] = {'mac':mac}
-
-            # loop through master list
-            for id in self.__masterList:
-
-                # get this id's mac
-                if 'mac' in self.__masterList[id]: mac = self.__masterList[id]['mac']
-                else:                              mac = None
-
-                # set up a reply queue for this request, if needed
-                if 'replyQ' not in self.__masterList[id]:
-                    self.__masterList[id]['replyQ'] = Queue()
-
-                # get this device's state
-                state = self.network.getState(mac, self.__masterList[id]['replyQ'])
-
-            # 1. is the device active? "ID"
-            # 2. what is the device's state? "GET.STATE"
-            # 3. collect any new data "GET.DATA | YYYYMMDDHHMMSS"
-
-            # 4. update displays -- last comms, state, new data
+        pass
 
         # set up the next call to this method (wait 30s)
         self.__displayTanks.after(30000, self.updateDisplays)

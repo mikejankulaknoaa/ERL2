@@ -500,6 +500,7 @@ class Erl2Tank:
                 self.network = Erl2Network(ipLocs=ipLocs,
                                            macLocs=macLocs,
                                            statusLocs=netStatusLocs,
+                                           systemLog=self.__systemLog,
                                            erl2context=self.erl2context,
                                           )
 

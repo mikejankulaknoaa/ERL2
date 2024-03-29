@@ -358,9 +358,7 @@ class Erl2Startup:
         # otherwise, just terminate the system
         else:
             #self.root.destroy() # this was leaving some .after() callbacks hanging
-            print (f"{self.__class__.__name__}: Debug: calling tk.Tk.quit({self.root})")
             tk.Tk.quit(self.root)
-            print (f"{self.__class__.__name__}: Debug: app did not quit!")
 
 def main():
 

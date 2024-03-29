@@ -31,15 +31,83 @@ DTFMT = '%Y-%m-%d %H:%M:%S.%f %Z'
 # counter for tracking requests + replies
 RQID = 0
 
-def processScan(stub,
-                interface,
-                ip,
-                mac,
-                ipRange,
-                childrenQ,
-                incomingQ,
-                outgoingQ,
-                ):
+def subthreadSendCommand(host,
+                         command,
+                         commandResultsQ=None,
+                         ):
+
+    expected = replyString = replyObj = None
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+
+        try:
+            s.settimeout(.5)
+            ret = s.connect_ex((host, PORT))
+
+            # something is answering!
+            if ret == 0:
+
+                print (f"Erl2Network|subthreadSendCommand: Debug: successfully connected to [{host}]")
+
+                # once socket is successfully connected, lengthen timeout to 10s
+                s.settimeout(10)
+
+                # send whatever command we've been told to send
+                s.sendall(command)
+
+                # loop for multiple parts of potentially long reply
+                while True:
+
+                    # wait for the next 1024 characters
+                    data = s.recv(1024)
+
+                    # pick out expected reply length if we don't know it yet
+                    if expected is None:
+
+                        # first part of reply is going to be length|payload (variable type = bytes)
+                        mat = re.search(b'^([0-9]+)\|(.*)$', data, flags=re.DOTALL)
+                        if not mat:
+                            raise RuntimeError('Erl2Network|subthreadSendCommand: error: badly formatted reply')
+
+                        # the mat.groups() list is composed of <expected reply length>, <first part of reply>
+                        expected = int(mat.groups()[0])
+                        replyString = mat.groups()[1]
+                        print (f"Erl2Network|subthreadSendCommand: Debug: expecting [{expected}], got [{len(replyString)}]")
+
+                    # add any new bytes to the end of the rest of the reply
+                    else:
+                        replyString += data
+                        print (f"Erl2Network|subthreadSendCommand: Debug: expected [{expected}], TOPPING UP TO [{len(replyString)}]")
+
+                    # check if we've received everything we expected to
+                    if len(replyString) >= expected:
+                        print (f"Erl2Network|subthreadSendCommand: Debug: expected [{expected}], finished with [{len(replyString)}]")
+                        replyObj = SimpleNamespace(addr=host, command=command, replyTime=dt.now(tz=tz.utc), replyString=replyString)
+                        break
+
+            else:
+                pass
+                #print (f"Erl2Network|subthreadSendCommand: Debug: cannot connect to [{host}]: ret [{ret}]")
+
+        except Exception as e:
+            print (f"Erl2Network|subthreadSendCommand: Error: unexpected error when connecting to [{host}]: [{e}]")
+
+        finally:
+            s.close()
+
+            # communicate reply by queue or by return value
+            if commandResultsQ is not None:
+                commandResultsQ.put(replyObj)
+            else:
+                return replyObj
+
+def subthreadScan(stub,
+                  interface,
+                  ip,
+                  mac,
+                  ipRange,
+                  scanResultsQ,
+                  ):
 
     # quietly terminate if necessary arguments are empty
     if stub is None or ipRange is None or len(ipRange) != 2:
@@ -50,63 +118,32 @@ def processScan(stub,
 
         host = stub + str(addr)
 
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        # ask connected device for identifying details
+        idReplyObj = subthreadSendCommand(host, b"GETID")
 
-            try:
-                s.settimeout(.5)
-                ret = s.connect_ex((host, PORT))
+        # was there a reply?
+        if idReplyObj is not None:
 
-                # something is answering!
-                if ret == 0:
+            # process device's reply and prepare report for scanResultsQ
+            print (f"Erl2Network|subthreadScan: Debug: sent [ID], received reply: [{idReplyObj}]")
+            val = '\n'.join([idReplyObj.replyString.decode(), host])
 
-                    print (f"Erl2Network|processScan: Debug: successfully connected to [{host}] from [{interface}][{ip}][{mac}]")
+            # grab the replyTime for an initial lastActive value
+            val = '\n'.join([val,idReplyObj.replyTime.astimezone(tz.utc).strftime(DTFMT)])
 
-                    # once socket is successfully connected, lengthen timeout to 10s
-                    s.settimeout(10)
+            # add device report to the queue (deviceType, id, mac, ip, lastActive)
+            scanResultsQ.put(val)
+            #print (f"Erl2Network|subthreadScan: Debug: adding [{val}] to scanResultsQ")
 
-                    # ask connected device for identifying details
-                    s.sendall(b"ID")
+        else:
+            pass
+            #print (f"Erl2Network|subthreadScan: Debug: cannot connect to [{host}] from [{interface}][{ip}][{mac}]")
 
-                    # process device's reply and prepare report for childrenQ
-                    data = s.recv(1024)
-                    #print (f"Erl2Network|processScan: Debug: sent [ID], received reply: [{data}]")
-                    val = '\n'.join([data.decode(), host])
-
-                    # ask device for its current time
-                    s.sendall(b"TIME")
-
-                    # unpack reply, which is a pickled datetime instance
-                    data = s.recv(1024)
-                    deviceT = pickle.loads(data)
-
-                    # refresh local time and calculate difference in controller/device clocks
-                    t = dt.now(tz=tz.utc)
-                    latency = str((deviceT-t).total_seconds())
-                    val = '\n'.join([val,latency])
-                    #print (f"Erl2Network|processScan: Debug: sent [TIME], received [{deviceT}], latency is: [{latency}]")
-
-                    # add UTC controller time to the report for childrenQ
-                    val = '\n'.join([val,t.astimezone(tz.utc).strftime(DTFMT)])
-
-                    # add device report the queue (deviceType, id, mac, ip, latency, lastActive)
-                    childrenQ.put(val)
-                    #print (f"Erl2Network|processScan: Debug: adding [{val}] to childrenQ")
-
-                else:
-                    pass
-                    #print (f"Erl2Network|processScan: Debug: cannot connect to [{host}] from [{interface}][{ip}][{mac}]: ret [{ret}]")
-
-            except Exception as e:
-                print (f"Erl2Network|processScan: Error: unexpected error when connecting to [{host}] from [{interface}][{ip}][{mac}]: [{e}]")
-
-            finally:
-                s.close()
-
-def processListen(
-                  deviceAddress,
-                  incomingQ,
-                  outgoingQ,
-                  ):
+def subthreadListen(
+                    deviceAddress,
+                    incomingQ,
+                    outgoingQ,
+                    ):
 
     # initialize selector
     sel = selectors.DefaultSelector()
@@ -116,7 +153,7 @@ def processListen(
     lsock.bind((deviceAddress, PORT))
     lsock.listen()
     lsock.setblocking(False)
-    print (f"Erl2Network|processListen: Debug: listening on {(deviceAddress, PORT)}")
+    print (f"Erl2Network|subthreadListen: Debug: listening on {(deviceAddress, PORT)}")
 
     # register the socket with the selector for listening only (and data set to None)
     sel.register(lsock, selectors.EVENT_READ, data=None)
@@ -137,7 +174,7 @@ def processListen(
                     sock = key.fileobj
 
                     conn, addr = sock.accept()  # Should be ready to read
-                    print (f"Erl2Network|processListen: Debug: accepted connection from {addr}")
+                    print (f"Erl2Network|subthreadListen: Debug: accepted connection from {addr}")
                     conn.setblocking(False)
 
                     # once a connection is made from a controller, register it for READ and WRITE events
@@ -160,7 +197,7 @@ def processListen(
                         # something was received
                         if recv_data:
 
-                            print (f"Erl2Network|processListen: Debug: received data {recv_data}")
+                            print (f"Erl2Network|subthreadListen: Debug: received data {recv_data}")
                             data.inb = recv_data
 
                             # create a request object, add it to the incoming queue
@@ -172,7 +209,7 @@ def processListen(
                             data.status = b"QUEUED"
 
                         else:
-                            print (f"Erl2Network|processListen: Debug: closing connection to {data.addr}")
+                            print (f"Erl2Network|subthreadListen: Debug: closing connection to {data.addr}")
                             sel.unregister(sock)
                             sock.close()
 
@@ -183,12 +220,14 @@ def processListen(
                         if data.status == b"QUEUED":
 
                             # wait up to 10s for a reply
-                            countdown=10
-                            while countdown>0:
+                            countdown=10.
+                            while countdown>0.:
                                  if not outgoingQ.empty():
+                                     # format answer with length of reply
                                      rq = outgoingQ.get_nowait()
-                                     data.outb = rq.outb
-                                     print (f"Erl2Network|processListen: Debug: read {data.outb} from outgoingQ")
+                                     data.outb = str(len(rq.outb)).encode() + b"|" + rq.outb
+                                     print (f"Erl2Network|subthreadListen: Debug: read {data.outb} from outgoingQ")
+                                     data.status = b"RECEIVED"
                                      break
                                  else:
                                      countdown -= 0.5
@@ -197,73 +236,15 @@ def processListen(
                         # if we have a reply
                         if data.outb:
 
-                            print (f"Erl2Network|processListen: Debug: replying {data.outb!r} to {data.addr}")
+                            print (f"Erl2Network|subthreadListen: Debug: replying {data.outb!r} to {data.addr}")
                             sent = sock.send(data.outb)  # Should be ready to write
                             data.outb = data.outb[sent:]
 
     except KeyboardInterrupt:
-        print (f"Erl2Network|processListen: Debug: caught keyboard interrupt, exiting")
+        print (f"Erl2Network|subthreadListen: Debug: caught keyboard interrupt, exiting")
 
     finally:
         sel.close()
-
-def processSendCommand(host,
-                       command,
-                       replyQ,
-                       childrenQ,
-                       ):
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-
-        try:
-            s.settimeout(.5)
-            ret = s.connect_ex((host, PORT))
-
-            # something is answering!
-            if ret == 0:
-
-                print (f"Erl2Network|processSendCommand: Debug: successfully connected to [{host}]")
-
-                # once socket is successfully connected, lengthen timeout to 10s
-                s.settimeout(10)
-
-                # ask connected device for identifying details
-                s.sendall(b"ID")
-
-                # process device's reply and prepare report for childrenQ
-                data = s.recv(1024)
-                #print (f"Erl2Network|processSendCommand: Debug: sent [ID], received reply: [{data}]")
-                val = '\n'.join([data.decode(), host])
-
-                # ask device for its current time
-                s.sendall(b"TIME")
-
-                # unpack reply, which is a pickled datetime instance
-                data = s.recv(1024)
-                deviceT = pickle.loads(data)
-
-                # refresh local time and calculate difference in controller/device clocks
-                t = dt.now(tz=tz.utc)
-                latency = str((deviceT-t).total_seconds())
-                val = '\n'.join([val,latency])
-                #print (f"Erl2Network|processSendCommand: Debug: sent [TIME], received [{deviceT}], latency is: [{latency}]")
-
-                # add UTC controller time to the report for childrenQ
-                val = '\n'.join([val,t.astimezone(tz.utc).strftime(DTFMT)])
-
-                # add device report the queue (deviceType, id, mac, ip, latency, lastActive)
-                childrenQ.put(val)
-                #print (f"Erl2Network|processSendCommand: Debug: adding [{val}] to childrenQ")
-
-            else:
-                pass
-                print (f"Erl2Network|processSendCommand: Debug: cannot connect to [{host}]: ret [{ret}]")
-
-        except Exception as e:
-            print (f"Erl2Network|processSendCommand: Error: unexpected error when connecting to [{host}]: [{e}]")
-
-        finally:
-            s.close()
 
 #-----
 
@@ -274,40 +255,44 @@ class Erl2Network():
 
     def __init__(self,
                  typeLocs=[],
-                 nameLocs=[],
+                 idLocs=[],
                  interfaceLocs=[],
                  ipLocs=[],
                  macLocs=[],
                  statusLocs=[],
                  childrenLocs=[],
                  buttonLoc={},
+                 systemLog=None,
                  erl2context={}):
 
         self.__typeLocs = typeLocs
-        self.__nameLocs = nameLocs
+        self.__idLocs = idLocs
         self.__interfaceLocs = interfaceLocs
         self.__ipLocs = ipLocs
         self.__macLocs = macLocs
         self.__statusLocs = statusLocs
         self.__childrenLocs = childrenLocs
         self.__buttonLoc = buttonLoc
+        self.__systemLog = systemLog
         self.erl2context = erl2context
 
         # remember what widgets are active for this network
         self.__typeWidgets = []
-        self.__nameWidgets = []
+        self.__idWidgets = []
         self.__interfaceWidgets = []
         self.__ipWidgets = []
         self.__macWidgets = []
         self.__statusWidgets = []
         self.__childrenWidgets = []
+        self.__childrenHeaders = False
         self.__allWidgets = []
 
         # multithreading: what processes are running, queues for sharing data, received data
         self.__listenProcess = None
         self.__scanProcess = None
         self.__childProcesses = {}
-        self.__childrenQueue = Queue()
+        self.__scanResultsQueue = Queue()
+        self.__commandResultsQueue = Queue()
         self.__incomingQueue = Queue()
         self.__outgoingQueue = Queue()
 
@@ -317,6 +302,10 @@ class Erl2Network():
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
+
+        # load any saved info about the application state
+        if 'state' not in self.erl2context:
+            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
 
         # read these useful parameters from Erl2Config
         self.__deviceType = self.erl2context['conf']['device']['type']
@@ -332,6 +321,8 @@ class Erl2Network():
 
         # this is the main compendium of information about child devices, and their sort order
         self.childrenDict = {}
+        self.lookupByIP = {}
+        self.lookupByID = {}
         self.sortedMacs = []
 
         # if the user has overridden the ipRange with None, scan all addresses
@@ -357,7 +348,7 @@ class Erl2Network():
 
         # start by creating the display widgets, if needed
         self.createDisplays('type')
-        self.createDisplays('name')
+        self.createDisplays('id')
         self.createDisplays('interface')
         self.createDisplays('ip')
         self.createDisplays('mac')
@@ -432,6 +423,9 @@ class Erl2Network():
 
             self.updateDisplays()
 
+            # start up the process keep the child device details up to date
+            self.pollChildren()
+
             # run a subnet scan during initialization
             self.rescanSubnet(init=True)
 
@@ -452,13 +446,13 @@ class Erl2Network():
                         self.__mac = self.__deviceAddresses[0]['MAC']
                         break
 
-            # start up the process that will answer requests
-            self.replyToRequests()
-
             # update the display fields with info about the chosen network interface
             self.updateDisplays()
 
             self.wrapperListen()
+
+        # start up the process that will answer requests (tanks) and handle those replies (controller)
+        self.manageQueues()
 
     def getAddresses(self):
 
@@ -504,7 +498,7 @@ class Erl2Network():
 
         # reuse this method for all the different display fields
         if displayType == 'type': locations = self.__typeLocs
-        elif displayType == 'name': locations = self.__nameLocs
+        elif displayType == 'id': locations = self.__idLocs
         elif displayType == 'interface': locations = self.__interfaceLocs
         elif displayType == 'ip': locations = self.__ipLocs
         elif displayType == 'mac': locations = self.__macLocs
@@ -523,7 +517,7 @@ class Erl2Network():
 
                 # keep a list of widgets for this display
                 if displayType == 'type': self.__typeWidgets.append(l)
-                elif displayType == 'name': self.__nameWidgets.append(l)
+                elif displayType == 'id': self.__idWidgets.append(l)
                 elif displayType == 'interface': self.__interfaceWidgets.append(l)
                 elif displayType == 'ip': self.__ipWidgets.append(l)
                 elif displayType == 'mac': self.__macWidgets.append(l)
@@ -567,8 +561,8 @@ class Erl2Network():
             # update the display
             w.config(text=upd, font=fnt)
  
-        # loop through all placements of the name widgets
-        for w in self.__nameWidgets:
+        # loop through all placements of the id widgets
+        for w in self.__idWidgets:
 
             # set the update value
             if self.__id is None: upd = '--'
@@ -625,28 +619,78 @@ class Erl2Network():
             # update the display
             w.config(text=upd, font=fnt, foreground=fgd)
 
-        # are there any new children to process?
-        if not self.__childrenQueue.empty():
+        # are there any new scan results to process?
+        if not self.__scanResultsQueue.empty():
 
             # grab any newly-reported children and add them to our list
-            while not self.__childrenQueue.empty():
-                ch = self.__childrenQueue.get_nowait()
-                #print (f"{self.__class__.__name__}: updateDisplays: retrieved [{ch}] from childrenQ")
+            while not self.__scanResultsQueue.empty():
+                ch = self.__scanResultsQueue.get_nowait()
+                #print (f"{self.__class__.__name__}: updateDisplays: retrieved [{ch}] from scanResultsQ")
 
-                # device report from the queue is: 0:deviceType, 1:id, 2:mac, 3:ip, 4:latency, 5:lastActive
+                # device report from the queue has the following fields
+                keyNames = ['deviceType', 'id', 'mac', 'ip', 'lastActive']
+
+                # device report is delimited by LF
                 chvals = ch.split('\n')
 
-                # children dict is keyed off the mac address
-                self.childrenDict[chvals[2]] = {'type':chvals[0], 'id':chvals[1], 'ip':chvals[3], 'latency':float(chvals[4])}
+                # new dict value
+                newDict = {}
+
+                # assign dict values
+                for key, val in zip(keyNames, chvals):
+                    newDict[key] = val
+                    #print (f"{self.__class__.__name__}: updateDisplays: assigning [{val}] to [{key}]")
 
                 # store lastActive as a datetime
-                self.childrenDict[chvals[2]]['lastActive'] = dt.strptime(chvals[5], DTFMT)
+                newDict['lastActive'] = dt.strptime(newDict['lastActive'], DTFMT)
 
                 # strptime seems to drop timezone info, so add it back explicitly
-                self.childrenDict[chvals[2]]['lastActive'] = self.childrenDict[chvals[2]]['lastActive'].replace(tzinfo=tz.utc)
+                newDict['lastActive'] = newDict['lastActive'].replace(tzinfo=tz.utc)
+
+                # children dict is keyed off the mac address
+                self.childrenDict[newDict['mac']] = newDict
 
             # complicated sort to properly order e.g. 'Tank 2' before 'Tank 13'
             self.sortedMacs = sorted(self.childrenDict, key=lambda x: re.sub(r'0*([0-9]{9,})', r'\1', re.sub(r'([0-9]+)',r'0000000000\1',self.childrenDict[x]['id'])))
+
+            # redo lookups from scratch
+            oldLookupByID = self.lookupByID
+            oldLookupByIP = self.lookupByIP
+            self.lookupByID = {}
+            self.lookupByIP = {}
+            for mac in self.sortedMacs:
+                id = self.childrenDict[mac]['id']
+                ip = self.childrenDict[mac]['ip']
+
+                # duplicate child id??
+                if id in self.lookupByID:
+                    self.childrenDict[mac]['ignore'] = True
+                    mb.showerror(f"Error: more than one active child device has " +
+                                 f"the ID [{id}]; ignoring the one at [{mac}][{ip}]. " +
+                                 f"Please shut down one of the conflicting devices " +
+                                 f"and give it a new ID in its erl2.conf configuration file.")
+
+                else:
+                    self.childrenDict[mac]['ignore'] = False
+
+                    # new device (mac address) for a Tank ID we've seen before?
+                    if (id in oldLookupByID and oldLookupByID[id] != mac):
+                        mb.showwarning(f"Warning: Tank ID [{id}] is online with a different " +
+                                       f"mac address; before [{oldLookupByID[id]}], after [{mac}].")
+
+                    # new ip address for a Tank ID we've seen before?
+                    if (ip in oldLookupByIP and oldLookupByIP[ip] != mac):
+                        oldIP = [x for x in oldLookupByIP if oldLookupByIP==ip][0]
+                        mb.showwarning(f"Warning: Tank ID [{id}] is online with a different " +
+                                       f"ip address; before [{oldIP}], after [{ip}].")
+
+                    # add these entries to the new lookup dicts
+                    self.lookupByID[id] = mac
+                    self.lookupByIP[ip] = mac
+
+        # only draw the childrenWidgets headers once
+        if not self.__childrenHeaders:
+            self.__childrenHeaders = True
 
             # loop through all placements of the children widgets
             for w in self.__childrenWidgets:
@@ -673,48 +717,64 @@ class Erl2Network():
                 f.grid(row=0, column=4, padx='1', pady='1', sticky='nesw')
                 ttk.Label(f, text='Latency', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
 
+        # only makes sense if any children were found
+        if len(self.childrenDict) > 0:
+
+            # loop through all placements of the children widgets
+            for w in self.__childrenWidgets:
+
                 thisrow = 0
                 for mac in self.sortedMacs:
+
                     thisrow += 1
 
-                    # add Label widgets as table headers (each within its own bordered frame)
-                    f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                    f.grid(row=thisrow, column=0, padx='1', pady='1', sticky='nesw')
-                    ttk.Label(f, text=self.childrenDict[mac]['id'],font='Arial 14').grid(row=0, column=0, sticky='nw')
+                    # special formatting for lastActive
+                    lastA = self.childrenDict[mac]['lastActive']
+                    upd = lastA.astimezone(self.__timezone).strftime(self.__dtFormat)
+                    if lastA is None or currentTime.timestamp() - lastA.timestamp() > 300:
+                        fnt = 'Arial 14 bold'
+                        fgd = '#A93226' # red
+                    else:
+                        fnt = 'Arial 14'
+                        fgd = '#1C4587' # blue
 
-                    f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                    f.grid(row=thisrow, column=1, padx='1', pady='1', sticky='nesw')
-                    ttk.Label(f, text=self.childrenDict[mac]['ip'],font='Arial 14').grid(row=0, column=0, sticky='nw')
+                    # latency might not be populated at first
+                    if 'latency' not in self.childrenDict[mac]: lat = '--'
+                    else: lat = round(self.childrenDict[mac]['latency'],5)
 
-                    f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                    f.grid(row=thisrow, column=2, padx='1', pady='1', sticky='nesw')
-                    ttk.Label(f, text=mac, font='Arial 14').grid(row=0, column=0, sticky='nw')
+                    # if this is a new row in the grid (pls forgive the offensive tkinter method name)...
+                    if (len(w.grid_slaves(row=thisrow,column=4))==0):
 
-                    # lastActive gets updated over time, so right now just create an empty widget
-                    f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                    f.grid(row=thisrow, column=3, padx='1', pady='1', sticky='nesw')
-                    l = ttk.Label(f, text='--')
-                    l.grid(row=0, column=0, sticky='nw')
-                    self.childrenDict[mac]['widget'] = l
+                        #print (f"{self.__class__.__name__}: Debug: updateDisplays: THIS IS A NEW ROW")
 
-                    f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                    f.grid(row=thisrow, column=4, padx='1', pady='1', sticky='nesw')
-                    ttk.Label(f, text=round(self.childrenDict[mac]['latency'],5),font='Arial 14').grid(row=0, column=0, sticky='nw')
+                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                        f.grid(row=thisrow, column=0, padx='1', pady='1', sticky='nesw')
+                        ttk.Label(f, text=self.childrenDict[mac]['id'],font='Arial 14').grid(row=0, column=0, sticky='nw')
 
-        # loop through child widgets and update/color the lastActive status
-        for mac in self.sortedMacs:
+                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                        f.grid(row=thisrow, column=1, padx='1', pady='1', sticky='nesw')
+                        ttk.Label(f, text=self.childrenDict[mac]['ip'],font='Arial 14').grid(row=0, column=0, sticky='nw')
 
-            # special formatting for lastActive
-            lastA = self.childrenDict[mac]['lastActive']
-            upd = lastA.astimezone(self.__timezone).strftime(self.__dtFormat)
-            if lastA is None or currentTime.timestamp() - lastA.timestamp() > 300:
-                fnt = 'Arial 14 bold'
-                fgd = '#A93226' # red
-            else:
-                fnt = 'Arial 14'
-                fgd = '#1C4587' # blue
+                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                        f.grid(row=thisrow, column=2, padx='1', pady='1', sticky='nesw')
+                        ttk.Label(f, text=mac, font='Arial 14').grid(row=0, column=0, sticky='nw')
 
-            self.childrenDict[mac]['widget'].config(text=upd, font=fnt, foreground=fgd)
+                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                        f.grid(row=thisrow, column=3, padx='1', pady='1', sticky='nesw')
+                        ttk.Label(f, text=upd, font=fnt, foreground=fgd).grid(row=0, column=0, sticky='nw')
+
+                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                        f.grid(row=thisrow, column=4, padx='1', pady='1', sticky='nesw')
+                        ttk.Label(f, text=lat,font='Arial 14').grid(row=0, column=0, sticky='nw')
+
+                    else:
+                        # more references to tkinter's offensive method name
+                        #print (f"{self.__class__.__name__}: Debug: updateDisplays: FOUND AN EXISTING ROW [{w.grid_slaves(row=thisrow,column=4)}]")
+                        w.grid_slaves(row=thisrow,column=0)[0].grid_slaves(row=0,column=0)[0].config(text=self.childrenDict[mac]['id'])
+                        w.grid_slaves(row=thisrow,column=1)[0].grid_slaves(row=0,column=0)[0].config(text=self.childrenDict[mac]['ip'])
+                        w.grid_slaves(row=thisrow,column=2)[0].grid_slaves(row=0,column=0)[0].config(text=mac)
+                        w.grid_slaves(row=thisrow,column=3)[0].grid_slaves(row=0,column=0)[0].config(text=upd, font=fnt, foreground=fgd)
+                        w.grid_slaves(row=thisrow,column=4)[0].grid_slaves(row=0,column=0)[0].config(text=lat)
 
         # if asked to, schedule the next display update
         if scheduleNext:
@@ -739,7 +799,7 @@ class Erl2Network():
     def wrapperListen(self):
 
         # do this in a separate process thread
-        self.__listenProcess = Process(target=processListen,
+        self.__listenProcess = Process(target=subthreadListen,
                                        args=(self.__deviceAddresses[0]['IP'],
                                              self.__incomingQueue,
                                              self.__outgoingQueue,
@@ -749,30 +809,41 @@ class Erl2Network():
     def wrapperScan(self):
 
         # do this in a separate process thread
-        self.__scanProcess = Process(target=processScan,
+        self.__scanProcess = Process(target=subthreadScan,
                                      args=(self.__stub,
                                            self.__interface,
                                            self.__ip,
                                            self.__mac,
                                            self.__ipRange,
-                                           self.__childrenQueue,
-                                           self.__incomingQueue,
-                                           self.__outgoingQueue,
+                                           self.__scanResultsQueue,
                                            ))
         self.__scanProcess.start()
 
-    def wrapperSendCommand(self, mac, command, replyQ):
+    def wrapperSendCommand(self, mac, command, commandResultsQ):
 
         # do this in a separate process thread
-        self.__childProcesses[mac] = Process(target=processSendCommand,
-                                       args=(self.childrenDict[mac]['ip'],
-                                             command,
-                                             replyQ,
-                                             self.__childrenQueue, # temporary
-                                             ))
-        self.__childProcesses[mac].start()
+        proc = Process(target=subthreadSendCommand,
+                       args=(self.childrenDict[mac]['ip'],
+                             command,
+                             commandResultsQ,
+                             ))
 
-    def replyToRequests(self):
+        # clean up the list of child processes, or create it if it doesn't exist yet
+        if mac in self.__childProcesses:
+            p = 0
+            while p < len(self.__childProcesses[mac]):
+                if self.__childProcesses[mac][p].is_alive():
+                    p += 1
+                else:
+                    del self.__childProcesses[mac][p]
+        else:
+            self.__childProcesses[mac] = []
+
+        # add the new process and start() it
+        self.__childProcesses[mac].append(proc)
+        proc.start()
+
+    def manageQueues(self):
 
         # are there any new requests to process?
         if not self.__incomingQueue.empty():
@@ -780,16 +851,42 @@ class Erl2Network():
             # loop through all pending requests
             while not self.__incomingQueue.empty():
                 rq = self.__incomingQueue.get_nowait()
-                print (f"{self.__class__.__name__}: replyToRequests: retrieved [{rq}] from self.__incomingQueue")
+                print (f"{self.__class__.__name__}: manageQueues: retrieved [{rq}] from self.__incomingQueue")
+                print (f"{self.__class__.__name__}: manageQueues: self.__incomingQueue[{rq.addr}] retrieved [{rq}]")
 
-                # ID: n/a, this is answered directly within the listen() process
-                if rq.inb == b"ID":
+                # GETID: n/a, this is answered directly within the listen() process
+                if rq.inb == b"GETID":
                     rq.outb = '\n'.join([self.__deviceType, self.__id, f"{self.__mac}"]).encode()
 
-                # TIME: answer with a datetime instance (pickled)
-                elif rq.inb == b"TIME":
-                    t = dt.now(tz=tz.utc)
-                    rq.outb = pickle.dumps(t)
+                # GETTIME: answer with a datetime instance (pickled)
+                elif rq.inb == b"GETTIME":
+                    rq.outb = pickle.dumps(dt.now(tz=tz.utc))
+
+                # GETSTATE: answer with an Erl2State instance (pickled)
+                elif rq.inb == b"GETSTATE":
+                    rq.outb = pickle.dumps(self.erl2context['state'])
+
+                # GETLOG: answer with an export of logs from Erl2Log (pickled)
+                elif re.match(b"^GETLOG", rq.inb):
+
+                    # unpack second parameter (most recent timestamp already sent)
+                    mat = re.search(b'^GETLOG\|(.*)$', rq.inb)
+                    if not mat:
+                        raise RuntimeError('Erl2Network|manageQueues: error: badly formatted request')
+
+                    # the mat.groups() list should just be one item, the timestamp parameter
+                    ts = mat.groups()[0]
+                    if ts == b'None':
+                        ts = None
+                    else:
+                        # convert ts to a datetime
+                        ts = dt.strptime(ts.decode(), DTFMT)
+
+                        # strptime seems to drop timezone info, so add it back explicitly
+                        ts = ts.replace(tzinfo=tz.utc)
+
+                    print (f"Erl2Network|manageQueues: Debug: request [{rq.inb}] timestamp [{ts}]")
+                    rq.outb = pickle.dumps(self.__systemLog.exportLog(ts))
 
                 # unrecognized request: answer with error
                 else:
@@ -801,20 +898,88 @@ class Erl2Network():
                 # update time of last device comms
                 self.__lastActive = dt.now(tz=tz.utc)
 
+        # are there any command results to process?
+        if not self.__commandResultsQueue.empty():
+
+            # loop through all pending results
+            while not self.__commandResultsQueue.empty():
+
+                # retrieve the command results and figure out what mac address they're for
+                rs = self.__commandResultsQueue.get_nowait()
+
+                # can get_nowait() return something that isn't a request?
+                if rs is not None and hasattr(rs, "addr"):
+                    mac = self.lookupByIP[rs.addr]
+
+                    print (f"{self.__class__.__name__}: manageQueues: self.__commandResultsQueue[{rs.addr}][{mac}] retrieved [{rs}]")
+
+                    # no matter what type of comms, update the lastActive timestamp
+                    self.childrenDict[mac]['lastActive'] = rs.replyTime
+
+                    if rs.command == b"GETID":
+
+                         # we'll want to compare new results against the old
+                         # (if changes, trigger another full network scan)
+                         pass
+
+                    elif rs.command == b"GETTIME":
+
+                        # unpack reply, which is a pickled datetime instance
+                        deviceT = pickle.loads(rs.replyString)
+
+                        # calculate difference in controller/device clocks
+                        self.childrenDict[mac]['latency'] = (deviceT-rs.replyTime).total_seconds()
+                        print (f"{self.__class__.__name__}: manageQueues: updating latency for [{mac}] to [{self.childrenDict[mac]['latency']}]")
+
+                    elif rs.command == b"GETSTATE":
+
+                         # answered with an Erl2State instance (pickled)
+                         self.childrenDict[mac]['state'] = pickle.loads(rs.replyString)
+
+                    elif re.match(b'^GETLOG|', rs.command):
+
+                        # answered with a value from an Erl2Log instance (pickled)
+                        # NOT IMPLEMENTED YET
+                        print (f"{self.__class__.__name__}: manageQueues: got an answer to request [{rs.command}] but this isn't implemented yet")
+                        pass
+
         # call this method again after waiting 1s
-        self.__allWidgets[1].after(1000, self.replyToRequests)
+        self.__allWidgets[1].after(1000, self.manageQueues)
+
+    def pollChildren(self):
+
+        # skip processing if we're scanning the network for new devices
+        if not self.scanning():
+
+            # loop through child devices
+            for mac in self.sortedMacs:
+
+                # check id
+                self.sendCommand(mac, b"GETID")
+
+                # update latency (get time)
+                self.sendCommand(mac, b"GETTIME")
+
+                # get state
+                self.sendCommand(mac, b"GETSTATE")
+
+                # get log (include info about timestamps already received)
+                if 'logs' in self.childrenDict[mac] and self.childrenDict[mac].latestTS is not None:
+                    lastLog = self.childrenDict[mac]['logs'].latestTS.astimezone(tz.utc).strftime(DTFMT)
+                else:
+                    lastLog = 'None'
+                self.sendCommand(mac, b"GETLOG" + b"|" + lastLog.encode())
+
+        # call this method again after waiting 30s
+        self.__allWidgets[2].after(30000, self.pollChildren)
 
     def scanning(self):
         return self.__scanProcess is not None and self.__scanProcess.is_alive()
 
-    def getState(self, mac, replyQ):
+    def sendCommand(self, mac, command):
 
-        # limit network comms to one child at a time
-        if mac in self.__childProcesses and self.__childProcesses[mac] is not None and self.__childProcesses[mac].is_alive():
-            return b"BUSY"
-
-        # send GETSTATE and wait for reply
-        return self.wrapperSendCommand(mac, b"GETSTATE", replyQ)
+        # send command and give it a queue for its reply
+        self.wrapperSendCommand(mac, command, self.__commandResultsQueue)
 
     # atexit.register() handler
     def atexitHandler(self):
@@ -828,6 +993,13 @@ class Erl2Network():
         # kill off the forked process scanning for child devices
         if self.__scanProcess is not None and self.__scanProcess.is_alive():
             self.__scanProcess.kill()
+
+        # kill off any child processes
+        for mac in self.sortedMacs:
+            if mac in self.__childProcesses:
+                for p in self.__childProcesses[mac]:
+                    if p.is_alive():
+                        p.kill()
 
 def main():
 
