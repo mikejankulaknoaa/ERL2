@@ -36,12 +36,6 @@ class Erl2Sensor():
         # keep a list of entry widgets
         self.allEntries = []
 
-        # for a sensor, we track current value and last valid update time
-        # (be careful to update these values only in the measure() method)
-        self.online = True
-        self.value = {}
-        self.lastValid = None
-
         # keep track of when the next file-writing interval is
         self.__nextFileTime = None
 
@@ -52,6 +46,12 @@ class Erl2Sensor():
         # load any saved info about the application state
         if 'state' not in self.erl2context:
             self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
+
+        # for a sensor, we track current value and last valid update time
+        # (be careful to update these values only in the measure() method)
+        self.online = True
+        self.value = {}
+        self.lastValid = self.erl2context['state'].get(self.sensorType,'lastValid',None)
 
         # read these useful parameters from Erl2Config
         self.__sampleFrequency = self.erl2context['conf'][self.sensorType]['sampleFrequency']
@@ -290,6 +290,7 @@ class Erl2Sensor():
 
         # remember timestamp of last valid measurement
         self.lastValid = t
+        self.erl2context['state'].set(self.sensorType,'lastValid',self.lastValid)
 
         #print (f"{self.__class__.__name__}: Debug: measure() returning [{str(t)}][{str(self.value)}][{str(self.online)}]")
 

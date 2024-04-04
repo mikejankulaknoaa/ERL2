@@ -7,6 +7,7 @@ import pickle
 import re
 import selectors
 import socket
+from sys import getsizeof
 from time import sleep
 from types import SimpleNamespace
 import tkinter as tk
@@ -15,6 +16,7 @@ from tkinter import messagebox as mb
 from Erl2Config import Erl2Config
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
+from Erl2State import Erl2State
 
 # Erl2Network needs some functions defined outside of the class, because
 # in macOS and Windows, you cannot start a process in a subthread if it is
@@ -47,7 +49,7 @@ def subthreadSendCommand(host,
             # something is answering!
             if ret == 0:
 
-                print (f"Erl2Network|subthreadSendCommand: Debug: successfully connected to [{host}][{PORT}]")
+                #print (f"Erl2Network|subthreadSendCommand: Debug: successfully connected to [{host}][{PORT}]")
 
                 # once socket is successfully connected, lengthen timeout to 10s
                 s.settimeout(10)
@@ -72,16 +74,16 @@ def subthreadSendCommand(host,
                         # the mat.groups() list is composed of <expected reply length>, <first part of reply>
                         expected = int(mat.groups()[0])
                         replyString = mat.groups()[1]
-                        print (f"Erl2Network|subthreadSendCommand: Debug: expecting [{expected}], got [{len(replyString)}]")
+                        #print (f"Erl2Network|subthreadSendCommand: Debug: expecting [{expected}], got [{len(replyString)}]")
 
                     # add any new bytes to the end of the rest of the reply
                     else:
                         replyString += data
-                        print (f"Erl2Network|subthreadSendCommand: Debug: expected [{expected}], TOPPING UP TO [{len(replyString)}]")
+                        #print (f"Erl2Network|subthreadSendCommand: Debug: expected [{expected}], TOPPING UP TO [{len(replyString)}]")
 
                     # check if we've received everything we expected to
                     if len(replyString) >= expected:
-                        print (f"Erl2Network|subthreadSendCommand: Debug: expected [{expected}], finished with [{len(replyString)}]")
+                        #print (f"Erl2Network|subthreadSendCommand: Debug: expected [{expected}], finished with [{len(replyString)}]")
                         replyObj = SimpleNamespace(addr=host, command=command, replyTime=dt.now(tz=tz.utc), replyString=replyString)
                         break
 
@@ -90,7 +92,8 @@ def subthreadSendCommand(host,
                 #print (f"Erl2Network|subthreadSendCommand: Debug: cannot connect to [{host}][{PORT}]: ret [{ret}]")
 
         except Exception as e:
-            print (f"Erl2Network|subthreadSendCommand: Error: unexpected error when connecting to [{host}][{PORT}]: [{e}]")
+            pass
+            #print (f"Erl2Network|subthreadSendCommand: Error: unexpected error when connecting to [{host}][{PORT}]: [{e}]")
 
         finally:
             s.close()
@@ -133,7 +136,7 @@ def subthreadScan(stub,
         if idReplyObj is not None:
 
             # process device's reply and prepare report for scanResultsQ
-            print (f"Erl2Network|subthreadScan: Debug: sent [ID], received reply: [{idReplyObj}]")
+            #print (f"Erl2Network|subthreadScan: Debug: sent [ID], received reply: [{idReplyObj}]")
             val = '\n'.join([idReplyObj.replyString.decode(), host])
 
             # grab the replyTime for an initial lastActive value
@@ -161,7 +164,7 @@ def subthreadListen(
     lsock.bind((deviceAddress, PORT))
     lsock.listen()
     lsock.setblocking(False)
-    print (f"Erl2Network|subthreadListen: Debug: listening on {(deviceAddress, PORT)}")
+    #print (f"Erl2Network|subthreadListen: Debug: listening on {(deviceAddress, PORT)}")
 
     # register the socket with the selector for listening only (and data set to None)
     sel.register(lsock, selectors.EVENT_READ, data=None)
@@ -182,7 +185,7 @@ def subthreadListen(
                     sock = key.fileobj
 
                     conn, addr = sock.accept()  # Should be ready to read
-                    print (f"Erl2Network|subthreadListen: Debug: accepted connection from {addr}")
+                    #print (f"Erl2Network|subthreadListen: Debug: accepted connection from {addr}")
                     conn.setblocking(False)
 
                     # once a connection is made from a controller, register it for READ and WRITE events
@@ -205,7 +208,7 @@ def subthreadListen(
                         # something was received
                         if recv_data:
 
-                            print (f"Erl2Network|subthreadListen: Debug: received data {recv_data}")
+                            #print (f"Erl2Network|subthreadListen: Debug: received data {recv_data}")
                             data.inb = recv_data
 
                             # create a request object, add it to the incoming queue
@@ -217,7 +220,7 @@ def subthreadListen(
                             data.status = b"QUEUED"
 
                         else:
-                            print (f"Erl2Network|subthreadListen: Debug: closing connection to {data.addr}")
+                            #print (f"Erl2Network|subthreadListen: Debug: closing connection to {data.addr}")
                             sel.unregister(sock)
                             sock.close()
 
@@ -234,7 +237,7 @@ def subthreadListen(
                                      # format answer with length of reply
                                      rq = outgoingQ.get_nowait()
                                      data.outb = str(len(rq.outb)).encode() + b"|" + rq.outb
-                                     print (f"Erl2Network|subthreadListen: Debug: read {data.outb} from outgoingQ")
+                                     #print (f"Erl2Network|subthreadListen: Debug: read {data.outb} from outgoingQ")
                                      data.status = b"RECEIVED"
                                      break
                                  else:
@@ -244,12 +247,13 @@ def subthreadListen(
                         # if we have a reply
                         if data.outb:
 
-                            print (f"Erl2Network|subthreadListen: Debug: replying {data.outb!r} to {data.addr}")
+                            #print (f"Erl2Network|subthreadListen: Debug: replying {data.outb!r} to {data.addr}")
                             sent = sock.send(data.outb)  # Should be ready to write
                             data.outb = data.outb[sent:]
 
     except KeyboardInterrupt:
-        print (f"Erl2Network|subthreadListen: Debug: caught keyboard interrupt, exiting")
+        pass
+        #print (f"Erl2Network|subthreadListen: Debug: caught keyboard interrupt, exiting")
 
     finally:
         sel.close()
@@ -305,7 +309,7 @@ class Erl2Network():
         self.__outgoingQueue = Queue()
 
         # last network activity of any kind for this device (less useful for a controller)
-        self.__lastActive = None
+        self.__lastActive = self.erl2context['state'].get('network','lastActive',None)
 
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
@@ -328,11 +332,40 @@ class Erl2Network():
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
 
+        # start a data/log file for the network
+        self.__networkLog = Erl2Log(logType='system', logName='Erl2Network', erl2context=self.erl2context)
+
         # this is the main compendium of information about child devices, and their sort order
-        self.childrenDict = {}
-        self.lookupByIP = {}
-        self.lookupByID = {}
-        self.sortedMacs = []
+        self.childrenDict = self.erl2context['state'].get('network','childrenDict',{})
+
+        # system's memory of what unique IDs have been used locally for filenames
+        self.allInternalIDs = self.erl2context['state'].get('network','allInternalIDs',[])
+
+        print (f"{self.__class__.__name__}: __init: Debug: self.childrenDict type:[{type(self.childrenDict)}] is {self.childrenDict}")
+        print (f"{self.__class__.__name__}: __init: Debug: self.allInternalIDs type:[{type(self.allInternalIDs)}] is {self.allInternalIDs}")
+
+        # helpful data structures used to reference entries in childrenDict
+        self.sortedMacs = self.createSortedMacs()
+        self.lookupByID, self.lookupByIP = self.createLookups()
+
+        # Erl2States and Erl2Logs associated with child devices
+        self.childrenStates = {}
+        self.childrenLogs = {}
+
+        # loop through all child devices to load data already saved on controller
+        for thisMac in self.sortedMacs:
+
+            # need to have the internalID defined for this to work
+            if 'internalID' in self.childrenDict[thisMac]:
+
+                # load Erl2State info for child devices if any stored locally
+                self.childrenStates[thisMac] = Erl2State(internalID=self.childrenDict[thisMac]['internalID'],
+                                                         erl2context=self.erl2context)
+
+                # load Erl2Log info for child devices if any stored locally
+                self.childrenLogs[thisMac] = Erl2Log(logType='device',
+                                                     logName=self.childrenDict[thisMac]['internalID'],
+                                                     erl2context=self.erl2context)
 
         # if the user has overridden the ipRange with None, scan all addresses
         if self.__ipRange is None:
@@ -366,9 +399,9 @@ class Erl2Network():
 
         # determine what IP address(es) are associated with this system's network interfaces
         self.getAddresses()
-        print (f"{self.__class__.__name__}: Debug: __init: self.__deviceAddresses is {self.__deviceAddresses}")
-        print (f"{self.__class__.__name__}: Debug: __init: self.__networkStubs is {self.__networkStubs}")
-        print (f"{self.__class__.__name__}: Debug: __init: self.__hardcoding is {self.__hardcoding}")
+        #print (f"{self.__class__.__name__}: __init: Debug: self.__deviceAddresses is {self.__deviceAddresses}")
+        #print (f"{self.__class__.__name__}: __init: Debug: self.__networkStubs is {self.__networkStubs}")
+        #print (f"{self.__class__.__name__}: __init: Debug: self.__hardcoding is {self.__hardcoding}")
 
         # provide a 'rescan' button (controller only) if given a place for it
         if self.__deviceType == 'controller' and 'parent' in self.__buttonLoc:
@@ -431,6 +464,9 @@ class Erl2Network():
                         self.__stub = self.__networkStubs[ind]['STUB']
                         break
 
+            # controller startup log message
+            self.__networkLog.writeMessage(f"Controller startup at interface [{self.__interface}], ip [{self.__ip}], mac [{self.__mac}]")
+
             self.updateDisplays()
 
             # start up the process keep the child device details up to date
@@ -455,6 +491,9 @@ class Erl2Network():
                         self.__ip = self.__deviceAddresses[0]['IP']
                         self.__mac = self.__deviceAddresses[0]['MAC']
                         break
+
+            # tank startup log message
+            self.__networkLog.writeMessage(f"Tank startup at interface [{self.__interface}], ip [{self.__ip}], mac [{self.__mac}]")
 
             # update the display fields with info about the chosen network interface
             self.updateDisplays()
@@ -558,6 +597,243 @@ class Erl2Network():
         # current time
         currentTime = dt.now(tz=tz.utc)
 
+        #print (f"{self.__class__.__name__}: updateDisplays: Debug: called at [{currentTime}]")
+
+        # check if there are any results queued up from a (completed) subnet scan
+        if not self.scanning() and not self.__scanResultsQueue.empty():
+
+            newChildrenDict = {}
+
+            # build a new list of results from this scan
+            while not self.__scanResultsQueue.empty():
+
+                ch = self.__scanResultsQueue.get_nowait()
+                #print (f"{self.__class__.__name__}: updateDisplays: Debug: retrieved [{ch}] from scanResultsQ")
+
+                # device report from the queue has the following fields
+                keyNames = ['deviceType', 'id', 'mac', 'ip', 'lastActive']
+
+                # device report is delimited by LF
+                chvals = ch.split('\n')
+
+                # new child device dictionary entry
+                newEntry = {}
+
+                # assign individual values to new child device dictionary entry
+                for key, val in zip(keyNames, chvals):
+                    newEntry[key] = val
+                    #print (f"{self.__class__.__name__}: updateDisplays: Debug: assigning [{val}] to [{key}]")
+
+                # except it's not necessary to store mac in the entry when it's used as the key
+                newMac = newEntry.pop('mac')
+
+                # store lastActive as a datetime
+                newEntry['lastActive'] = dt.strptime(newEntry['lastActive'], DTFMT).replace(tzinfo=tz.utc)
+
+                # add to this list of new scan results indexed by mac
+                newChildrenDict[newMac] = newEntry
+
+            # create a sorted list of keys for this dict of scan results
+            newSortedMacs = self.createSortedMacs(newChildrenDict)
+
+            # find any duplicate IDs in this set of results
+            duplicates = {}
+            for thisMac in newSortedMacs:
+                thisID = newChildrenDict[thisMac]['id']
+                if thisID in duplicates:
+                    duplicates[thisID].append(thisMac)
+                else:
+                    duplicates[thisID] = [thisMac]
+
+            # resolve duplicate IDs
+            for thisID in duplicates:
+                if len(duplicates[thisID]) > 1:
+
+                    # loop through macs that share this id
+                    chosenMac = None
+                    for thisMac in duplicates[thisID]:
+
+                        # choose this one if this same mac was already in our list with the same id
+                        if thisMac in self.childrenDict and self.childrenDict[thisMac]['id'] == thisId:
+                            chosenMac = thisMac
+                            break
+
+                    # otherwise, arbitrarily choose the first mac
+                    else:
+                        chosenMac = duplicates[thisID][0]
+
+                    # remove the chosen mac from the list of duplicates
+                    duplicates[thisID].remove[chosenMac]
+
+                    # finessing the warning message language...
+                    if len(duplicates[thisID]) > 1:
+                        plur = 's'
+                        pron = 'their'
+                    else:
+                        plur = 'its'
+
+                    # list macs and ips for warning message
+                    dupMacsAndIPs = []
+                    for thisMac in duplicates[thisID]:
+                        dupMacsAndIPs.append(f"[{thisMac}][{newChildrenDict[thisMac]['ip']}]")
+
+                    # create an alert about duplicate IDs
+                    mb.showerror(f"Error: more than one active child device has the ID [{id}]; " +
+                                 f"keeping [{chosenMac}][{newChildrenDict[chosenMac]['ip']}] and " +
+                                 f"ignoring the one{plur} at {', '.join(dupMacsAndIPs)}. " +
+                                 f"Please shut down the conflicting device{plur} " +
+                                 f"and edit the ID in {pron} erl2.conf configuration file{plur}.")
+
+                    # note duplicate ids in log
+                    self.__networkLog.writeMessage(f"scan results: duplicate IDs, keeping " +
+                                                   f"[{chosenMac}][{newChildrenDict[chosenMac]['ip']}] " +
+                                                   f"and ignoring {', '.join(dupMacsAndIPs)}")
+
+                    # forget all devices with this ID that weren't "chosen"
+                    for thisMac in duplicates[thisID]:
+                        if thisMac != chosenMac:
+                            newChildrenDict.pop(thisMac)
+                            newSortedMacs.remove(thisMac)
+
+            # remember if any changes were made to the children dictionary
+            dictChanged = False
+
+            # loop through any new children
+            for thisMac in newSortedMacs:
+
+                #print (f"{self.__class__.__name__}: updateDisplays: Debug: [{thisMac}] in scan results")
+
+                # check if this mac is already in the list with the same id
+                if (    thisMac in self.childrenDict
+                    and self.childrenDict[thisMac]['id'] == newChildrenDict[thisMac]['id']):
+
+                    #print (f"{self.__class__.__name__}: updateDisplays: Debug: [{thisMac}] already in childrenDict")
+
+                    # this is considered to be the "same" device, so check for changes and update it
+                    thisID = self.childrenDict[thisMac]['id']
+
+                    # warn if device type has changed, then update it
+                    if self.childrenDict[thisMac]['deviceType'] != newChildrenDict[thisMac]['deviceType']:
+                        oldType = self.childrenDict[thisMac]['deviceType']
+                        newType = newChildrenDict[thisMac]['deviceType']
+                        mb.showwarning(f"Warning: Device ID [{thisID}] used to be online with " +
+                                       f"device type [{oldType}] but now has device type [{newType}]. " +
+                                       f"Previous settings and data will be retained.")
+                        self.childrenDict[thisMac]['deviceType'] = newChildrenDict[thisMac]['deviceType']
+                        dictChanged = True
+
+                        # note the changed device type in log
+                        self.__networkLog.writeMessage(f"scan results: ID [{thisID}] changed " +
+                                                       f"device type from [{oldType}] to [{newType}]")
+
+                    # warn if ip address has changed, then update it
+                    if self.childrenDict[thisMac]['ip'] != newChildrenDict[thisMac]['ip']:
+                        oldIP = self.childrenDict[thisMac]['ip']
+                        newIP = newChildrenDict[thisMac]['ip']
+                        mb.showwarning(f"Warning: Device ID [{thisID}] used to be online with " +
+                                       f"IP address [{oldIP}] but now has IP address [{newIP}]. " +
+                                       f"Previous settings and data will be retained.")
+                        self.childrenDict[thisMac]['ip'] = newChildrenDict[thisMac]['ip']
+                        dictChanged = True
+
+                        # note the changed ip address in log
+                        self.__networkLog.writeMessage(f"scan results: ID [{thisID}] changed " +
+                                                       f"IP address from [{oldIP}] to [{newIP}]")
+
+                    # copy new lastActive date into main dict
+                    self.childrenDict[thisMac]['lastActive'] = newChildrenDict[thisMac]['lastActive']
+                    dictChanged = True
+
+                # otherwise, check if this mac was in the old list but with a different ID
+                elif thisMac in self.childrenDict:
+
+                    #print (f"{self.__class__.__name__}: updateDisplays: Debug: [{thisMac}] same MAC, different ID")
+
+                    oldID = self.childrenDict[thisMac]['id']
+                    newID = newChildrenDict[thisMac]['id']
+                    mb.showwarning(f"Warning: MAC address [{thisMac}] used to be online with " +
+                                   f"Device ID [{oldID}] but now has Device ID [{newID}]. " +
+                                   f"Previous settings and data will be discarded and everything " +
+                                   f"loaded anew from the device.")
+                    self.childrenDict[thisMac] = newChildrenDict[thisMac]
+                    dictChanged = True
+
+                    # note the changed ID in log
+                    self.__networkLog.writeMessage(f"scan results: MAC address [{thisMac}] changed " +
+                                                   f"Device ID from [{oldID}] to [{newID}]")
+
+                # otherwise, check if this new mac's ID used to be connected with a different mac
+                elif newChildrenDict[thisMac]['id'] in self.lookupByID:
+
+                    #print (f"{self.__class__.__name__}: updateDisplays: Debug: [{thisMac}] same ID, different MAC")
+
+                    thisID = newChildrenDict[thisMac]['id']
+                    oldMac = self.lookupByID[thisID]
+                    mb.showwarning(f"Warning: Device ID [{thisID}] used to be online with " +
+                                   f"MAC address [{oldMac}] but now has MAC address [{thisMac}]. " +
+                                   f"Previous settings and data will be discarded and everything " +
+                                   f"loaded anew from the device.")
+                    self.childrenDict[thisMac] = newChildrenDict[thisMac]
+                    dictChanged = True
+
+                    # note the changed ID in log
+                    self.__networkLog.writeMessage(f"scan results: Device ID [{thisID}] changed " +
+                                                   f"MAC address from [{oldMac}] to [{thisMac}]")
+
+                # the final alternative is that this is an entirely new MAC and ID
+                else:
+ 
+                    #print (f"{self.__class__.__name__}: updateDisplays: Debug: [{thisMac}] new MAC never seen before")
+ 
+                    # no warning needed, just add it
+                    self.childrenDict[thisMac] = newChildrenDict[thisMac]
+                    dictChanged = True
+
+                    # note the newly-found device in log
+                    self.__networkLog.writeMessage(f"scan results: found Device ID [{self.childrenDict[thisMac]['id']}], " +
+                                                   f"Type [{self.childrenDict[thisMac]['deviceType']}], " +
+                                                   f"MAC address [{thisMac}], IP address [{self.childrenDict[thisMac]['ip']}]")
+
+            # [ end of looping  through any new children ]
+
+            # redo the list of sorted macs now that scan results have been processed
+            self.sortedMacs = self.createSortedMacs()
+
+            # rebuild the lookups to ensure old devices are no longer represented
+            self.lookupByID, self.lookupByIP = self.createLookups()
+
+            # by the way, create a new internal ID for anything that is missing one
+            idsChanged = False
+            for thisMac in self.sortedMacs:
+
+                if 'internalID' not in self.childrenDict[thisMac]:
+
+                    # eliminate symbols and spaces
+                    adjustedID = re.sub('(^__*)|(__*$)','',re.sub('\W\W*','_',self.childrenDict[thisMac]['id']))
+
+                    # find a sequence number that hasn't already been used
+                    rpt = 0
+                    while f"{adjustedID}_{rpt:03}" in self.allInternalIDs:
+                        rpt += 1
+
+                    # this will be this device's internal ID
+                    self.childrenDict[thisMac]['internalID'] = f"{adjustedID}_{rpt:03}"
+                    dictChanged = True
+
+                    # remember that we've used this ID
+                    self.allInternalIDs.append(self.childrenDict[thisMac]['internalID'])
+                    idsChanged = True
+
+            # if any changes, save objects to state file
+            if dictChanged:
+                self.erl2context['state'].set('network','childrenDict',self.childrenDict)
+            if idsChanged:
+                self.erl2context['state'].set('network','allInternalIDs',self.allInternalIDs)
+
+        # [this is the end of the logic for processing new scan results]
+
+        # [now update the module's display widgets]
+
         # default font
         fnt = 'Arial 14'
 
@@ -570,7 +846,7 @@ class Erl2Network():
 
             # update the display
             w.config(text=upd, font=fnt)
- 
+
         # loop through all placements of the id widgets
         for w in self.__idWidgets:
 
@@ -580,7 +856,7 @@ class Erl2Network():
 
             # update the display
             w.config(text=upd, font=fnt)
- 
+
         # loop through all placements of the interface widgets
         for w in self.__interfaceWidgets:
 
@@ -590,7 +866,7 @@ class Erl2Network():
 
             # update the display
             w.config(text=upd, font=fnt)
- 
+
         # loop through all placements of the ip widgets
         for w in self.__ipWidgets:
 
@@ -600,7 +876,7 @@ class Erl2Network():
 
             # update the display
             w.config(text=upd, font=fnt)
- 
+
         # loop through all placements of the mac widgets
         for w in self.__macWidgets:
 
@@ -628,75 +904,6 @@ class Erl2Network():
 
             # update the display
             w.config(text=upd, font=fnt, foreground=fgd)
-
-        # are there any new scan results to process?
-        if not self.__scanResultsQueue.empty():
-
-            # grab any newly-reported children and add them to our list
-            while not self.__scanResultsQueue.empty():
-                ch = self.__scanResultsQueue.get_nowait()
-                #print (f"{self.__class__.__name__}: updateDisplays: retrieved [{ch}] from scanResultsQ")
-
-                # device report from the queue has the following fields
-                keyNames = ['deviceType', 'id', 'mac', 'ip', 'lastActive']
-
-                # device report is delimited by LF
-                chvals = ch.split('\n')
-
-                # new dict value
-                newDict = {}
-
-                # assign dict values
-                for key, val in zip(keyNames, chvals):
-                    newDict[key] = val
-                    #print (f"{self.__class__.__name__}: updateDisplays: assigning [{val}] to [{key}]")
-
-                # store lastActive as a datetime
-                newDict['lastActive'] = dt.strptime(newDict['lastActive'], DTFMT)
-
-                # strptime seems to drop timezone info, so add it back explicitly
-                newDict['lastActive'] = newDict['lastActive'].replace(tzinfo=tz.utc)
-
-                # children dict is keyed off the mac address
-                self.childrenDict[newDict['mac']] = newDict
-
-            # complicated sort to properly order e.g. 'Tank 2' before 'Tank 13'
-            self.sortedMacs = sorted(self.childrenDict, key=lambda x: re.sub(r'0*([0-9]{9,})', r'\1', re.sub(r'([0-9]+)',r'0000000000\1',self.childrenDict[x]['id'])))
-
-            # redo lookups from scratch
-            oldLookupByID = self.lookupByID
-            oldLookupByIP = self.lookupByIP
-            self.lookupByID = {}
-            self.lookupByIP = {}
-            for mac in self.sortedMacs:
-                id = self.childrenDict[mac]['id']
-                ip = self.childrenDict[mac]['ip']
-
-                # duplicate child id??
-                if id in self.lookupByID:
-                    self.childrenDict[mac]['ignore'] = True
-                    mb.showerror(f"Error: more than one active child device has " +
-                                 f"the ID [{id}]; ignoring the one at [{mac}][{ip}]. " +
-                                 f"Please shut down one of the conflicting devices " +
-                                 f"and give it a new ID in its erl2.conf configuration file.")
-
-                else:
-                    self.childrenDict[mac]['ignore'] = False
-
-                    # new device (mac address) for a Tank ID we've seen before?
-                    if (id in oldLookupByID and oldLookupByID[id] != mac):
-                        mb.showwarning(f"Warning: Tank ID [{id}] is online with a different " +
-                                       f"mac address; before [{oldLookupByID[id]}], after [{mac}].")
-
-                    # new ip address for a Tank ID we've seen before?
-                    if (ip in oldLookupByIP and oldLookupByIP[ip] != mac):
-                        oldIP = [x for x in oldLookupByIP if oldLookupByIP==ip][0]
-                        mb.showwarning(f"Warning: Tank ID [{id}] is online with a different " +
-                                       f"ip address; before [{oldIP}], after [{ip}].")
-
-                    # add these entries to the new lookup dicts
-                    self.lookupByID[id] = mac
-                    self.lookupByIP[ip] = mac
 
         # only draw the childrenWidgets headers once
         if not self.__childrenHeaders:
@@ -755,7 +962,7 @@ class Erl2Network():
                     # if this is a new row in the grid (pls forgive the offensive tkinter method name)...
                     if (len(w.grid_slaves(row=thisrow,column=4))==0):
 
-                        #print (f"{self.__class__.__name__}: Debug: updateDisplays: THIS IS A NEW ROW")
+                        #print (f"{self.__class__.__name__}: updateDisplays: Debug: THIS IS A NEW ROW")
 
                         f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
                         f.grid(row=thisrow, column=0, padx='1', pady='1', sticky='nesw')
@@ -779,7 +986,7 @@ class Erl2Network():
 
                     else:
                         # more references to tkinter's offensive method name
-                        #print (f"{self.__class__.__name__}: Debug: updateDisplays: FOUND AN EXISTING ROW [{w.grid_slaves(row=thisrow,column=4)}]")
+                        #print (f"{self.__class__.__name__}: updateDisplays: Debug: FOUND AN EXISTING ROW [{w.grid_slaves(row=thisrow,column=4)}]")
                         w.grid_slaves(row=thisrow,column=0)[0].grid_slaves(row=0,column=0)[0].config(text=self.childrenDict[mac]['id'])
                         w.grid_slaves(row=thisrow,column=1)[0].grid_slaves(row=0,column=0)[0].config(text=self.childrenDict[mac]['ip'])
                         w.grid_slaves(row=thisrow,column=2)[0].grid_slaves(row=0,column=0)[0].config(text=mac)
@@ -792,7 +999,7 @@ class Erl2Network():
             # update on schedule
             nextUpdateTime = Erl2Log.nextIntervalTime(currentTime, self.__updateFrequency)
             delay = int((nextUpdateTime - currentTime.timestamp())*1000)
-        
+
             # update the display widgets again after waiting an appropriate number of milliseconds
             self.__allWidgets[0].after(delay, self.updateDisplays)
 
@@ -817,6 +1024,9 @@ class Erl2Network():
         self.__listenProcess.start()
 
     def wrapperScan(self):
+
+        # controller startup log message
+        self.__networkLog.writeMessage('initiating subnet scan')
 
         # do this in a separate process thread
         self.__scanProcess = Process(target=subthreadScan,
@@ -862,8 +1072,7 @@ class Erl2Network():
             # loop through all pending requests
             while not self.__incomingQueue.empty():
                 rq = self.__incomingQueue.get_nowait()
-                print (f"{self.__class__.__name__}: manageQueues: retrieved [{rq}] from self.__incomingQueue")
-                print (f"{self.__class__.__name__}: manageQueues: self.__incomingQueue[{rq.addr}] retrieved [{rq}]")
+                #print (f"{self.__class__.__name__}: manageQueues: Debug: Received request [{rq.inb}] from [{rq.addr}]")
 
                 # GETID: n/a, this is answered directly within the listen() process
                 if rq.inb == b"GETID":
@@ -891,26 +1100,35 @@ class Erl2Network():
                         ts = None
                     else:
                         # convert ts to a datetime
-                        ts = dt.strptime(ts.decode(), DTFMT)
+                        ts = dt.strptime(ts.decode(), DTFMT).replace(tzinfo=tz.utc)
 
-                        # strptime seems to drop timezone info, so add it back explicitly
-                        ts = ts.replace(tzinfo=tz.utc)
-
-                    print (f"Erl2Network|manageQueues: Debug: request [{rq.inb}] timestamp [{ts}]")
+                    print (f"{self.__class__.__name__}: manageQueues: Debug: unpacked request [{rq.inb}] from [{rq.addr}] to give timestamp [{ts}]")
                     rq.outb = pickle.dumps(self.__systemLog.exportLog(ts))
 
                 # unrecognized request: answer with error
                 else:
-                    rq.outb = 'error: unrecognized request'.encode()
+                    rq.outb = ''.encode()
+
+                    # log an error message
+                    self.__networkLog.writeMessage(f"Error: Received request [{rq.inb}] from [{rq.addr}], not recognized")
+
+                print (f"{self.__class__.__name__}: manageQueues: Debug: Received request [{rq.inb}] from [{rq.addr}], answered with [{getsizeof(rq.outb)}] bytes")
+
+                # log the request and reply
+                self.__networkLog.writeMessage(f"Received request [{rq.inb}] from [{rq.addr}], answered with [{getsizeof(rq.outb)}] bytes")
 
                 # add reply to the outgoing queue
                 self.__outgoingQueue.put(rq)
 
                 # update time of last device comms
                 self.__lastActive = dt.now(tz=tz.utc)
+                self.erl2context['state'].set('network','lastActive',self.__lastActive)
 
         # are there any command results to process?
         if not self.__commandResultsQueue.empty():
+
+            # remember if any changes were made to the children dictionary
+            dictChanged = False
 
             # loop through all pending results
             while not self.__commandResultsQueue.empty():
@@ -922,10 +1140,12 @@ class Erl2Network():
                 if rs is not None and hasattr(rs, "addr"):
                     mac = self.lookupByIP[rs.addr]
 
-                    print (f"{self.__class__.__name__}: manageQueues: self.__commandResultsQueue[{rs.addr}][{mac}] retrieved [{rs}]")
+                    print (f"{self.__class__.__name__}: manageQueues: Received reply to command " +
+                           f"[{rs.command}] from [{rs.addr}], [{getsizeof(rs.replyString)}] bytes")
 
                     # no matter what type of comms, update the lastActive timestamp
                     self.childrenDict[mac]['lastActive'] = rs.replyTime
+                    dictChanged = True
 
                     if rs.command == b"GETID":
 
@@ -940,19 +1160,57 @@ class Erl2Network():
 
                         # calculate difference in controller/device clocks
                         self.childrenDict[mac]['latency'] = (deviceT-rs.replyTime).total_seconds()
-                        print (f"{self.__class__.__name__}: manageQueues: updating latency for [{mac}] to [{self.childrenDict[mac]['latency']}]")
+                        dictChanged = True
+                        #print (f"{self.__class__.__name__}: manageQueues: Debug: updating latency for [{mac}] to [{self.childrenDict[mac]['latency']}]")
 
                     elif rs.command == b"GETSTATE":
 
-                         # answered with an Erl2State instance (pickled)
-                         self.childrenDict[mac]['state'] = pickle.loads(rs.replyString)
+                        # answered with an Erl2State instance (pickled)
+                        thisState = pickle.loads(rs.replyString)
+
+                        # some cursory type checking
+                        if type(thisState) is not Erl2State:
+                           print (f"{self.__class__.__name__}: manageQueues: Error: bad state instance [{type(thisState)}] for [{mac}][{self.childrenDict[mac]['id']}]")
+                        else:
+
+                            # if the Erl2State instance hasn't been created yet
+                            if mac not in self.childrenStates:
+                                self.childrenStates[mac] = Erl2State(internalID=self.childrenDict[mac]['internalID'],
+                                                                     erl2context=self.erl2context)
+
+                            # now assign the new state values to this child State instance
+                            self.childrenStates[mac].assign(thisState)
 
                     elif re.match(b'^GETLOG|', rs.command):
 
-                        # answered with a value from an Erl2Log instance (pickled)
-                        # NOT IMPLEMENTED YET
-                        print (f"{self.__class__.__name__}: manageQueues: got an answer to request [{rs.command}] but this isn't implemented yet")
-                        pass
+                        # answered with an export from an Erl2Log instance (pickled)
+                        thisLog = pickle.loads(rs.replyString)
+                        if type(thisLog) is not list:
+                            print (f"{self.__class__.__name__}: manageQueues: Error: bad log instance [{type(thisLog)}] for [{mac}][{self.childrenDict[mac]['id']}]")
+                        else:
+
+                            # if the Erl2Log instance hasn't been created yet
+                            if mac not in self.childrenLogs:
+                                self.childrenLogs[mac] = Erl2Log(logType='device',
+                                                                 logName=self.childrenDict[mac]['internalID'],
+                                                                 erl2context=self.erl2context)
+
+                            # now import the new log values to this child Erl2Log instance
+                            self.childrenLogs[mac].importLog(thisLog)
+
+                    # unrecognized request: answer with error
+                    else:
+                        rq.outb = ''.encode()
+
+                        # log an error message
+                        self.__networkLog.writeMessage(f"Error: Received reply to command [{rs.command}] from [{rs.addr}], not recognized")
+
+                    # log the reply
+                    self.__networkLog.writeMessage(f"Received reply to command [{rs.command}] from [{rs.addr}], [{getsizeof(rs.replyString)}] bytes")
+
+            # if any changes, save objects to state file
+            if dictChanged:
+                self.erl2context['state'].set('network','childrenDict',self.childrenDict)
 
         # call this method again after waiting 1s
         self.__allWidgets[1].after(1000, self.manageQueues)
@@ -963,23 +1221,28 @@ class Erl2Network():
         if not self.scanning():
 
             # loop through child devices
-            for mac in self.sortedMacs:
+            for thisMac in self.sortedMacs:
+
+                # log the attempt to poll this child device
+                self.__networkLog.writeMessage(f"Polling Device ID [{self.childrenDict[thisMac]['id']}], " +
+                                                   f"Type [{self.childrenDict[thisMac]['deviceType']}], " +
+                                                   f"MAC address [{thisMac}], IP address [{self.childrenDict[thisMac]['ip']}]")
 
                 # check id
-                self.sendCommand(mac, b"GETID")
+                self.sendCommand(thisMac, b"GETID")
 
                 # update latency (get time)
-                self.sendCommand(mac, b"GETTIME")
+                self.sendCommand(thisMac, b"GETTIME")
 
                 # get state
-                self.sendCommand(mac, b"GETSTATE")
+                self.sendCommand(thisMac, b"GETSTATE")
 
                 # get log (include info about timestamps already received)
-                if 'logs' in self.childrenDict[mac] and self.childrenDict[mac].latestTS is not None:
-                    lastLog = self.childrenDict[mac]['logs'].latestTS.astimezone(tz.utc).strftime(DTFMT)
+                if thisMac in self.childrenLogs and self.childrenLogs[thisMac].latestTS is not None:
+                    lastLog = self.childrenLogs[thisMac].latestTS.astimezone(tz.utc).strftime(DTFMT)
                 else:
                     lastLog = 'None'
-                self.sendCommand(mac, b"GETLOG" + b"|" + lastLog.encode())
+                self.sendCommand(thisMac, b"GETLOG" + b"|" + lastLog.encode())
 
         # call this method again after waiting 30s
         self.__allWidgets[2].after(30000, self.pollChildren)
@@ -995,8 +1258,8 @@ class Erl2Network():
     # atexit.register() handler
     def atexitHandler(self):
 
-        #print (f"{self.__class__.__name__}: Debug: atexitHandler() called")
-    
+        #print (f"{self.__class__.__name__}: atexitHangler: Debug: called")
+
         # kill off the forked process listening for connections
         if self.__listenProcess is not None and self.__listenProcess.is_alive():
             self.__listenProcess.kill()
@@ -1011,6 +1274,42 @@ class Erl2Network():
                 for p in self.__childProcesses[mac]:
                     if p.is_alive():
                         p.kill()
+
+    def createSortedMacs(self, childrenDict=None):
+
+        # default is to use instance variable
+        if childrenDict is None:
+            childrenDict = self.childrenDict
+
+        # complicated sort to properly order e.g. 'Tank 2' before 'Tank 13'
+        # (append mac address after a linefeed in case tank ids are not unique)
+        newSortedMacs = sorted(childrenDict, key=lambda x: re.sub(r'0*([0-9]{9,})',
+                                                                  r'\1',
+                                                                  re.sub(r'([0-9]+)',
+                                                                         r'0000000000\1',
+                                                                         childrenDict[x]['id']
+                                                                        )
+                                                                 ) + '\n' + x)
+
+        return newSortedMacs
+
+    def createLookups(self, childrenDict=None, sortedMacs=None):
+
+        # default is to use instance variables
+        if childrenDict is None:
+            childrenDict = self.childrenDict
+        if sortedMacs is None:
+            sortedMacs = self.sortedMacs
+
+        lookupByID = {}
+        lookupByIP = {}
+        for thisMac in sortedMacs:
+
+            # add a new entry to the lookup dicts
+            lookupByID[childrenDict[thisMac]['id']] = thisMac
+            lookupByIP[childrenDict[thisMac]['ip']] = thisMac
+
+        return lookupByID, lookupByIP
 
 def main():
 

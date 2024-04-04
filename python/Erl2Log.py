@@ -1,5 +1,6 @@
 from csv import DictReader,DictWriter,writer
 from datetime import datetime as dt
+from datetime import timedelta as td
 from datetime import timezone as tz
 from os import makedirs,path,stat
 from sys import version_info
@@ -75,22 +76,21 @@ class Erl2Log():
 
             # make a note of the earliest and latest timestamps in the history file, before trimming what's kept in memory
             if len(self.history) > 0:
-                ts = dt.strptime(self.history[0]['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat'])
-                if self.earliestTS is None or ts.timestamp() < self.earliestTS.timestamp():
+                ts = dt.strptime(self.history[0]['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc)
+                if self.earliestTS is None or ts < self.earliestTS:
                     self.earliestTS = ts
                     #print (f"{__class__.__name__}: Debug: __init__({self.__logType},{self.__logName}): self.earliestTS [{self.earliestTS}]")
 
-                ts = dt.strptime(self.history[len(self.history)-1]['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat'])
-                if self.latestTS is None or ts.timestamp() < self.latestTS.timestamp():
+                ts = dt.strptime(self.history[len(self.history)-1]['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc)
+                if self.latestTS is None or ts < self.latestTS:
                     self.latestTS = ts
                     #print (f"{__class__.__name__}: Debug: __init__({self.__logType},{self.__logName}): self.latestTS [{self.latestTS}]")
 
             # calculate the oldest timestamp that should be kept in memory
-            #oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf']['system']['memoryRetention']
-            oldest = dt.utcnow().timestamp() - self.erl2context['conf']['system']['memoryRetention']
+            oldestTS = dt.now(tz=tz.utc) - td(seconds=self.erl2context['conf']['system']['memoryRetention'])
 
             # delete any historical data older than the retention timeframe
-            self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).timestamp() > oldest ]
+            self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc) > oldestTS ]
 
             #if self.__logName in ['heater','chiller','virtualtemp']:
             #    print (f"{__class__.__name__}: Debug: __init__({self.__logType},{self.__logName}): count [{len(self.history)}], oldest [{dt.fromtimestamp(round(oldest))}], newest [{self.history[len(self.history)-1]['Timestamp.UTC']}]")
@@ -103,11 +103,11 @@ class Erl2Log():
 
         # see if earliest or latest timestamps need to be updated
         if 'Timestamp.UTC' in data:
-            ts = dt.strptime(data['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat'])
-            if self.earliestTS is None or ts.timestamp() < self.earliestTS.timestamp():
+            ts = dt.strptime(data['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc)
+            if self.earliestTS is None or ts < self.earliestTS:
                 self.earliestTS = ts
                 #print (f"{__class__.__name__}: Debug: writeData({self.__logType},{self.__logName}): self.earliestTS [{self.earliestTS}]")
-            if self.latestTS is None or ts.timestamp() > self.latestTS.timestamp():
+            if self.latestTS is None or ts > self.latestTS:
                 self.latestTS = ts
                 #print (f"{__class__.__name__}: Debug: writeData({self.__logType},{self.__logName}): self.latestTS [{self.latestTS}]")
 
@@ -115,11 +115,10 @@ class Erl2Log():
         self.history.append(data)
 
         # calculate the oldest timestamp that should be kept in memory
-        #oldest = dt.now(tz=tz.utc).timestamp() - self.erl2context['conf']['system']['memoryRetention']
-        oldest = dt.utcnow().timestamp() - self.erl2context['conf']['system']['memoryRetention']
+        oldestTS = dt.now(tz=tz.utc) - td(seconds=self.erl2context['conf']['system']['memoryRetention'])
 
         # delete any historical data older than the retention timeframe
-        self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).timestamp() > oldest ]
+        self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc) > oldestTS ]
 
         #if self.__logName in ['heater','chiller','virtualtemp']:
         #    print (f"{__class__.__name__}: Debug: writeData({self.__logType},{self.__logName}): count [{len(self.history)}], oldest [{dt.fromtimestamp(round(oldest))}], newest [{self.history[len(self.history)-1]['Timestamp.UTC']}]")
@@ -156,7 +155,7 @@ class Erl2Log():
                     f.flush()
 
         except Exception as e:
-            print (f'{self.__class__.__name__}: Error: __writeData(): {str(e)}')
+            print (f'{self.__class__.__name__}: Error: writeData(): {str(e)}')
 
     def writeMessage(self, *args):
         try:
@@ -186,10 +185,13 @@ class Erl2Log():
 
     def exportLog(self, reqTS=None):
 
-        print (f"{__class__.__name__}: Debug: exportLog({self.__logType},{self.__logName}): earliest [{self.earliestTS}], latest [{self.latestTS}], requested [{reqTS}]")
+        #print (f"{__class__.__name__}: Debug: exportLog({self.__logType},{self.__logName}): earliest  [{self.earliestTS}]")
+        #print (f"{__class__.__name__}: Debug: exportLog({self.__logType},{self.__logName}): latest    [{self.latestTS}]")
+        #print (f"{__class__.__name__}: Debug: exportLog({self.__logType},{self.__logName}): requested [{reqTS}]")
+
         # what is the oldest timestamp still in memory (if any)?
         if len(self.history) > 0:
-            memTS = dt.strptime(self.history[0]['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat'])
+            memTS = dt.strptime(self.history[0]['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc)
         else:
             memTS = None
 
@@ -217,7 +219,7 @@ class Erl2Log():
         elif (reqTS is None and (memTS is not None and memTS <= self.earliestTS)):
             pullFromDisk = False
 
-        print (f"{__class__.__name__}: Debug: exportLog({self.__logType},{self.__logName}): pullFromDisk [{pullFromDisk}]")
+        #print (f"{__class__.__name__}: Debug: exportLog({self.__logType},{self.__logName}): pullFromDisk [{pullFromDisk}]")
 
         # default to nothing
         answerLog = []
@@ -239,22 +241,80 @@ class Erl2Log():
                     answerLog = list(r)
 
         else:
-            answerLog = list(self.history)
+            answerLog = self.history.copy()
 
-        print (f"{__class__.__name__}: Debug: exportLog({self.__logType},{self.__logName}): before filtering [{len(answerLog)}]")
+        #print (f"{__class__.__name__}: Debug: exportLog({self.__logType},{self.__logName}): before filtering [{len(answerLog)}]")
 
         # delete any historical data older than the requested TS (if any)
         if reqTS is not None:
-            answerLog = [ x for x in answerLog if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).timestamp() > reqTS ]
+            answerLog = [ x for x in answerLog if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc) > reqTS ]
 
-        print (f"{__class__.__name__}: Debug: exportLog({self.__logType},{self.__logName}): after filtering [{len(answerLog)}]")
+        #print (f"{__class__.__name__}: Debug: exportLog({self.__logType},{self.__logName}): after filtering [{len(answerLog)}]")
 
         # and that's your answer
         return answerLog
 
     def importLog(self, newLog=None):
 
-        pass
+        # nothing to do if additional log is empty
+        if newLog is not None and len(newLog) > 0:
+
+            # figure out earliest and latest TS of new information
+            newEarliestTS = dt.strptime(newLog[0]['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc)
+            newLatestTS = dt.strptime(newLog[len(newLog)-1]['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc)
+
+            # check assumptions
+            if newEarliestTS > newLatestTS:
+                print (f'{self.__class__.__name__}: Error: importLog data are out of order')
+            elif self.latestTS is not None and self.latestTS > newLatestTS:
+                print (f'{self.__class__.__name__}: Error: importLog data are earlier than loaded history')
+            else:
+
+                # if any data are older than what's already stored, filter them out
+                if self.latestTS is not None and self.latestTS > newEarliestTS:
+                    newLog = [ x for x in newLog if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc) > self.latestTS ]
+
+                # check again if there are any new records to add
+                if len(newLog) > 0 :
+
+                    # first, add the new records to the in-memory storage
+                    self.history.extend(newLog)
+
+                    # update earliest and latest TS if necessary
+                    if self.earliestTS is None:
+                        self.earliestTS = newEarliestTS
+                    if self.latestTS is None or self.latestTS < newLatestTS:
+                        self.latestTS = newLatestTS
+
+                    # write these new records to the file
+                    # finally, write the new data point to the data file
+                    try:
+                        # figure out if the data file has already been written to
+                        fileExists = (path.isfile(self.__logData) and stat(self.__logData).st_size > 0)
+
+                        # write to the data file
+                        with open(self.__logData, 'a', newline='') as f:
+
+                            w = DictWriter(f, fieldnames=newLog[0].keys(), dialect='unix')
+
+                            # write out the header if this is an empty/nonexistent file
+                            if not fileExists:
+                                w.writeheader()
+
+                            # write the new data rows
+                            w.writerows(newLog)
+
+                            # don't buffer the output stream, in case of irregular app termination
+                            f.flush()
+
+                    except Exception as e:
+                        print (f'{self.__class__.__name__}: Error: importLog(): {str(e)}')
+
+                    # calculate the oldest timestamp that should be kept in memory
+                    oldestTS = dt.now(tz=tz.utc) - td(seconds=self.erl2context['conf']['system']['memoryRetention'])
+
+                    # delete any historical data older than the retention timeframe
+                    self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc) > oldestTS ]
 
     # not a class method but just a useful calculation
     def nextIntervalTime(currentTime, interval):

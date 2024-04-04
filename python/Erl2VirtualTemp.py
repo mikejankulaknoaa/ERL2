@@ -119,6 +119,7 @@ class Erl2VirtualTemp(Erl2Sensor):
 
         # remember timestamp of last valid measurement
         self.lastValid = t
+        self.erl2context['state'].set(self.sensorType,'lastValid',self.lastValid)
 
         #print (f"{self.__class__.__name__}: Debug: measure() before [{prevTemp}], offset [{delta}], after [{self.value['temp.degC']}]")
 

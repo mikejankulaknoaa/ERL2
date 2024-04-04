@@ -345,7 +345,6 @@ class Erl2Startup:
             return
         self.erl2context['conf']['system']['shutdown'] = True
 
-
         # recursively call child handlers
         if hasattr(self.__device, 'gracefulExit') and callable(self.__device.gracefulExit):
             self.__device.gracefulExit()

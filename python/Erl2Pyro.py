@@ -14,6 +14,7 @@ from tkinter import ttk
 from Erl2Config import Erl2Config
 from Erl2Input import Erl2Input
 from Erl2Sensor import Erl2Sensor
+from Erl2State import Erl2State
 
 # pyroscience pico-pH and pico-o2 sensors
 class Erl2Pyro(Erl2Sensor):
@@ -48,6 +49,10 @@ class Erl2Pyro(Erl2Sensor):
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
+
+        # load any saved info about the application state
+        if 'state' not in self.erl2context:
+            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
 
         # trigger an error if this isn't windows and the hardware lib wasn't found
         #print (f"{self.__class__.__name__}: Debug: platform is [{self.erl2context['conf']['system']['platform']}]")
@@ -148,6 +153,7 @@ class Erl2Pyro(Erl2Sensor):
         # remember timestamp of last valid measurement
         if self.online:
             self.lastValid = t
+            self.erl2context['state'].set(self.sensorType,'lastValid',self.lastValid)
 
         # apply the corrective offset
         self.applyOffset(self.value, updateRaw=True)

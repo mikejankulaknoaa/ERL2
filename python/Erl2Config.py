@@ -246,8 +246,9 @@ class Erl2Config():
         self.__erl2conf['system']['shutdown'] = False
 
         # explicitly define a date+time format to ensure reading/writing is consistent
-        # (this one cannot be customized in the erl2.conf file)
+        # (these cannot be customized in the erl2.conf file)
         self.__erl2conf['system']['dtFormat'] = '%Y-%m-%d %H:%M:%S'
+        self.__erl2conf['system']['dtRegexp'] = r'^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$'
 
         # special logic for setting the main ERL2 directories
         for d in ['img','lock','log']:
