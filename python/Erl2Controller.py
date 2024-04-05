@@ -47,13 +47,6 @@ class Erl2Controller():
         # remember if network module is active
         self.network = None
 
-        # if necessary, create an object to hold/remember image objects
-        #if 'img' not in self.erl2context:
-        #    self.erl2context['img'] = Erl2Image(erl2context=self.erl2context)
-
-        # load this image that may be needed for Erl2Controller controls
-        #self.erl2context['img'].addImage('rescan', 'network-25.png')
-
         # divide the main display vertically
         displayTop = ttk.Frame(root, padding='2', relief='solid', borderwidth=1)
         displayTop.grid(row=0, column=0, padx='2', pady='2', sticky='nesw')

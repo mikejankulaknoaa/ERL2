@@ -27,6 +27,14 @@ class Erl2Sensor():
         self.__label = label
         self.erl2context = erl2context
 
+        # read in the system configuration file if needed
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+
+        # load any saved info about the application state
+        if 'state' not in self.erl2context:
+            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
+
         # remember what widgets are active for this sensor
         self.__displayWidgets = []
         self.__statusWidgets = []
@@ -38,14 +46,6 @@ class Erl2Sensor():
 
         # keep track of when the next file-writing interval is
         self.__nextFileTime = None
-
-        # read in the system configuration file if needed
-        if 'conf' not in self.erl2context:
-            self.erl2context['conf'] = Erl2Config()
-
-        # load any saved info about the application state
-        if 'state' not in self.erl2context:
-            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
 
         # for a sensor, we track current value and last valid update time
         # (be careful to update these values only in the measure() method)
@@ -201,16 +201,20 @@ class Erl2Sensor():
 
         #print (f"{self.__class__.__name__}: Debug: updateDisplays() using [{str(self.lastValid)}][{str(self.value)}][{str(self.online)}]")
 
+        # default value and display text
+        value = None
+        raw = upd = '--'
+
         # figure out what values to use in update
         if not self.online:
-            raw = upd = '--'
             #if self.sensorType == 'pH':
             #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.sensorType}] is offline")
+            pass
 
         elif len([x for x in self.value.keys() if 'Timestamp' not in x]) == 0:
-            raw = upd = '--'
             #if self.sensorType == 'pH':
             #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.sensorType}] value is empty")
+            pass
 
         elif self.__displayParameter not in self.value:
             raise AttributeError(f"{self.__class__.__name__}: Error: no key named [{self.__displayParameter}] in self.value")
@@ -218,18 +222,19 @@ class Erl2Sensor():
         else:
             # even if the parameter is present, it might not be in float format
             try:
-                raw = upd = f"{float(round(self.value[self.__displayParameter],self.__displayDecimals)):.{self.__displayDecimals}f}"
+                value = float(self.value[self.__displayParameter])
+                raw = upd = f"{round(value,self.__displayDecimals):.{self.__displayDecimals}f}"
                 #if self.sensorType == 'pH':
                 #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.sensorType}] update is [{upd}]")
 
-                # but assuming the raw.value parameter exists, use it
+                # default to raw=upd, but assuming the raw.value parameter exists, use that
                 if 'raw.value' in self.value:
                     raw = f"{float(round(self.value['raw.value'],self.__displayDecimals)):.{self.__displayDecimals}f}"
 
             except:
-                raw = upd = '--'
                 #if self.sensorType == 'pH':
                 #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.sensorType}] float exception for [{self.value[self.__displayParameter]}][{self.__displayDecimals}]")
+                pass
 
         # loop through all of this sensor's display widgets
         for w in displayWidgets:
@@ -262,6 +267,11 @@ class Erl2Sensor():
             # update the display
             w.config(text=upd,font=fnt,foreground=fgd)
 
+        # save a snapshot of sensor info to the state file
+        self.erl2context['state'].set(self.sensorType,'value',value)
+        self.erl2context['state'].set(self.sensorType,'lastValid',self.lastValid)
+        self.erl2context['state'].set(self.sensorType,'online',self.online)
+
     def getTimestamp(self):
 
         # record the current timestamp
@@ -290,7 +300,6 @@ class Erl2Sensor():
 
         # remember timestamp of last valid measurement
         self.lastValid = t
-        self.erl2context['state'].set(self.sensorType,'lastValid',self.lastValid)
 
         #print (f"{self.__class__.__name__}: Debug: measure() returning [{str(t)}][{str(self.value)}][{str(self.online)}]")
 

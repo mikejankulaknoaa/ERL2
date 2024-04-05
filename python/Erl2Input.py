@@ -9,7 +9,6 @@ import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
 from Erl2Sensor import Erl2Sensor
-from Erl2State import Erl2State
 
 # any device connected to one of the Sequent Microsystems' four 4-20 mA input channels,
 # or (optionally) one of its 0-10V input channels
@@ -35,10 +34,6 @@ class Erl2Input(Erl2Sensor):
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
-
-        # load any saved info about the application state
-        if 'state' not in self.erl2context:
-            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
 
         # trigger an error if this isn't windows and the hardware lib wasn't found
         assert(_hwLoaded or self.erl2context['conf']['system']['platform'] in ['darwin','win32'])
@@ -117,7 +112,6 @@ class Erl2Input(Erl2Sensor):
         # remember timestamp of last valid measurement
         if self.online:
             self.lastValid = t
-            self.erl2context['state'].set(self.sensorType,'lastValid',self.lastValid)
 
         #print (f"{self.__class__.__name__}: Debug: measure() returning [{str(t)}][{str(self.value)}][{str(self.online)}]")
 

@@ -13,6 +13,7 @@ from Erl2Config import Erl2Config
 from Erl2Entry import Erl2Entry
 from Erl2Input import Erl2Input
 from Erl2Log import Erl2Log
+from Erl2State import Erl2State
 
 # MFC = Mass Flow Controllers (gas rates for Air, CO2, N2)
 
@@ -32,6 +33,14 @@ class Erl2Mfc():
         self.__label = label
         self.__width = width
         self.erl2context = erl2context
+
+        # read in the system configuration file if needed
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+
+        # load any saved info about the application state
+        if 'state' not in self.erl2context:
+            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
 
         # keep a list of entry widgets
         self.allEntries = []
@@ -59,8 +68,7 @@ class Erl2Mfc():
 
         # for an MFC control, we track flow setting and history
         self.flowSetting = 0.
-        self.settingLastChanged = None
-        self.flowActual = 0
+        self.settingLastChanged = self.erl2context['state'].get(self.controlType,'lastChanged',None)
         self.offSeconds = []
         self.onSeconds = []
         self.allSeconds = []
@@ -69,10 +77,6 @@ class Erl2Mfc():
 
         # keep track of when the next file-writing interval is
         self.__nextFileTime = None
-
-        # read in the system configuration file if needed
-        if 'conf' not in self.erl2context:
-            self.erl2context['conf'] = Erl2Config()
 
         # trigger an error if this isn't windows and the hardware lib wasn't found
         assert(_hwLoaded or self.erl2context['conf']['system']['platform'] in ['darwin','win32'])
@@ -165,6 +169,8 @@ class Erl2Mfc():
         if self.settingLastChanged is None:
             timing = 0
             self.settingLastChanged = currentTime
+            self.erl2context['state'].set(self.controlType,'setting',self.flowSetting)
+            self.erl2context['state'].set(self.controlType,'lastChanged',self.settingLastChanged)
 
         # otherwise calculate how long has the system been in its current state
         # (limited to the current logging interval)
@@ -332,6 +338,10 @@ class Erl2Mfc():
         # redraw the app's displays immediately (unless in shutdown)
         if not self.erl2context['conf']['system']['shutdown']:
             self.updateDisplays(self.__settingDisplayWidgets)
+
+        # update snapshot (state) file with last-known setting and timing
+        self.erl2context['state'].set(self.controlType,'setting',self.flowSetting)
+        self.erl2context['state'].set(self.controlType,'lastChanged',self.settingLastChanged)
 
     def changeHardwareSetting(self):
 

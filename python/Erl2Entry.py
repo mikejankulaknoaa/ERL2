@@ -34,6 +34,10 @@ class Erl2Entry():
         self.__onChangeArg = onChangeArg
         self.erl2context = erl2context
 
+        # read in the system configuration file if needed
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+
         # load any saved info about the application state
         if 'state' not in self.erl2context:
             self.erl2context['state'] = Erl2State(erl2context=self.erl2context)

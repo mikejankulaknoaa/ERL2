@@ -288,6 +288,21 @@ class Erl2Network():
         self.__systemLog = systemLog
         self.erl2context = erl2context
 
+        # read in the system configuration file if needed
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+
+        # load any saved info about the application state
+        if 'state' not in self.erl2context:
+            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
+
+        # if necessary, create an object to hold/remember image objects
+        if 'img' not in self.erl2context:
+            self.erl2context['img'] = Erl2Image(erl2context=self.erl2context)
+
+        # load this image that may be needed for Erl2Network controls
+        self.erl2context['img'].addImage('rescan', 'network-25.png')
+
         # remember what widgets are active for this network
         self.__typeWidgets = []
         self.__idWidgets = []
@@ -311,14 +326,6 @@ class Erl2Network():
         # last network activity of any kind for this device (less useful for a controller)
         self.__lastActive = self.erl2context['state'].get('network','lastActive',None)
 
-        # read in the system configuration file if needed
-        if 'conf' not in self.erl2context:
-            self.erl2context['conf'] = Erl2Config()
-
-        # load any saved info about the application state
-        if 'state' not in self.erl2context:
-            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
-
         # read these useful parameters from Erl2Config
         self.__deviceType = self.erl2context['conf']['device']['type']
         self.__id = self.erl2context['conf']['device']['id']
@@ -341,8 +348,8 @@ class Erl2Network():
         # system's memory of what unique IDs have been used locally for filenames
         self.allInternalIDs = self.erl2context['state'].get('network','allInternalIDs',[])
 
-        print (f"{self.__class__.__name__}: __init: Debug: self.childrenDict type:[{type(self.childrenDict)}] is {self.childrenDict}")
-        print (f"{self.__class__.__name__}: __init: Debug: self.allInternalIDs type:[{type(self.allInternalIDs)}] is {self.allInternalIDs}")
+        #print (f"{self.__class__.__name__}: __init: Debug: self.childrenDict type:[{type(self.childrenDict)}] is {self.childrenDict}")
+        #print (f"{self.__class__.__name__}: __init: Debug: self.allInternalIDs type:[{type(self.allInternalIDs)}] is {self.allInternalIDs}")
 
         # helpful data structures used to reference entries in childrenDict
         self.sortedMacs = self.createSortedMacs()
@@ -370,13 +377,6 @@ class Erl2Network():
         # if the user has overridden the ipRange with None, scan all addresses
         if self.__ipRange is None:
             self.__ipRange = [1, 255]
-
-        # if necessary, create an object to hold/remember image objects
-        if 'img' not in self.erl2context:
-            self.erl2context['img'] = Erl2Image(erl2context=self.erl2context)
-
-        # load this image that may be needed for Erl2Network controls
-        self.erl2context['img'].addImage('rescan', 'network-25.png')
 
         # details of the network connection(s)
         self.__deviceAddresses = []

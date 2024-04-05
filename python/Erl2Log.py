@@ -16,6 +16,10 @@ class Erl2Log():
         self.__logName = logName
         self.erl2context = erl2context
 
+        # read in the system configuration file if needed
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+
         # keep a global record of what kind of log types we've been asked to create
         Erl2Log.logTypes[self.__logType] = True
 
@@ -31,10 +35,6 @@ class Erl2Log():
         except:
             print (f"{self.__class__.__name__}: Error: Python 3.7 or higher is required for this system")
             raise
-
-        # read in the system configuration file if needed
-        if 'conf' not in self.erl2context:
-            self.erl2context['conf'] = Erl2Config()
 
         # determine location of main logging directory
         try:

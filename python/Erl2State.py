@@ -14,14 +14,14 @@ class Erl2State():
         # do not save erl2context as an attribute, it is only needed in __init__
         #self.erl2context = erl2context
 
+        # read in the system configuration file if needed
+        if 'conf' not in erl2context:
+            erl2context['conf'] = Erl2Config()
+
         # application state info is stored in nested dicts
         self.erl2state = {}
         self.__dirName = None
         self.__fileName = None
-
-        # read in the system configuration file if needed
-        if 'conf' not in erl2context:
-            erl2context['conf'] = Erl2Config()
 
         # read these useful parameters from Erl2Config
         self.__dtFormat = erl2context['conf']['system']['dtFormat']

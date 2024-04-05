@@ -29,12 +29,12 @@ class Erl2Startup:
         self.root = root
         self.erl2context = erl2context
 
-        # for graceful handling of termination and restart
-        self.__restart = False
-
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
+
+        # for graceful handling of termination and restart
+        self.__restart = False
 
         # read this parameter from Erl2Config
         self.__deviceType = self.erl2context['conf']['device']['type']

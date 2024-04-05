@@ -76,9 +76,6 @@ class Erl2SubSystem():
         self.__pidLastUpdated = {}
         self.erl2context = erl2context
 
-        # keep a list of Entry widgets
-        self.allEntries = []
-
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
@@ -94,6 +91,9 @@ class Erl2SubSystem():
         # load the associated images; just use the image name as the key
         for i in self.radioImages:
             self.erl2context['img'].addImage(i,i)
+
+        # keep a list of Entry widgets
+        self.allEntries = []
 
         # start a data/log file for the subsystem
         self.log = Erl2Log(logType='subsystem', logName=self.subSystemType, erl2context=self.erl2context)

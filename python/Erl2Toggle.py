@@ -5,6 +5,7 @@ from tkinter import ttk
 from Erl2Config import Erl2Config
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
+from Erl2State import Erl2State
 
 class Erl2Toggle():
 
@@ -25,6 +26,14 @@ class Erl2Toggle():
         self.__label = label
         self.erl2context = erl2context
 
+        # read in the system configuration file if needed
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+
+        # load any saved info about the application state
+        if 'state' not in self.erl2context:
+            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
+
         # placeholder for this control to be told what subsystem it's part of
         self.subSystem = None
 
@@ -38,17 +47,13 @@ class Erl2Toggle():
 
         # for a toggle control, we track on/off state and history
         self.state = 0
-        self.stateLastChanged = None
+        self.stateLastChanged = self.erl2context['state'].get(self.controlType,'lastChanged',None)
         self.offSeconds = []
         self.onSeconds = []
         self.numChanges = 0
 
         # keep track of when the next file-writing interval is
         self.__nextFileTime = None
-
-        # read in the system configuration file if needed
-        if 'conf' not in self.erl2context:
-            self.erl2context['conf'] = Erl2Config()
 
         # read this useful parameter from Erl2Config
         self.__loggingFrequency = self.erl2context['conf'][self.controlType]['loggingFrequency']
@@ -138,6 +143,8 @@ class Erl2Toggle():
         if self.stateLastChanged is None:
             timing = 0
             self.stateLastChanged = currentTime
+            self.erl2context['state'].set(self.controlType,'setting',self.state)
+            self.erl2context['state'].set(self.controlType,'lastChanged',self.stateLastChanged)
 
         # otherwise calculate how long has the system been in its current state
         # (limited to the current logging interval)
@@ -290,6 +297,10 @@ class Erl2Toggle():
         # make a note in the log about this change
         if self.log is not None:
             self.log.writeMessage(f"state changed to [{self.state}]")
+
+        # update snapshot (state) file with last-known state and timing
+        self.erl2context['state'].set(self.controlType,'setting',self.state)
+        self.erl2context['state'].set(self.controlType,'lastChanged',self.stateLastChanged)
 
     # placeholder method -- must be overwritten in child classes
     def changeHardwareState(self):

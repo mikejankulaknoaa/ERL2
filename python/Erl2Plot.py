@@ -33,6 +33,10 @@ class Erl2Plot():
         self.__plotData = plotData
         self.erl2context = erl2context
 
+        # read in the system configuration file if needed
+        if 'conf' not in self.erl2context:
+            self.erl2context['conf'] = Erl2Config()
+
         # associated statistics displays
         self.__meanDisplay = None
         self.__stdDisplay = None
@@ -40,10 +44,6 @@ class Erl2Plot():
         # attributes associated with plotting activity
         self.__fig = None
         self.__timeRange = td(days=-1)
-
-        # read in the system configuration file if needed
-        if 'conf' not in self.erl2context:
-            self.erl2context['conf'] = Erl2Config()
 
         # x axis limits
         currentTime = dt.now()
