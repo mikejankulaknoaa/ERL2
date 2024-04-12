@@ -13,6 +13,7 @@ from Erl2Log import Erl2Log
 from Erl2Mfc import Erl2Mfc
 from Erl2Network import Erl2Network
 from Erl2Pyro import Erl2Pyro
+from Erl2State import Erl2State
 from Erl2SubSystem import Erl2SubSystem
 from Erl2VirtualTemp import Erl2VirtualTemp
 
@@ -33,6 +34,18 @@ class Erl2Tank:
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
+
+        # load any saved info about the application state
+        if 'state' not in self.erl2context:
+            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
+
+        # read these useful parameters from Erl2Config
+        self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
+        self.__timezone = self.erl2context['conf']['system']['timezone']
+        self.__virtualTemp = self.erl2context['conf']['virtualtemp']['enabled']
+
+        # this parameter is written (to share w/controller) but never read
+        self.erl2context['state'].set([('virtualtemp','enabled',self.__virtualTemp)])
 
         # start a system log
         self.__systemLog = Erl2Log(logType='device', logName='Erl2Tank', erl2context=self.erl2context)
@@ -215,7 +228,7 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text='System Startup:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['system']['startup'].astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat']), font=fontright
+        ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['system']['startup'].astimezone(self.__timezone).strftime(self.__dtFormat), font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
 
@@ -223,7 +236,7 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text='System Timezone:  ', font=fontleft, justify='right'
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=0, sticky='ne')
-        ttk.Label(self.__frames['Settings'][0][1], text=str(self.erl2context['conf']['system']['timezone']), font=fontright
+        ttk.Label(self.__frames['Settings'][0][1], text=str(self.__timezone), font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
 
@@ -233,7 +246,7 @@ class Erl2Tank:
             ).grid(row=r, column=0, sticky='ne')
         tempStatusLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
 
-        if self.erl2context['conf']['virtualtemp']['enabled']:
+        if self.__virtualTemp:
             r += 1
             ttk.Label(self.__frames['Settings'][0][1], text='-- using Virtual Temperature --', font=fontright
                 #, relief='solid', borderwidth=1
@@ -322,7 +335,7 @@ class Erl2Tank:
             self.parent.createExitWidget(loc={'parent':self.__frames['Settings'][1][0],'row':r})
 
         # readout displays for the current temperature (real or virtual)
-        if self.erl2context['conf']['virtualtemp']['enabled']:
+        if self.__virtualTemp:
             self.sensors['temperature'] = Erl2VirtualTemp(
                 parent=self,
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
@@ -533,7 +546,7 @@ class Erl2Tank:
 
         # label is different for virtual sensor
         tempLabel = u'Temperature (\u00B0C)'
-        if self.erl2context['conf']['virtualtemp']['enabled']:
+        if self.__virtualTemp:
             tempLabel = u'Virtual Temp (\u00B0C)'
 
         # temperature labels
@@ -596,8 +609,8 @@ class Erl2Tank:
             if self.__systemLog is not None:
 
                 # create a composite 'measurement' made up of sensor and control data
-                m = {'Timestamp.UTC': currentTime.strftime(self.erl2context['conf']['system']['dtFormat']),
-                     'Timestamp.Local': currentTime.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat'])}
+                m = {'Timestamp.UTC': currentTime.strftime(self.__dtFormat),
+                     'Timestamp.Local': currentTime.astimezone(self.__timezone).strftime(self.__dtFormat)}
 
                 # sensor / temperature : 'temp.degC'
                 if ('temperature' in self.sensors

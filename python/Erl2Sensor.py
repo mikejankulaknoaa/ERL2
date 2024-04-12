@@ -268,9 +268,13 @@ class Erl2Sensor():
             w.config(text=upd,font=fnt,foreground=fgd)
 
         # save a snapshot of sensor info to the state file
-        self.erl2context['state'].set(self.sensorType,'value',value)
-        self.erl2context['state'].set(self.sensorType,'lastValid',self.lastValid)
-        self.erl2context['state'].set(self.sensorType,'online',self.online)
+        # n.b. displayDecimals is written (to share w/controller) but never read
+        self.erl2context['state'].set([(self.sensorType,'value',value),
+                                       (self.sensorType,'lastValid',self.lastValid),
+                                       (self.sensorType,'online',self.online),
+
+                                       # this parameter is written (to share w/controller) but never read
+                                       (self.sensorType,'displayDecimals',self.__displayDecimals)])
 
     def getTimestamp(self):
 
@@ -352,7 +356,7 @@ class Erl2Sensor():
             self.updateDisplays(self.__displayWidgets,self.__statusWidgets,self.__correctionWidgets)
 
             # notify application that its state has changed
-            self.erl2context['state'].set(self.sensorType,'offset',self.__offsetFloat)
+            self.erl2context['state'].set([(self.sensorType,'offset',self.__offsetFloat)])
 
 def main():
 

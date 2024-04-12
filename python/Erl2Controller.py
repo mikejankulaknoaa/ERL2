@@ -7,6 +7,7 @@ from Erl2Clock import Erl2Clock
 from Erl2Config import Erl2Config
 from Erl2Log import Erl2Log
 from Erl2Network import Erl2Network
+from Erl2Readout import Erl2Readout
 
 class Erl2Controller():
 
@@ -47,27 +48,31 @@ class Erl2Controller():
         # remember if network module is active
         self.network = None
 
+        # keep track of devices already encountered and their readout frames
+        self.__deviceLabels = []
+        self.__deviceReadouts = []
+
         # divide the main display vertically
         displayTop = ttk.Frame(root, padding='2', relief='solid', borderwidth=1)
         displayTop.grid(row=0, column=0, padx='2', pady='2', sticky='nesw')
         displayBody = ttk.Frame(root, padding='0', relief='solid', borderwidth=0)
         displayBody.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')
 
-        # divide the displayBody into left (tanks) and right (settings) sides
+        # divide the displayBody into top (tanks) and bottom (settings) sections
         self.__displayTanks = ttk.Frame(displayBody, padding='2', relief='solid', borderwidth=1)
         self.__displayTanks.grid(row=0, column=0, padx='2', pady='2', sticky='nesw')
-        displaySettings = ttk.Frame(displayBody, padding='0', relief='solid', borderwidth=0)
-        displaySettings.grid(row=0, column=1, padx='2', pady='2', sticky='nesw')
+        displaySettings = ttk.Frame(displayBody, padding='2', relief='solid', borderwidth=1)
+        displaySettings.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')
 
         # create subframes for settings: network, controls, power, about
-        #displayNetwork = ttk.Frame(displaySettings, padding='2', relief='solid', borderwidth=1)
-        #displayNetwork.grid(row=0, column=0, columnspan=2, padx='2', pady='2', sticky='nesw')
+        displayNetwork = ttk.Frame(displaySettings, padding='2', relief='solid', borderwidth=1)
+        displayNetwork.grid(row=1, column=0, columnspan=2, padx='2', pady='2', sticky='nesw')
         displayControls = ttk.Frame(displaySettings, padding='2', relief='solid', borderwidth=1)
-        displayControls.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')
+        displayControls.grid(row=2, column=0, padx='2', pady='2', sticky='nesw')
         displayPower = ttk.Frame(displaySettings, padding='2', relief='solid', borderwidth=1)
-        displayPower.grid(row=2, column=0, padx='2', pady='2', sticky='nesw')
+        displayPower.grid(row=3, column=0, padx='2', pady='2', sticky='nesw')
         displayAbout = ttk.Frame(displaySettings, padding='2', relief='solid', borderwidth=1)
-        displayAbout.grid(row=1, column=1, rowspan=2, padx='2', pady='2', sticky='nesw')
+        displayAbout.grid(row=2, column=1, rowspan=2, padx='2', pady='2', sticky='nesw')
 
         # create a header frame and put a label in it for now
         header = ttk.Frame(displayTop, padding='2', relief='solid', borderwidth=0)
@@ -84,14 +89,14 @@ class Erl2Controller():
         ttk.Label(self.__displayTanks, text='Tanks', font='Arial 12 bold'
             #, relief='solid', borderwidth=1
             ).grid(row=0, column=0, sticky='nw')
-        #ttk.Label(displaySettings, text='Settings', font='Arial 12 bold'
-        #    #, relief='solid', borderwidth=1
-        #    ).grid(row=0, column=0, sticky='nw')
+        ttk.Label(displaySettings, text='Settings', font='Arial 12 bold'
+            #, relief='solid', borderwidth=1
+            ).grid(row=0, column=0, sticky='nw')
 
         # labels for the frames in displaySettings
-        #ttk.Label(displayNetwork, text='Network', font='Arial 12 bold'
-        #    #, relief='solid', borderwidth=1
-        #    ).grid(row=0, column=0, sticky='nw')
+        ttk.Label(displayNetwork, text='Network', font='Arial 12 bold'
+            #, relief='solid', borderwidth=1
+            ).grid(row=0, column=0, sticky='nw')
         ttk.Label(displayControls, text='Controls', font='Arial 12 bold'
             #, relief='solid', borderwidth=1
             ).grid(row=0, column=0, sticky='nw')
@@ -116,14 +121,15 @@ class Erl2Controller():
 
         # displayBody has tanks and settings (tanks given weight)
         displayBody.rowconfigure(0,weight=1)
+        displayBody.rowconfigure(1,weight=0)
         displayBody.columnconfigure(0,weight=1)
-        displayBody.columnconfigure(1,weight=0)
 
         # displaySettings has network, controls, power and about
         # (network + controls have vertical weight, about has horizontal weight)
-        displaySettings.rowconfigure(0,weight=1)
+        displaySettings.rowconfigure(0,weight=0)
         displaySettings.rowconfigure(1,weight=1)
-        displaySettings.rowconfigure(2,weight=0)
+        displaySettings.rowconfigure(2,weight=1)
+        displaySettings.rowconfigure(3,weight=0)
         displaySettings.columnconfigure(0,weight=0)
         displaySettings.columnconfigure(1,weight=1)
 
@@ -258,7 +264,7 @@ class Erl2Controller():
             if self.parent is not None:
                 self.network = Erl2Network(ipLocs=ipLocs,
                                            macLocs=macLocs,
-                                           childrenLocs=[{'parent':displaySettings,'row':0,'column':0,'columnspan':2}],
+                                           childrenLocs=[{'parent':displayNetwork,'row':1,'column':0,'columnspan':2}],
                                            buttonLoc=rescanLoc,
                                            erl2context=self.erl2context,
                                           )
@@ -268,7 +274,55 @@ class Erl2Controller():
 
     def updateDisplays(self):
 
-        pass
+        # loop through child devices
+        tankNum = 0
+        for mac in self.network.sortedMacs:
+
+            overwrite = False
+            thisID = self.network.childrenDict[mac]['id']
+
+            # label missing? create it
+            if len(self.__deviceLabels) < (tankNum+1):
+
+                # draw new label
+                l = ttk.Label(self.__displayTanks, text='--', font='Arial 12 bold'
+                    #, relief='solid', borderwidth=1
+                    )
+                l.grid(row=2*tankNum, column=0, sticky='nw')
+                self.__deviceLabels.append(l)
+                overwrite = True
+
+            # no readout frame yet? create it
+            if len(self.__deviceReadouts) < (tankNum+1):
+                f = ttk.Frame(self.__displayTanks, padding='0', relief='flat', borderwidth=0)
+                f.grid(row=2*tankNum+1, column=0, padx='0', pady='0', sticky='nesw')
+                self.__deviceReadouts.append(f)
+                overwrite = True
+
+            # something weird is going on if these lists aren't the same size
+            assert len(self.__deviceLabels) == len(self.__deviceReadouts)
+
+            # has the count or ordering of devices changed?
+            if self.__deviceLabels[tankNum]['text'] != thisID:
+                overwrite = True
+
+            # make readout changes if necessary
+            if overwrite:
+
+                # update the label text
+                self.__deviceLabels[tankNum].config(text=thisID)
+
+                # create readout
+                rd = Erl2Readout(deviceState=self.network.childrenStates[mac],
+                                 displayLoc={'parent':self.__deviceReadouts[tankNum],'row':0,'column':0},
+                                 )
+
+                # tell Erl2Network what Erl2Readouts are associated with this mac
+                if self.network is not None and hasattr(self.network, 'childrenReadouts'):
+                    self.network.childrenReadouts[mac] = rd
+   
+            # increment before continuing through the loop
+            tankNum += 1
 
         # set up the next call to this method (wait 30s)
         self.__displayTanks.after(30000, self.updateDisplays)

@@ -496,8 +496,8 @@ class Erl2SubSystem():
         self.__modeChanged = True
 
         # save the new mode setting to system state
-        self.erl2context['state'].set(self.subSystemType,'ctrl',ctrlVar)
-        self.erl2context['state'].set(self.subSystemType,'mode',modeVar)
+        self.erl2context['state'].set([(self.subSystemType,'ctrl',ctrlVar),
+                                       (self.subSystemType,'mode',modeVar)])
 
         # update display widgets to show to current mode and setpoint
         self.updateDisplays()
@@ -755,6 +755,13 @@ class Erl2SubSystem():
             else:
                 self.__plotTracker += 1
 
+        # this parameter is written (to share w/controller) but never read
+        # (report None if in Manual mode, which does not use any Setpoint)
+        if modeVar == MANUAL:
+            self.erl2context['state'].set([(self.subSystemType,'activeSetpoint',None)])
+        else:
+            self.erl2context['state'].set([(self.subSystemType,'activeSetpoint',self.__activeSetpoint)])
+
         # wake up every five seconds and see if anything needs adjustment
         self.__modeRadioWidgets[0].after(5000, self.monitorSystem)
 
@@ -821,9 +828,9 @@ class Erl2SubSystem():
 
             # notify application that its state has changed
             if floatList is not None:
-                self.erl2context['state'].set(self.subSystemType,param,floatList)
+                self.erl2context['state'].set([(self.subSystemType,param,floatList)])
             else:
-                self.erl2context['state'].set(self.subSystemType,param,floatValue)
+                self.erl2context['state'].set([(self.subSystemType,param,floatValue)])
 
     def controlsLog(self, message):
 

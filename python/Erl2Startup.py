@@ -277,7 +277,7 @@ class Erl2Startup:
         val = self.__fullscreenVar.get()
 
         # save the current state
-        self.erl2context['state'].set('system','fullscreen',val)
+        self.erl2context['state'].set([('system','fullscreen',val)])
 
         # apply requested state to window
         self.root.attributes('-fullscreen', bool(val))
@@ -290,7 +290,7 @@ class Erl2Startup:
             self.__numPadVar.set(1-self.__numPadVar.get())
 
         # update the state variable that controls whether Erl2NumPad opens
-        self.erl2context['state'].set('system','numPad',self.__numPadVar.get())
+        self.erl2context['state'].set([('system','numPad',self.__numPadVar.get())])
 
     # restart the App
     def restartApp(self, event=None):

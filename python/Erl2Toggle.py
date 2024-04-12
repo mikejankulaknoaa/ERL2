@@ -143,8 +143,8 @@ class Erl2Toggle():
         if self.stateLastChanged is None:
             timing = 0
             self.stateLastChanged = currentTime
-            self.erl2context['state'].set(self.controlType,'setting',self.state)
-            self.erl2context['state'].set(self.controlType,'lastChanged',self.stateLastChanged)
+            self.erl2context['state'].set([(self.controlType,'setting',self.state),
+                                           (self.controlType,'lastChanged',self.stateLastChanged)])
 
         # otherwise calculate how long has the system been in its current state
         # (limited to the current logging interval)
@@ -299,8 +299,8 @@ class Erl2Toggle():
             self.log.writeMessage(f"state changed to [{self.state}]")
 
         # update snapshot (state) file with last-known state and timing
-        self.erl2context['state'].set(self.controlType,'setting',self.state)
-        self.erl2context['state'].set(self.controlType,'lastChanged',self.stateLastChanged)
+        self.erl2context['state'].set([(self.controlType,'setting',self.state),
+                                       (self.controlType,'lastChanged',self.stateLastChanged)])
 
     # placeholder method -- must be overwritten in child classes
     def changeHardwareState(self):

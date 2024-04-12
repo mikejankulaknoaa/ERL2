@@ -339,6 +339,11 @@ class Erl2Network():
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
 
+        # keep track of when certain network updates were last done
+        self.__lastTIME = None
+        self.__lastSTATE = None
+        self.__lastLOG = None
+
         # start a data/log file for the network
         self.__networkLog = Erl2Log(logType='system', logName='Erl2Network', erl2context=self.erl2context)
 
@@ -355,8 +360,9 @@ class Erl2Network():
         self.sortedMacs = self.createSortedMacs()
         self.lookupByID, self.lookupByIP = self.createLookups()
 
-        # Erl2States and Erl2Logs associated with child devices
+        # Erl2States, Erl2Readouts and Erl2Logs associated with child devices
         self.childrenStates = {}
+        self.childrenReadouts = {}
         self.childrenLogs = {}
 
         # loop through all child devices to load data already saved on controller
@@ -826,9 +832,9 @@ class Erl2Network():
 
             # if any changes, save objects to state file
             if dictChanged:
-                self.erl2context['state'].set('network','childrenDict',self.childrenDict)
+                self.erl2context['state'].set([('network','childrenDict',self.childrenDict)])
             if idsChanged:
-                self.erl2context['state'].set('network','allInternalIDs',self.allInternalIDs)
+                self.erl2context['state'].set([('network','allInternalIDs',self.allInternalIDs)])
 
         # [this is the end of the logic for processing new scan results]
 
@@ -1122,7 +1128,7 @@ class Erl2Network():
 
                 # update time of last device comms
                 self.__lastActive = dt.now(tz=tz.utc)
-                self.erl2context['state'].set('network','lastActive',self.__lastActive)
+                self.erl2context['state'].set([('network','lastActive',self.__lastActive)])
 
         # are there any command results to process?
         if not self.__commandResultsQueue.empty():
@@ -1181,6 +1187,10 @@ class Erl2Network():
                             # now assign the new state values to this child State instance
                             self.childrenStates[mac].assign(thisState)
 
+                            # as a final step, refresh any associated Erl2Readout instances
+                            if mac in self.childrenReadouts:
+                                self.childrenReadouts[mac].refreshDisplays()
+
                     elif re.match(b'^GETLOG|', rs.command):
 
                         # answered with an export from an Erl2Log instance (pickled)
@@ -1210,12 +1220,27 @@ class Erl2Network():
 
             # if any changes, save objects to state file
             if dictChanged:
-                self.erl2context['state'].set('network','childrenDict',self.childrenDict)
+                self.erl2context['state'].set([('network','childrenDict',self.childrenDict)])
 
         # call this method again after waiting 1s
         self.__allWidgets[1].after(1000, self.manageQueues)
 
     def pollChildren(self):
+
+        # remember what time it is
+        currentTime = dt.now(tz=tz.utc)
+
+        # what updates are we doing?
+        nowTIME = nowSTATE = nowLOG = False
+        if self.__lastTIME is None or (currentTime - self.__lastTIME).seconds >= 5*60: # five minutes
+            self.__lastTIME = currentTime
+            nowTIME = True
+        if self.__lastSTATE is None or (currentTime - self.__lastSTATE).seconds >= 5: # five seconds
+            self.__lastSTATE = currentTime
+            nowSTATE = True
+        if self.__lastLOG is None or (currentTime - self.__lastLOG).seconds >= 5*60: # five minutes
+            self.__lastLOG = currentTime
+            nowLOG = True
 
         # skip processing if we're scanning the network for new devices
         if not self.scanning():
@@ -1223,29 +1248,36 @@ class Erl2Network():
             # loop through child devices
             for thisMac in self.sortedMacs:
 
-                # log the attempt to poll this child device
-                self.__networkLog.writeMessage(f"Polling Device ID [{self.childrenDict[thisMac]['id']}], " +
-                                                   f"Type [{self.childrenDict[thisMac]['deviceType']}], " +
-                                                   f"MAC address [{thisMac}], IP address [{self.childrenDict[thisMac]['ip']}]")
+                # Note: doesn't make much sense to log this request because this isn't the part
+                # of the program that knows anything about whether any response was received
+                #### log the attempt to poll this child device
+                ###self.__networkLog.writeMessage(f"Polling Device ID [{self.childrenDict[thisMac]['id']}], " +
+                ###                                   f"Type [{self.childrenDict[thisMac]['deviceType']}], " +
+                ###                                   f"MAC address [{thisMac}], IP address [{self.childrenDict[thisMac]['ip']}]")
 
-                # check id
-                self.sendCommand(thisMac, b"GETID")
+                # Note: doesn't make much sense to request ID here because, outside of subnet scans,
+                # the code doesn't do anything with the response (at least it doesn't right now)
+                #### check id
+                ###self.sendCommand(thisMac, b"GETID")
 
                 # update latency (get time)
-                self.sendCommand(thisMac, b"GETTIME")
+                if nowTIME:
+                    self.sendCommand(thisMac, b"GETTIME")
 
                 # get state
-                self.sendCommand(thisMac, b"GETSTATE")
+                if nowSTATE:
+                    self.sendCommand(thisMac, b"GETSTATE")
 
                 # get log (include info about timestamps already received)
-                if thisMac in self.childrenLogs and self.childrenLogs[thisMac].latestTS is not None:
-                    lastLog = self.childrenLogs[thisMac].latestTS.astimezone(tz.utc).strftime(DTFMT)
-                else:
-                    lastLog = 'None'
-                self.sendCommand(thisMac, b"GETLOG" + b"|" + lastLog.encode())
+                if nowLOG:
+                    if thisMac in self.childrenLogs and self.childrenLogs[thisMac].latestTS is not None:
+                        lastLog = self.childrenLogs[thisMac].latestTS.astimezone(tz.utc).strftime(DTFMT)
+                    else:
+                        lastLog = 'None'
+                    self.sendCommand(thisMac, b"GETLOG" + b"|" + lastLog.encode())
 
-        # call this method again after waiting 30s
-        self.__allWidgets[2].after(30000, self.pollChildren)
+        # call this method again after waiting 5s
+        self.__allWidgets[2].after(5000, self.pollChildren)
 
     def scanning(self):
         return self.__scanProcess is not None and self.__scanProcess.is_alive()

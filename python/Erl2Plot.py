@@ -234,16 +234,10 @@ class Erl2Plot():
 
                         # if this line segment exists, update its data
                         if len(self.__fig.axes[ind].lines) >= line+1:
-
-                            #if self.__plotData[ind]['name'] in ['to.raise','to.lower','virtualtemp','temperature']:
-                            #    print (f"{__class__.__name__}: Debug: updatePlotLines(): UPDATING [{self.__displayParameter}][{self.__plotData[ind]['name']}] line [{line}] length [{len(segment)}]")
                             self.__fig.axes[ind].lines[line].set_data(segment.index, segment[specs['yName']])
 
                         # otherwise, this is a new line segment to be added
                         else:
-
-                            #if self.__plotData[ind]['name'] in ['to.raise','to.lower','virtualtemp','temperature']:
-                            #    print (f"{__class__.__name__}: Debug: updatePlotLines(): CREATING [{self.__displayParameter}][{self.__plotData[ind]['name']}] line [{line}] length [{len(segment)}]")
                             self.__fig.axes[ind].plot(segment.index, segment[specs['yName']], color=specs['color'])
 
                         # increment line for next loop

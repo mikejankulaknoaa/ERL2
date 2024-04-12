@@ -130,28 +130,47 @@ class Erl2State():
         # return the decoded value
         return readValue
 
-    def set(self, valueType, valueName, newValue):
+    def set(self, valueList=[]):
 
-        #print (f"{self.__class__.__name__}: Debug: set({valueType},{valueName},{newValue}) called")
+        #print (f"{self.__class__.__name__}: Debug: set({valueList}) called")
 
-        # make sure the type dict exists
-        if valueType not in self.erl2state:
-            self.erl2state[valueType] = {}
+        # remember if there's any reason to write out the file to disk again
+        writeNow = False
 
-        # support encoding of more complex data types
-        writeValue = self.encode(newValue)
+        # valueList is a list of 3-tuples; allow update to multiple values at once
+        # to avoid writing and rewriting to disk during a series of related changes
+        for tpl in valueList:
 
-        # check if this setting is new, or exists and is changing
-        if valueName not in self.erl2state[valueType] or writeValue != self.erl2state[valueType][valueName]:
+            # enforce assumptions about argument types
+            if type(tpl) is not tuple or len(tpl) != 3:
+                raise TypeError(f"{self.__class__.__name__}: valueList {valueList} is not a list of 3-tuples")
 
-            #if valueName not in self.erl2state[valueType]: old = None
-            #else: old = self.erl2state[valueType][valueName]
-            #print (f"{self.__class__.__name__}: Debug: set({valueType},{valueName},<newValue>) setting: old {old}, new {writeValue}")
+            # unpack the tuple into individual arguments
+            valueType, valueName, newValue = tpl
 
-            # save the updated value to memory as an encoded string
-            self.erl2state[valueType][valueName] = writeValue
+            # make sure the type dict exists
+            if valueType not in self.erl2state:
+                self.erl2state[valueType] = {}
 
-            # save the updated value to disk
+            # support encoding of more complex data types
+            writeValue = self.encode(newValue)
+
+            # check if this setting is new, or exists and is changing
+            if valueName not in self.erl2state[valueType] or writeValue != self.erl2state[valueType][valueName]:
+
+                #if valueName not in self.erl2state[valueType]: old = None
+                #else: old = self.erl2state[valueType][valueName]
+                #print (f"{self.__class__.__name__}: Debug: set({valueType},{valueName},<newValue>) setting: old {old}, new {writeValue}")
+
+                # save the updated value to memory as an encoded string
+                self.erl2state[valueType][valueName] = writeValue
+
+                # remember to save these changes to disk when all finished
+                writeNow = True
+
+
+        # were there any changes we need to write to disk?
+        if writeNow:
             self.writeToFile()
 
     def decode(self, val):
@@ -269,6 +288,10 @@ class Erl2State():
 
         # save the updated values to disk
         self.writeToFile()
+
+    def isType(self,valueType):
+
+        return type(self.erl2state) is dict and valueType in self.erl2state
 
 def main():
 

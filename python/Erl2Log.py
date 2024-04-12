@@ -92,9 +92,6 @@ class Erl2Log():
             # delete any historical data older than the retention timeframe
             self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc) > oldestTS ]
 
-            #if self.__logName in ['heater','chiller','virtualtemp']:
-            #    print (f"{__class__.__name__}: Debug: __init__({self.__logType},{self.__logName}): count [{len(self.history)}], oldest [{dt.fromtimestamp(round(oldest))}], newest [{self.history[len(self.history)-1]['Timestamp.UTC']}]")
-
         # # make a note if we've reloaded anything from memory
         # if len(self.history) > 0:
         #     self.writeMessage(f'{self.__class__.__name__}[{self.__logType}][{self.__logName}]: loaded [{len(self.history)}] record(s) from existing data files')
@@ -119,9 +116,6 @@ class Erl2Log():
 
         # delete any historical data older than the retention timeframe
         self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc) > oldestTS ]
-
-        #if self.__logName in ['heater','chiller','virtualtemp']:
-        #    print (f"{__class__.__name__}: Debug: writeData({self.__logType},{self.__logName}): count [{len(self.history)}], oldest [{dt.fromtimestamp(round(oldest))}], newest [{self.history[len(self.history)-1]['Timestamp.UTC']}]")
 
         # finally, write the new data point to the data file
         try:

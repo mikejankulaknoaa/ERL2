@@ -169,8 +169,8 @@ class Erl2Mfc():
         if self.settingLastChanged is None:
             timing = 0
             self.settingLastChanged = currentTime
-            self.erl2context['state'].set(self.controlType,'setting',self.flowSetting)
-            self.erl2context['state'].set(self.controlType,'lastChanged',self.settingLastChanged)
+            self.erl2context['state'].set([(self.controlType,'setting',self.flowSetting),
+                                           (self.controlType,'lastChanged',self.settingLastChanged)])
 
         # otherwise calculate how long has the system been in its current state
         # (limited to the current logging interval)
@@ -340,8 +340,8 @@ class Erl2Mfc():
             self.updateDisplays(self.__settingDisplayWidgets)
 
         # update snapshot (state) file with last-known setting and timing
-        self.erl2context['state'].set(self.controlType,'setting',self.flowSetting)
-        self.erl2context['state'].set(self.controlType,'lastChanged',self.settingLastChanged)
+        self.erl2context['state'].set([(self.controlType,'setting',self.flowSetting),
+                                       (self.controlType,'lastChanged',self.settingLastChanged)])
 
     def changeHardwareSetting(self):
 
