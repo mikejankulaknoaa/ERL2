@@ -13,6 +13,7 @@ from Erl2Log import Erl2Log
 from Erl2Mfc import Erl2Mfc
 from Erl2Network import Erl2Network
 from Erl2Pyro import Erl2Pyro
+from Erl2SerialTemp import Erl2SerialTemp
 from Erl2State import Erl2State
 from Erl2SubSystem import Erl2SubSystem
 from Erl2VirtualTemp import Erl2VirtualTemp
@@ -42,6 +43,7 @@ class Erl2Tank:
         # read these useful parameters from Erl2Config
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
         self.__timezone = self.erl2context['conf']['system']['timezone']
+        self.__serialTemp = self.erl2context['conf']['temperature']['serialPort']
         self.__virtualTemp = self.erl2context['conf']['virtualtemp']['enabled']
 
         # this parameter is written (to share w/controller) but never read
@@ -334,10 +336,18 @@ class Erl2Tank:
             r += 1
             self.parent.createExitWidget(loc={'parent':self.__frames['Settings'][1][0],'row':r})
 
-        # readout displays for the current temperature (real or virtual)
+        # readout displays for the current temperature (virtual, serial, or milliAmps/volts)
         if self.__virtualTemp:
             self.sensors['temperature'] = Erl2VirtualTemp(
                 parent=self,
+                displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
+                             {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
+                statusLocs=tempStatusLocs,
+                correctionLoc={'parent':self.__frames['Temp'][0][3],'row':1,'column':0},
+                erl2context=self.erl2context)
+        elif self.__serialTemp is not None:
+            self.sensors['temperature'] = Erl2SerialTemp(
+                sensorType='temperature',
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
                 statusLocs=tempStatusLocs,

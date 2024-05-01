@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.44b (2024-04-12)'
+    VERSION = '0.45b (2024-04-16)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -41,6 +41,8 @@ class Erl2Config():
 
         self.__default['virtualtemp']['enabled'] = 'False'
 
+        self.__default['temperature']['serialPort'] = '/dev/ttyAMA3'
+        self.__default['temperature']['baudRate'] = '9600'
         self.__default['temperature']['stackLevel'] = '0'
         self.__default['temperature']['inputChannel'] = '1'
         self.__default['temperature']['channelType'] = 'milliAmps'
@@ -318,8 +320,8 @@ class Erl2Config():
                 and self.__erl2conf[sensorType]['hardwareRange'][0] > self.__erl2conf[sensorType]['hardwareRange'][1]):
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['hardwareRange'] = {self.__erl2conf[sensorType]['hardwareRange']} must specified in increasing order")
 
-        # pH and DO comms parameters (serial port and baud rate)
-        for sensorType in ['pH', 'DO']:
+        # temperature, pH and DO comms parameters (serial port and baud rate)
+        for sensorType in ['temperature', 'pH', 'DO']:
             self.validate(str, sensorType, 'serialPort')
             self.validate(int, sensorType, 'baudRate')
 

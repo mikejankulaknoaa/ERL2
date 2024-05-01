@@ -28,7 +28,7 @@
 [network]
 
 # controllers by default are expected to be found at the .1 address of the ERL2
-# subnet (which is the default behavior if this setting is None); you can override 
+# subnet (which is the default behavior if this setting is None); you can override
 # this behavior by specifying a full IP address here (without quotation marks)
 # controllerIP = None
 
@@ -54,6 +54,15 @@
 
 
 [temperature]
+
+# if using a serial temperature sensor (e.g. AtlasScientific), specify
+# serialPort and baudRate parameters. if using a 4-20mA or 0-10V sensor,
+# specify channelType, stackLevel, inputChannel, hardwareRange. System
+# defaults to serial type unless serialPort is set to None
+# serialPort = /dev/ttyAMA3
+
+# baud rate for communicating with a serial temperature sensor
+# baudRate = 9600
 
 # sequent microsystems stack level (usually 0, can be up to 7)
 # stackLevel = 0
