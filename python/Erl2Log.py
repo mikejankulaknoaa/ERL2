@@ -310,21 +310,6 @@ class Erl2Log():
                     # delete any historical data older than the retention timeframe
                     self.history = [ x for x in self.history if dt.strptime(x['Timestamp.UTC'], self.erl2context['conf']['system']['dtFormat']).replace(tzinfo=tz.utc) > oldestTS ]
 
-    # not a class method but just a useful calculation
-    def nextIntervalTime(currentTime, interval):
-
-        retval = (
-                   (
-                     int(
-                       currentTime.timestamp() # timestamp in seconds
-                       / interval              # convert to number of intervals of length loggingFrequency
-                     )                         # truncate to beginning of previous interval (past)
-                   + 1)                        # advance by one time interval (future)
-                   * interval                  # convert back to seconds/timestamp
-                 )
-
-        return retval
-
 def main():
 
     log = Erl2Log()

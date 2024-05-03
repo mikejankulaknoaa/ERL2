@@ -22,6 +22,7 @@ from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
 from Erl2State import Erl2State
 from Erl2Tank import Erl2Tank
+from Erl2Useful import locDefaults
 
 class Erl2Startup:
 
@@ -101,46 +102,30 @@ class Erl2Startup:
         self.__numPadVar = tk.IntVar()
         self.__numPadVar.set(self.erl2context['state'].get('system','numPad',1))
 
+        # location defaults for startup module, used in Erl2Tank and Erl2Controller
+        self.modDefaults = {'relief'      : 'flat',
+                            'borderwidth' : 0,
+                            }
+
         # start up the main device module
         if self.__deviceType == 'tank':
             self.__device = Erl2Tank(root=self.root, parent=self, erl2context=self.erl2context)
         elif self.__deviceType == 'controller':
             self.__device = Erl2Controller(root=self.root, parent=self, erl2context=self.erl2context)
 
-    def locDefaults (self, loc):
-
-        # location defaults
-        if 'padding'     in loc: p  = loc['padding']
-        else:                    p  = '2 2'
-        if 'relief'      in loc: rl = loc['relief']
-        else:                    rl = 'flat'
-        if 'borderwidth' in loc: bw = loc['borderwidth']
-        else:                    bw = 0
-        if 'row'         in loc: r  = loc['row']
-        else:                    r  = 0
-        if 'column'      in loc: c  = loc['column']
-        else:                    c  = 0
-        if 'padx'        in loc: px = loc['padx']
-        else:                    px = '2'
-        if 'pady'        in loc: py = loc['pady']
-        else:                    py = '2'
-        if 'sticky'      in loc: st = loc['sticky']
-        else:                    st = 'nwse'
-
-        return p, rl, bw, r, c, px, py, st,
-
-    def createFullscreenWidget (self, loc = {}):
+    def createFullscreenWidget (self, widgetLoc = {}):
 
         # nothing to do if no parent is given
-        if 'parent' not in loc:
+        if 'parent' not in widgetLoc:
             return
 
         # read location parameter, set defaults if unspecified
-        p, rl, bw, r, c, px, py, st = self.locDefaults(loc)
+        loc = locDefaults(loc=widgetLoc, modDefaults=self.modDefaults)
 
         # add a control to set / unset fullscreen mode
-        self.fullscreenFrame = ttk.Frame(loc['parent'], padding=p, relief=rl, borderwidth=bw)
-        self.fullscreenFrame.grid(row=r, column=c, padx=px, pady=py, sticky=st)
+        self.fullscreenFrame = ttk.Frame(loc['parent'], padding=loc['padding'], relief=loc['relief'], borderwidth=loc['borderwidth'])
+        self.fullscreenFrame.grid(row=loc['row'], column=loc['column'], rowspan=loc['rowspan'], columnspan=loc['columnspan'],
+                                  padx=loc['padx'], pady=loc['pady'], sticky=loc['sticky'])
         fullscreenCheckbutton = tk.Checkbutton(self.fullscreenFrame,
                                                indicatoron=0,
                                                image=self.erl2context['img']['checkOff'],
@@ -166,18 +151,19 @@ class Erl2Startup:
         self.fullscreenFrame.columnconfigure(0,weight=0)
         self.fullscreenFrame.columnconfigure(1,weight=1)
 
-    def createNumPadWidget (self, loc = {}):
+    def createNumPadWidget (self, widgetLoc = {}):
 
         # nothing to do if no parent is given
-        if 'parent' not in loc:
+        if 'parent' not in widgetLoc:
             return
 
         # read location parameter, set defaults if unspecified
-        p, rl, bw, r, c, px, py, st = self.locDefaults(loc)
+        loc = locDefaults(loc=widgetLoc, modDefaults=self.modDefaults)
 
         # add a control to enable / disable the Erl2NumPad popups
-        self.numPadFrame = ttk.Frame(loc['parent'], padding=p, relief=rl, borderwidth=bw)
-        self.numPadFrame.grid(row=r, column=c, padx=px, pady=py, sticky=st)
+        self.numPadFrame = ttk.Frame(loc['parent'], padding=loc['padding'], relief=loc['relief'], borderwidth=loc['borderwidth'])
+        self.numPadFrame.grid(row=loc['row'], column=loc['column'], rowspan=loc['rowspan'], columnspan=loc['columnspan'],
+                              padx=loc['padx'], pady=loc['pady'], sticky=loc['sticky'])
         numPadCheckbutton = tk.Checkbutton(self.numPadFrame,
                                                indicatoron=0,
                                                image=self.erl2context['img']['checkOff'],
@@ -203,18 +189,19 @@ class Erl2Startup:
         self.numPadFrame.columnconfigure(0,weight=0)
         self.numPadFrame.columnconfigure(1,weight=1)
 
-    def createRestartWidget (self, loc = {}):
+    def createRestartWidget (self, widgetLoc = {}):
 
         # nothing to do if no parent is given
-        if 'parent' not in loc:
+        if 'parent' not in widgetLoc:
             return
 
         # read location parameter, set defaults if unspecified
-        p, rl, bw, r, c, px, py, st = self.locDefaults(loc)
+        loc = locDefaults(loc=widgetLoc, modDefaults=self.modDefaults)
 
         # add a control to restart the app
-        self.restartFrame = ttk.Frame(loc['parent'], padding=p, relief=rl, borderwidth=bw)
-        self.restartFrame.grid(row=r, column=c, padx=px, pady=py, sticky=st)
+        self.restartFrame = ttk.Frame(loc['parent'], padding=loc['padding'], relief=loc['relief'], borderwidth=loc['borderwidth'])
+        self.restartFrame.grid(row=loc['row'], column=loc['column'], rowspan=loc['rowspan'], columnspan=loc['columnspan'],
+                               padx=loc['padx'], pady=loc['pady'], sticky=loc['sticky'])
         restartButton = tk.Button(self.restartFrame,
                                   image=self.erl2context['img']['reload'],
                                   height=40,
@@ -235,18 +222,19 @@ class Erl2Startup:
         self.restartFrame.columnconfigure(0,weight=0)
         self.restartFrame.columnconfigure(1,weight=1)
 
-    def createExitWidget (self, loc = {}):
+    def createExitWidget (self, widgetLoc = {}):
 
         # nothing to do if no parent is given
-        if 'parent' not in loc:
+        if 'parent' not in widgetLoc:
             return
 
         # read location parameter, set defaults if unspecified
-        p, rl, bw, r, c, px, py, st = self.locDefaults(loc)
+        loc = locDefaults(loc=widgetLoc, modDefaults=self.modDefaults)
 
         # add a control to kill the app completely
-        self.exitFrame = ttk.Frame(loc['parent'], padding=p, relief=rl, borderwidth=bw)
-        self.exitFrame.grid(row=r, column=c, padx=px, pady=py, sticky=st)
+        self.exitFrame = ttk.Frame(loc['parent'], padding=loc['padding'], relief=loc['relief'], borderwidth=loc['borderwidth'])
+        self.exitFrame.grid(row=loc['row'], column=loc['column'], rowspan=loc['rowspan'], columnspan=loc['columnspan'],
+                            padx=loc['padx'], pady=loc['pady'], sticky=loc['sticky'])
         exitButton = tk.Button(self.exitFrame,
                                image=self.erl2context['img']['shutdown'],
                                height=40,

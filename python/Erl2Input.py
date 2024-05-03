@@ -128,10 +128,10 @@ def main():
 
     statusFrame = ttk.Frame(root)
     statusFrame.grid(row=3,column=0,columnspan=4)
-    ttk.Label(statusFrame,text='Temperature last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
-    ttk.Label(statusFrame,text='Air MFC last read:',font='Arial 14 bold',justify='right').grid(row=1,column=0,sticky='nse')
-    ttk.Label(statusFrame,text='CO2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=2,column=0,sticky='nse')
-    ttk.Label(statusFrame,text='N2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=3,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='Temperature last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nes')
+    ttk.Label(statusFrame,text='Air MFC last read:',font='Arial 14 bold',justify='right').grid(row=1,column=0,sticky='nes')
+    ttk.Label(statusFrame,text='CO2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=2,column=0,sticky='nes')
+    ttk.Label(statusFrame,text='N2 MFC last read:',font='Arial 14 bold',justify='right').grid(row=3,column=0,sticky='nes')
 
     temperature = Erl2Input(sensorType='temperature',
                             displayLocs=[{'parent':root,'row':1,'column':0}],

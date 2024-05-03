@@ -171,7 +171,7 @@ class Erl2Plot():
         # place the plot on the window
         self.canvas = FigureCanvasTkAgg(self.__fig,self.__plotLoc['parent'])
         plt.draw()
-        self.canvas.get_tk_widget().grid(row=self.__plotLoc['row'],column=self.__plotLoc['column'],sticky='nwse')
+        self.canvas.get_tk_widget().grid(row=self.__plotLoc['row'],column=self.__plotLoc['column'],sticky='nesw')
 
         # make sure plot canvas is weighted properly in parent frame
         self.__plotLoc['parent'].rowconfigure(0,weight=1)

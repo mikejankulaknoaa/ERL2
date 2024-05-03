@@ -233,7 +233,7 @@ class Erl2SubSystem():
         # create the static setpoint entry widget's base frame as a child of its parent
         if 'parent' in self.__staticSetpointLoc:
             f = ttk.Frame(self.__staticSetpointLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
-            f.grid(row=self.__staticSetpointLoc['row'], column=self.__staticSetpointLoc['column'], padx='2', pady='0', sticky='nwse')
+            f.grid(row=self.__staticSetpointLoc['row'], column=self.__staticSetpointLoc['column'], padx='2', pady='0', sticky='nesw')
 
             f.rowconfigure(0,weight=1)
             f.columnconfigure(0,weight=1)
@@ -258,7 +258,7 @@ class Erl2SubSystem():
 
             # create the hysteresis entry widget's base frame as a child of its parent
             f = ttk.Frame(self.__hysteresisLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
-            f.grid(row=self.__hysteresisLoc['row'], column=self.__hysteresisLoc['column'], padx='2', pady='0', sticky='nwse')
+            f.grid(row=self.__hysteresisLoc['row'], column=self.__hysteresisLoc['column'], padx='2', pady='0', sticky='nesw')
 
             f.rowconfigure(0,weight=1)
             f.columnconfigure(0,weight=1)
@@ -283,7 +283,7 @@ class Erl2SubSystem():
         # create the dynamic setpoint grid's base frame as a child of its parent
         if 'parent' in self.__dynamicSetpointsLoc:
             f = ttk.Frame(self.__dynamicSetpointsLoc['parent'], padding='2 2', relief='flat', borderwidth=0)
-            f.grid(row=self.__dynamicSetpointsLoc['row'], column=self.__dynamicSetpointsLoc['column'], padx='2', pady='2', sticky='nwse')
+            f.grid(row=self.__dynamicSetpointsLoc['row'], column=self.__dynamicSetpointsLoc['column'], padx='2', pady='2', sticky='nesw')
 
             f.rowconfigure(0,weight=1)
             f.columnconfigure(0,weight=1)
@@ -850,7 +850,7 @@ def main():
     statusFrame = ttk.Frame(root)
     statusFrame.grid(row=3,column=0,columnspan=4)
 
-    ttk.Label(statusFrame,text='Virtual Temp last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='Virtual Temp last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nes')
 
     tempFrame = ttk.Frame(root, padding='2', relief='flat', borderwidth=0)
     tempFrame.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')

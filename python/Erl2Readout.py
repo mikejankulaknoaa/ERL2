@@ -163,7 +163,7 @@ class Erl2Readout():
                         
                         # control setting readouts and labels (e.g. as in Erl2Toggle)
                         f = ttk.Frame(controlF, padding='2 2', relief='flat', borderwidth=0)
-                        f.grid(row=ind+1, column=0, padx='2', pady='2', sticky='nwse')
+                        f.grid(row=ind+1, column=0, padx='2', pady='2', sticky='nesw')
 
                         # add a Label widget to show the current control value
                         l = ttk.Label(f, image=self.erl2context['img']['button-grey-30.png']
@@ -206,7 +206,7 @@ class Erl2Readout():
 
                         # control setting readouts and labels (e.g. as in Erl2Mfc)
                         f = ttk.Frame(controlF, padding='2 2', relief='flat', borderwidth=0)
-                        f.grid(row=2*ind+2, column=0, padx='2', pady='0', sticky='nwse')
+                        f.grid(row=2*ind+2, column=0, padx='2', pady='0', sticky='nesw')
 
                         # add a Label widget to show the current MFC flow rate
                         l = ttk.Label(f, text='--', font='Arial 8', justify='right'

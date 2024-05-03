@@ -17,6 +17,7 @@ from Erl2Config import Erl2Config
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
 from Erl2State import Erl2State
+from Erl2Useful import nextIntervalTime
 
 # Erl2Network needs some functions defined outside of the class, because
 # in macOS and Windows, you cannot start a process in a subthread if it is
@@ -416,15 +417,15 @@ class Erl2Network():
             if 'columnspan' in self.__buttonLoc: cspan = self.__buttonLoc['columnspan']
             else: cspan = 1
             rescanFrame = ttk.Frame(self.__buttonLoc['parent']) #, padding='0', relief='solid', borderwidth=1)
-            rescanFrame.grid(row=self.__buttonLoc['row'], column=self.__buttonLoc['column'], columnspan=cspan, sticky='nwse')
+            rescanFrame.grid(row=self.__buttonLoc['row'], column=self.__buttonLoc['column'], columnspan=cspan, sticky='nesw')
 
             # frame within the frame? for placement (pad with side frames to force it to center)
             f0 = ttk.Frame(rescanFrame) #, padding='0', relief='solid', borderwidth=1)
-            f0.grid(row=0, column=0, sticky='nwse')
+            f0.grid(row=0, column=0, sticky='nesw')
             f1 = ttk.Frame(rescanFrame) #, padding='0', relief='solid', borderwidth=1)
-            f1.grid(row=0, column=1, sticky='nwse')
+            f1.grid(row=0, column=1, sticky='nesw')
             f2 = ttk.Frame(rescanFrame) #, padding='0', relief='solid', borderwidth=1)
-            f2.grid(row=0, column=2, sticky='nwse')
+            f2.grid(row=0, column=2, sticky='nesw')
             rescanFrame.rowconfigure(0,weight=1)
             rescanFrame.columnconfigure(0,weight=1)
             rescanFrame.columnconfigure(1,weight=0)
@@ -1003,7 +1004,7 @@ class Erl2Network():
         if scheduleNext:
 
             # update on schedule
-            nextUpdateTime = Erl2Log.nextIntervalTime(currentTime, self.__updateFrequency)
+            nextUpdateTime = nextIntervalTime(currentTime, self.__updateFrequency)
             delay = int((nextUpdateTime - currentTime.timestamp())*1000)
 
             # update the display widgets again after waiting an appropriate number of milliseconds
@@ -1348,12 +1349,12 @@ def main():
     root = tk.Tk()
     ttk.Label(root,text='Erl2Network',font='Arial 30 bold').grid(row=0,column=0,columnspan=2)
 
-    ttk.Label(root,text='Type:',font='Arial 14 bold',justify='right').grid(row=1,column=0,sticky='nse')
-    ttk.Label(root,text='Name:',font='Arial 14 bold',justify='right').grid(row=2,column=0,sticky='nse')
-    ttk.Label(root,text='Network interface:',font='Arial 14 bold',justify='right').grid(row=3,column=0,sticky='nse')
-    ttk.Label(root,text='IP address:',font='Arial 14 bold',justify='right').grid(row=4,column=0,sticky='nse')
-    ttk.Label(root,text='MAC address:',font='Arial 14 bold',justify='right').grid(row=5,column=0,sticky='nse')
-    ttk.Label(root,text='Last network comms:',font='Arial 14 bold',justify='right').grid(row=6,column=0,sticky='nse')
+    ttk.Label(root,text='Type:',font='Arial 14 bold',justify='right').grid(row=1,column=0,sticky='nes')
+    ttk.Label(root,text='Name:',font='Arial 14 bold',justify='right').grid(row=2,column=0,sticky='nes')
+    ttk.Label(root,text='Network interface:',font='Arial 14 bold',justify='right').grid(row=3,column=0,sticky='nes')
+    ttk.Label(root,text='IP address:',font='Arial 14 bold',justify='right').grid(row=4,column=0,sticky='nes')
+    ttk.Label(root,text='MAC address:',font='Arial 14 bold',justify='right').grid(row=5,column=0,sticky='nes')
+    ttk.Label(root,text='Last network comms:',font='Arial 14 bold',justify='right').grid(row=6,column=0,sticky='nes')
 
     childrenFrame = ttk.Frame(root)
     childrenFrame.grid(row=7,column=0,columnspan=2)

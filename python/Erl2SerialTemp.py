@@ -174,7 +174,7 @@ def main():
 
     statusFrame = ttk.Frame(root)
     statusFrame.grid(row=3,column=0,columnspan=3)
-    ttk.Label(statusFrame,text='Temperature last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='Temperature last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nes')
 
     temp = Erl2SerialTemp(sensorType='temperature',
                           displayLocs=[{'parent':root,'row':1,'column':0}],

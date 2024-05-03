@@ -7,6 +7,7 @@ from Erl2Config import Erl2Config
 from Erl2Entry import Erl2Entry
 from Erl2Log import Erl2Log
 from Erl2State import Erl2State
+from Erl2Useful import nextIntervalTime
 
 class Erl2Sensor():
 
@@ -177,7 +178,7 @@ class Erl2Sensor():
         self.updateDisplays(self.__displayWidgets,self.__statusWidgets,self.__correctionWidgets)
 
         # how long before we should update the display widgets again?
-        nextSampleTime = Erl2Log.nextIntervalTime(currentTime, self.__sampleFrequency)
+        nextSampleTime = nextIntervalTime(currentTime, self.__sampleFrequency)
         delay = int((nextSampleTime - currentTime.timestamp())*1000)
 
         # update the display widgets again after waiting an appropriate number of milliseconds
@@ -195,7 +196,7 @@ class Erl2Sensor():
 
         # if the next file-writing interval time is empty or in the past, update it
         if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
-            self.__nextFileTime = Erl2Log.nextIntervalTime(currentTime, self.__loggingFrequency)
+            self.__nextFileTime = nextIntervalTime(currentTime, self.__loggingFrequency)
 
     def updateDisplays(self, displayWidgets, statusWidgets, correctionWidgets):
 
@@ -287,7 +288,7 @@ class Erl2Sensor():
 
         return currentTime, m
 
-    # placeholder method -- must be overwritten in child classes
+    # placeholder method -- must be overridden in child classes
     def measure(self):
 
         # fake measurement
@@ -358,6 +359,13 @@ class Erl2Sensor():
             # notify application that its state has changed
             self.erl2context['state'].set([(self.sensorType,'offset',self.__offsetFloat)])
 
+    def reportValue(self):
+
+        if (self.online and self.__displayParameter in self.value):
+            return self.value[self.__displayParameter]
+        else:
+            return None
+
 def main():
 
     root = tk.Tk()
@@ -365,7 +373,7 @@ def main():
 
     statusFrame = ttk.Frame(root)
     statusFrame.grid(row=3,column=0)
-    ttk.Label(statusFrame,text='Sensor last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='Sensor last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nes')
 
     sensor = Erl2Sensor(displayLocs=[{'parent':root,'row':1,'column':0}],
                         statusLocs=[{'parent':statusFrame,'row':0,'column':1}],

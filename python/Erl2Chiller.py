@@ -7,9 +7,11 @@ except:
 
 import tkinter as tk
 from tkinter import ttk
-from Erl2Toggle import Erl2Toggle
+from Erl2Config import Erl2Config
+from Erl2Control import Erl2Control
+from Erl2Useful import locDefaults
 
-class Erl2Chiller(Erl2Toggle):
+class Erl2Chiller(Erl2Control):
 
     def __init__(self,
                  displayLocs=[],
@@ -19,39 +21,48 @@ class Erl2Chiller(Erl2Toggle):
                  label='Chiller',
                  erl2context={}):
 
-        # call the Erl2Toggle class's constructor
-        super().__init__(controlType='chiller',
-                         displayLocs=displayLocs,
-                         buttonLoc=buttonLoc,
+        # controlType will be 'chiller'
+        controlType = 'chiller'
+
+        # hack up the displayLocs with chiller-specific defaults before calling parent __init__
+        chillerLocs = []
+        for loc in displayLocs:
+            chillerLocs.append(locDefaults(loc=loc,modDefaults={'relief':'flat','borderwidth':0,'padx':'2','pady':'2'}))
+
+        # read in the system configuration file if needed
+        if 'conf' not in erl2context:
+            erl2context['conf'] = Erl2Config()
+
+        # trigger an error if this isn't windows and the hardware lib wasn't found
+        assert(_hwLoaded or erl2context['conf']['system']['platform'] in ['darwin','win32'])
+
+        # read these useful parameters from Erl2Config
+        self.__stackLevel = erl2context['conf'][controlType]['stackLevel']
+        self.__outputPwmChannel = erl2context['conf'][controlType]['outputPwmChannel']
+
+        # call the Erl2Control class's constructor
+        super().__init__(controlType=controlType,
+                         widgetType='button',
+                         widgetLoc=buttonLoc,
+                         displayLocs=chillerLocs,
                          displayImages=displayImages,
                          buttonImages=buttonImages,
                          label=label,
                          erl2context=erl2context)
-
-        # read in the system configuration file if needed
-        if 'conf' not in self.erl2context:
-            self.erl2context['conf'] = Erl2Config()
-
-        # trigger an error if this isn't windows and the hardware lib wasn't found
-        assert(_hwLoaded or self.erl2context['conf']['system']['platform'] in ['darwin','win32'])
-
-        # read these useful parameters from Erl2Config
-        self.__stackLevel = self.erl2context['conf'][self.controlType]['stackLevel']
-        self.__outputPwmChannel = self.erl2context['conf'][self.controlType]['outputPwmChannel']
 
         # start up the timing loop to log control metrics to a log file
         # (check first if this object is an Erl2Chiller or a child class)
         if self.__class__.__name__ == 'Erl2Chiller':
             self.updateLog()
 
-    def changeHardwareState(self):
+    def changeHardwareSetting(self):
 
-        # apply the new state to the chiller solenoid hardware
-        #print (f"{self.__class__.__name__}: Debug: changing to state [{self.state}] on Open-Drain / PWM output channel [{self.__outputPwmChannel}]")
+        # apply the new setting to the chiller solenoid hardware
+        #print (f"{self.__class__.__name__}: Debug: changing chiller to setting [{int(self.setting)}] on Open-Drain / PWM output channel [{self.__outputPwmChannel}]")
 
         # ignore missing hardware libraries on windows
         if _hwLoaded:
-            if self.state:
+            if self.setting:
                 # turn on chiller -- set to 100%
                 setOdPWM(self.__stackLevel,self.__outputPwmChannel,100)
             else:

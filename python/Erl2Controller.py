@@ -138,22 +138,22 @@ class Erl2Controller():
 
             # add a control to set / unset fullscreen mode
             r = 1
-            self.parent.createFullscreenWidget(loc={'parent':displayControls,'row':r})
+            self.parent.createFullscreenWidget(widgetLoc={'parent':displayControls,'row':r})
 
             # add a control to enable / disable the Erl2NumPad popups
             r += 1
-            self.parent.createNumPadWidget(loc={'parent':displayControls,'row':r})
+            self.parent.createNumPadWidget(widgetLoc={'parent':displayControls,'row':r})
 
             r += 1
             rescanLoc={'parent':displayControls,'row':r,'column':0}
 
             # add a control to restart the app
             r = 1
-            self.parent.createRestartWidget(loc={'parent':displayPower,'row':r})
+            self.parent.createRestartWidget(widgetLoc={'parent':displayPower,'row':r})
 
             # kill the app completely with this shutdown button
             r += 1
-            self.parent.createExitWidget(loc={'parent':displayPower,'row':r})
+            self.parent.createExitWidget(widgetLoc={'parent':displayPower,'row':r})
 
         # information about this ERL2 system
         fontleft = 'Arial 14 bold'

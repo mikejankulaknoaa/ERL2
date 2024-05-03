@@ -126,7 +126,7 @@ def main():
 
     statusFrame = ttk.Frame(root)
     statusFrame.grid(row=3,column=0)
-    ttk.Label(statusFrame,text='Virtual Temp last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nse')
+    ttk.Label(statusFrame,text='Virtual Temp last read:',font='Arial 14 bold',justify='right').grid(row=0,column=0,sticky='nes')
 
     virtualtemp = Erl2VirtualTemp(displayLocs=[{'parent':root,'row':1,'column':0}],
                                   statusLocs=[{'parent':statusFrame,'row':0,'column':1}],

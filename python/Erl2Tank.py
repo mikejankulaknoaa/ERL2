@@ -17,6 +17,7 @@ from Erl2SerialTemp import Erl2SerialTemp
 from Erl2State import Erl2State
 from Erl2SubSystem import Erl2SubSystem
 from Erl2VirtualTemp import Erl2VirtualTemp
+from Erl2Useful import nextIntervalTime
 
 class Erl2Tank:
 
@@ -88,7 +89,7 @@ class Erl2Tank:
             self.__tabs[p] = ttk.Frame(self.__mainTabs, padding='0',borderwidth=0,relief='solid')
             self.__tabs[p].grid_rowconfigure(0,weight=1)
             self.__tabs[p].grid_columnconfigure(0,weight=1)
-            self.__mainTabs.add(self.__tabs[p],text=p,padding=0)
+            self.__mainTabs.add(self.__tabs[p],text=p,padding='0')
 
         # add a clock widget in the upper right corner
         clock = Erl2Clock(clockLoc={'parent':self.root,'row':0,'column':0},
@@ -322,19 +323,19 @@ class Erl2Tank:
 
             # add a control to set / unset fullscreen mode
             r = 1
-            self.parent.createFullscreenWidget(loc={'parent':self.__frames['Settings'][0][0],'row':r})
+            self.parent.createFullscreenWidget(widgetLoc={'parent':self.__frames['Settings'][0][0],'row':r})
 
             # add a control to enable / disable the Erl2NumPad popups
             r += 1
-            self.parent.createNumPadWidget(loc={'parent':self.__frames['Settings'][0][0],'row':r})
+            self.parent.createNumPadWidget(widgetLoc={'parent':self.__frames['Settings'][0][0],'row':r})
 
             # add a control to restart the app
             r = 1
-            self.parent.createRestartWidget(loc={'parent':self.__frames['Settings'][1][0],'row':r})
+            self.parent.createRestartWidget(widgetLoc={'parent':self.__frames['Settings'][1][0],'row':r})
 
             # kill the app completely with this shutdown button
             r += 1
-            self.parent.createExitWidget(loc={'parent':self.__frames['Settings'][1][0],'row':r})
+            self.parent.createExitWidget(widgetLoc={'parent':self.__frames['Settings'][1][0],'row':r})
 
         # readout displays for the current temperature (virtual, serial, or milliAmps/volts)
         if self.__virtualTemp:
@@ -428,26 +429,26 @@ class Erl2Tank:
         # readout and control widgets for the Air MFC
         self.controls['mfc.air'] = Erl2Mfc(
             controlType='mfc.air',
-            settingDisplayLocs=[{'parent':self.__frames['Data'][1][1],'row':2,'column':0},
-                                {'parent':self.__frames['pH'][0][1],'row':2,'column':0},
-                                {'parent':self.__frames['Data'][2][1],'row':2,'column':0},
-                                {'parent':self.__frames['DO'][0][1],'row':2,'column':0}],
+            displayLocs=[{'parent':self.__frames['Data'][1][1],'row':2,'column':0},
+                         {'parent':self.__frames['pH'][0][1],'row':2,'column':0},
+                         {'parent':self.__frames['Data'][2][1],'row':2,'column':0},
+                         {'parent':self.__frames['DO'][0][1],'row':2,'column':0}],
             entryLoc={'parent':self.__frames['pH'][0][2],'row':1,'column':0},
             erl2context=self.erl2context)
 
         # readout and control widgets for the CO2 MFC
         self.controls['mfc.co2'] = Erl2Mfc(
             controlType='mfc.co2',
-            settingDisplayLocs=[{'parent':self.__frames['Data'][1][1],'row':4,'column':0},
-                                {'parent':self.__frames['pH'][0][1],'row':4,'column':0}],
+            displayLocs=[{'parent':self.__frames['Data'][1][1],'row':4,'column':0},
+                         {'parent':self.__frames['pH'][0][1],'row':4,'column':0}],
             entryLoc={'parent':self.__frames['pH'][0][2],'row':2,'column':0},
             erl2context=self.erl2context)
 
         # readout and control widgets for the N2 MFC
         self.controls['mfc.n2'] = Erl2Mfc(
             controlType='mfc.n2',
-            settingDisplayLocs=[{'parent':self.__frames['Data'][2][1],'row':4,'column':0},
-                                {'parent':self.__frames['DO'][0][1],'row':4,'column':0}],
+            displayLocs=[{'parent':self.__frames['Data'][2][1],'row':4,'column':0},
+                         {'parent':self.__frames['DO'][0][1],'row':4,'column':0}],
             entryLoc={'parent':self.__frames['DO'][0][2],'row':1,'column':0},
             erl2context=self.erl2context)
 
@@ -691,7 +692,7 @@ class Erl2Tank:
 
         # if the next file-writing interval time is empty or in the past, update it
         if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
-            self.__nextFileTime = Erl2Log.nextIntervalTime(currentTime, self.erl2context['conf']['system']['loggingFrequency'])
+            self.__nextFileTime = nextIntervalTime(currentTime, self.erl2context['conf']['system']['loggingFrequency'])
 
         # update the log again after waiting an appropriate number of milliseconds
         delay = int((self.__nextFileTime - currentTime.timestamp())*1000)

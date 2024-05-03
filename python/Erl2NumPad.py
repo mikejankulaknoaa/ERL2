@@ -44,7 +44,7 @@ class Erl2NumPad(tk.Toplevel):
 
         # create a Frame to hold everything
         self.__f = ttk.Frame(self, padding='2 2', relief='flat', borderwidth=5)
-        self.__f.grid(row=0, column=0, padx='2', pady='2', sticky='nwse')
+        self.__f.grid(row=0, column=0, padx='2', pady='2', sticky='nesw')
 
         # assuming popup is 312x322, screen is 800x480
         self.geometry("+244+79")

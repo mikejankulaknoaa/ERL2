@@ -7,9 +7,11 @@ except:
 
 import tkinter as tk
 from tkinter import ttk
-from Erl2Toggle import Erl2Toggle
+from Erl2Config import Erl2Config
+from Erl2Control import Erl2Control
+from Erl2Useful import locDefaults
 
-class Erl2Heater(Erl2Toggle):
+class Erl2Heater(Erl2Control):
 
     def __init__(self,
                  displayLocs=[],
@@ -19,24 +21,23 @@ class Erl2Heater(Erl2Toggle):
                  label='Heater',
                  erl2context={}):
 
-        # call the Erl2Toggle class's constructor
-        super().__init__(controlType='heater',
-                         displayLocs=displayLocs,
-                         buttonLoc=buttonLoc,
-                         displayImages=displayImages,
-                         buttonImages=buttonImages,
-                         label=label,
-                         erl2context=erl2context)
+        # controlType will be 'heater'
+        controlType = 'heater'
+
+        # hack up the displayLocs with heater-specific defaults before calling parent __init__
+        heaterLocs = []
+        for loc in displayLocs:
+            heaterLocs.append(locDefaults(loc=loc,modDefaults={'relief':'flat','borderwidth':0, 'padx':'2','pady':'2'}))
 
         # read in the system configuration file if needed
-        if 'conf' not in self.erl2context:
-            self.erl2context['conf'] = Erl2Config()
+        if 'conf' not in erl2context:
+            erl2context['conf'] = Erl2Config()
 
         # trigger an error if this isn't windows and the hardware lib wasn't found
-        assert(_hwLoaded or self.erl2context['conf']['system']['platform'] in ['darwin','win32'])
+        assert(_hwLoaded or erl2context['conf']['system']['platform'] in ['darwin','win32'])
 
         # read this useful parameter from Erl2Config
-        self.__gpioChannel = self.erl2context['conf'][self.controlType]['gpioChannel']
+        self.__gpioChannel = erl2context['conf'][controlType]['gpioChannel']
 
         # set up the heater relay hardware...
         if _hwLoaded:
@@ -50,20 +51,30 @@ class Erl2Heater(Erl2Toggle):
             # set up the heater relay channel for output
             GPIO.setup(self.__gpioChannel, GPIO.OUT)
 
-            # set the channel's state explicitly, to match our logical state
-            GPIO.output(self.__gpioChannel, self.state)
+            # set the channel's setting explicitly, to match our logical setting
+            #GPIO.output(self.__gpioChannel, self.setting)
+
+        # call the Erl2Control class's constructor
+        super().__init__(controlType=controlType,
+                         widgetType='button',
+                         widgetLoc=buttonLoc,
+                         displayLocs=heaterLocs,
+                         displayImages=displayImages,
+                         buttonImages=buttonImages,
+                         label=label,
+                         erl2context=erl2context)
 
         # start up the timing loop to log control metrics to a log file
         # (check first if this object is an Erl2Heater or a child class)
         if self.__class__.__name__ == 'Erl2Heater':
             self.updateLog()
 
-    def changeHardwareState(self):
+    def changeHardwareSetting(self):
 
-        # apply the new state to the relay hardware
-        #print (f"{self.__class__.__name__}: Debug: changing to state [{self.state}] on GPIO channel [{self.__gpioChannel}]")
+        # apply the new setting to the relay hardware
+        #print (f"{self.__class__.__name__}: Debug: changing heater to setting [{int(self.setting)}] on GPIO channel [{self.__gpioChannel}]")
         if _hwLoaded:
-            GPIO.output(self.__gpioChannel, self.state)
+            GPIO.output(self.__gpioChannel, int(self.setting))
 
 def main():
 
