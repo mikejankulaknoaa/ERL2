@@ -296,7 +296,7 @@ class Erl2Readout():
                     if sub == 'temperature':
 
                         # get current parameter settings from device's state file
-                        setting = self.__deviceState.get(controlList[ind],'setting',0)
+                        setting = int(self.__deviceState.get(controlList[ind],'setting',0))
 
                         # update the display with the appropriate image
                         #print (f"{self.__class__.__name__}: Debug: refreshDisplays() widget [{controlList[ind] + '.setting'}], "
