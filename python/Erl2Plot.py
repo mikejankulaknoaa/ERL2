@@ -298,18 +298,18 @@ class Erl2Plot():
                     'yLimit':300.,
                     'color':'blue'}
         if name == 'mfc.air':
-            return {'yName':'Average Flow Setting',
+            return {'yName':'Average Setting',
                     'yLabel':'Air',
                     'yLimit':5000.,
                     'color':'deepskyblue'}
         if name == 'mfc.co2':
-            return {'yName':'Average Flow Setting',
+            return {'yName':'Average Setting',
                     #'yLabel':u'CO\u2082',
                     'yLabel':'$CO_2$',
                     'yLimit':20.,
                     'color':'grey'}
         if name == 'mfc.n2':
-            return {'yName':'Average Flow Setting',
+            return {'yName':'Average Setting',
                     #'yLabel':u'N\u2082',
                     'yLabel':'$N_2$',
                     'yLimit':5000.,
