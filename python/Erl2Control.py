@@ -1,4 +1,5 @@
 from datetime import datetime as dt
+from datetime import timedelta as td
 from datetime import timezone as tz
 import tkinter as tk
 from tkinter import ttk
@@ -60,15 +61,17 @@ class Erl2Control():
         self.settingLastChanged = self.erl2context['state'].get(self.controlType,'lastChanged',None)
         self.offSeconds = []
         self.onSeconds = []
-        self.allSeconds = []
-        self.allValues = []
         self.numChanges = 0
 
         # keep track of when the next file-writing interval is
         self.__nextFileTime = None
 
-        # read this useful parameter from Erl2Config
+        # read these useful parameters from Erl2Config
         self.__loggingFrequency = self.erl2context['conf'][self.controlType]['loggingFrequency']
+        self.__systemFrequency = self.erl2context['conf']['system']['loggingFrequency']
+
+        # a record of recent control settings for running averages
+        self.recentValues = []
 
         # some controls care about how many decimals are displayed
         self.__displayDecimals = 0
@@ -250,14 +253,8 @@ class Erl2Control():
         else:
             offTime += timing
 
-        # figure out what to report as the average setting
-        if sum(self.allSeconds) + timing > 0.:
-            avgSetting = (sum(self.allValues) + timing * self.setting) / (sum(self.allSeconds) + timing)
-        else:
-            avgSetting = float('nan')
-
-        self.allSeconds = []
-        self.allValues = []
+        # calculate current, average setting for this reporting period
+        _, avgValue = self.reportValue()
 
         # if we've passed the next file-writing interval time, write it
         if self.__nextFileTime is not None and currentTime.timestamp() > self.__nextFileTime:
@@ -266,7 +263,7 @@ class Erl2Control():
             m = {'Timestamp.UTC': currentTime.strftime(self.erl2context['conf']['system']['dtFormat']),
                  'Timestamp.Local': currentTime.astimezone(self.erl2context['conf']['system']['timezone']).strftime(self.erl2context['conf']['system']['dtFormat']),
                  'Current Setting': self.setting,
-                 'Average Setting': avgSetting,
+                 'Average Setting': avgValue,
                  'Off (seconds)': offTime,
                  'On (seconds)': onTime,
                  'Setting Changes (count)':changes,
@@ -428,6 +425,13 @@ class Erl2Control():
         if self.settingLastChanged is None:
             self.settingLastChanged = currentTime
 
+        # keep a record of recent control setting values
+        self.recentValues.append({'ts':currentTime, 'prev':previousSetting, 'curr':self.setting})
+
+        # recent values that have gotten too old
+        tooOld = currentTime - td(seconds=max(self.__loggingFrequency,self.__systemFrequency))
+        self.recentValues = [ x for x in self.recentValues if x['ts'] > tooOld ]
+
         # calculate how long the system had been at its prior setting
         # (but don't count earlier than the start of the current interval)
         fromTime = self.settingLastChanged.timestamp()
@@ -440,10 +444,6 @@ class Erl2Control():
             self.onSeconds.append(timing)
         else:
             self.offSeconds.append(timing)
-
-        # additionally, tally up all times and weighted values
-        self.allSeconds.append(timing)
-        self.allValues.append(timing*previousSetting)
 
         # save the new last-changed time
         self.settingLastChanged = currentTime
@@ -475,6 +475,65 @@ class Erl2Control():
     # placeholder method -- must be overridden in child classes
     def changeHardwareSetting(self):
         pass
+
+    def reportValue(self, period=None):
+
+        # default to control's own logging frequency
+        if period is None:
+            period = self.__loggingFrequency
+
+        # timing
+        currentTime = dt.now(tz=tz.utc)
+        oldestTime = currentTime - td(seconds=period)
+
+        # running totals
+        runningTotal = 0.
+        runningTime = 0.
+
+        # from the previous time through the loop
+        lastTime = lastCurr = None
+
+        # loop through all recent values
+        for val in self.recentValues:
+
+            # too old
+            if val['ts'] < oldestTime:
+                lastTime = oldestTime
+                lastCurr = val['curr']
+                continue
+
+            # too new (probably not possible)
+            elif val['ts'] > currentTime:
+                break
+
+            # only do the math if value is defined
+            if val['prev'] is not None:
+
+                # is this the earliest record?
+                if lastTime is None:
+                    delta = (val['ts'] - oldestTime).total_seconds()
+                    runningTime += delta
+                    runningTotal += val['prev'] * delta
+                else:
+                    delta = (val['ts'] - lastTime).total_seconds()
+                    runningTime += delta
+                    runningTotal += val['prev'] * delta
+
+            # remember vals from the last time through the loop
+            lastTime = val['ts']
+            lastCurr = val['curr']
+
+        # current value is added to the mix
+        if lastTime is not None and lastCurr is not None:
+            delta = (currentTime - lastTime).total_seconds()
+            runningTime += delta
+            runningTotal += lastCurr * delta
+
+        # final math
+        if runningTime > 0.:
+            return lastCurr, runningTotal/runningTime
+        else:
+            return lastCurr, None
 
 def main():
 

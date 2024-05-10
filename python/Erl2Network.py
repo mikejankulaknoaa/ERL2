@@ -317,6 +317,7 @@ class Erl2Network():
 
         # multithreading: what processes are running, queues for sharing data, received data
         self.__listenProcess = None
+        self.__listenTime = None
         self.__scanProcess = None
         self.__childProcesses = {}
         self.__scanResultsQueue = Queue()
@@ -404,12 +405,6 @@ class Erl2Network():
         self.createDisplays('status')
         self.createDisplays('children')
 
-        # determine what IP address(es) are associated with this system's network interfaces
-        self.getAddresses()
-        #print (f"{self.__class__.__name__}: __init: Debug: self.__deviceAddresses is {self.__deviceAddresses}")
-        #print (f"{self.__class__.__name__}: __init: Debug: self.__networkStubs is {self.__networkStubs}")
-        #print (f"{self.__class__.__name__}: __init: Debug: self.__hardcoding is {self.__hardcoding}")
-
         # provide a 'rescan' button (controller only) if given a place for it
         if self.__deviceType == 'controller' and 'parent' in self.__buttonLoc:
 
@@ -452,6 +447,12 @@ class Erl2Network():
             f1.columnconfigure(0,weight=0)
             f1.columnconfigure(1,weight=1)
 
+        # determine what IP address(es) are associated with this system's network interfaces
+        self.getAddresses()
+        #print (f"{self.__class__.__name__}: __init: Debug: self.__deviceAddresses is {self.__deviceAddresses}")
+        #print (f"{self.__class__.__name__}: __init: Debug: self.__networkStubs is {self.__networkStubs}")
+        #print (f"{self.__class__.__name__}: __init: Debug: self.__hardcoding is {self.__hardcoding}")
+
         # if controller, start scanning for child devices (only if networkStubs were found)
         if self.__deviceType == 'controller' and len(self.__networkStubs) > 0:
 
@@ -474,8 +475,6 @@ class Erl2Network():
             # controller startup log message
             self.__networkLog.writeMessage(f"Controller startup at interface [{self.__interface}], ip [{self.__ip}], mac [{self.__mac}]")
 
-            self.updateDisplays()
-
             # start up the process keep the child device details up to date
             self.pollChildren()
 
@@ -485,27 +484,17 @@ class Erl2Network():
         # if tank, listen for connections from controller (only if deviceAddresses were found)
         elif self.__deviceType == 'tank' and len(self.__deviceAddresses) > 0:
 
-            # default to using the first interface found...
-            self.__interface = self.__deviceAddresses[0]['IF']
-            self.__ip = self.__deviceAddresses[0]['IP']
-            self.__mac = self.__deviceAddresses[0]['MAC']
-
-            # ...however, try to match ipNetworkStub if multiple child device addresses were found
-            if len(self.__deviceAddresses) > 1:
-                for ind in range(0, len(self.__deviceAddresses)):
-                    if self.__ipNetworkStub in self.__deviceAddresses[ind]:
-                        self.__interface = self.__deviceAddresses[0]['IF']
-                        self.__ip = self.__deviceAddresses[0]['IP']
-                        self.__mac = self.__deviceAddresses[0]['MAC']
-                        break
+            # based on results of getAddresses(), chose an interface to listen on
+            self.chooseTankInterface()
 
             # tank startup log message
             self.__networkLog.writeMessage(f"Tank startup at interface [{self.__interface}], ip [{self.__ip}], mac [{self.__mac}]")
 
-            # update the display fields with info about the chosen network interface
-            self.updateDisplays()
-
+            # start up the process that will listen for controller comms in a subthread
             self.wrapperListen()
+
+        # update the display fields with info about the active network interface
+        self.updateDisplays()
 
         # start up the process that will answer requests (tanks) and handle those replies (controller)
         self.manageQueues()
@@ -547,6 +536,22 @@ class Erl2Network():
                             # a child device can listen on for connections from a controller
                             else:
                                 self.__deviceAddresses.append({'IF':i, 'IP':adr['addr'], 'MAC':mac})
+
+    def chooseTankInterface(self):
+
+        # default to using the first interface found...
+        self.__interface = self.__deviceAddresses[0]['IF']
+        self.__ip = self.__deviceAddresses[0]['IP']
+        self.__mac = self.__deviceAddresses[0]['MAC']
+
+        # ...however, try to match ipNetworkStub if multiple child device addresses were found
+        if len(self.__deviceAddresses) > 1:
+            for ind in range(0, len(self.__deviceAddresses)):
+                if self.__ipNetworkStub in self.__deviceAddresses[ind]:
+                    self.__interface = self.__deviceAddresses[0]['IF']
+                    self.__ip = self.__deviceAddresses[0]['IP']
+                    self.__mac = self.__deviceAddresses[0]['MAC']
+                    break
 
     def createDisplays(self, displayType):
 
@@ -1029,6 +1034,7 @@ class Erl2Network():
                                              self.__outgoingQueue,
                                              ))
         self.__listenProcess.start()
+        self.__listenTime = dt.now(tz=tz.utc)
 
     def wrapperScan(self):
 
@@ -1072,6 +1078,37 @@ class Erl2Network():
         proc.start()
 
     def manageQueues(self):
+
+        # network check for tank-type devices
+        if self.__deviceType == 'tank':
+
+            # remember what time it is
+            currentTime = dt.now(tz=tz.utc)
+
+            # has it been more than 30s since the last network activity?
+            if self.__lastActive is None or currentTime.timestamp() - self.__lastActive.timestamp() > 30:
+
+                # if the listener was last restarted more than 60s ago
+                if self.__listenTime is None or currentTime.timestamp() - self.__listenTime.timestamp() > 60:
+
+                    # check if new network interfaces have come online
+                    self.getAddresses()
+
+                    # were any deviceAddresses found?
+                    if len(self.__deviceAddresses) > 0:
+
+                        # based on results of getAddresses(), chose an interface to listen on
+                        self.chooseTankInterface()
+
+                        # tank startup log message
+                        self.__networkLog.writeMessage(f"Tank startup at interface [{self.__interface}], ip [{self.__ip}], mac [{self.__mac}]")
+
+                        # kill off the old listener if it exists
+                        if self.__listenProcess is not None and self.__listenProcess.is_alive():
+                            self.__listenProcess.kill()
+
+                        # start up the process that will listen for controller comms in a subthread
+                        self.wrapperListen()
 
         # are there any new requests to process?
         if not self.__incomingQueue.empty():
