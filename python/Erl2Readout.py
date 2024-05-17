@@ -97,7 +97,7 @@ class Erl2Readout():
                     sensorLabel = 'pH (Total Scale)'
                 elif sub == 'DO':
                     sensorLabel = u'DO (\u00B5mol L\u207B\u00B9)'
-                
+
                 if sensorLabel is not None:
                     ttk.Label(sensorF, text=sensorLabel, font='Arial 12 bold'
                         #, relief='solid', borderwidth=1
@@ -160,7 +160,7 @@ class Erl2Readout():
 
                     # temperature looks a little different from the others
                     if sub == 'temperature':
-                        
+
                         # control setting readouts and labels (e.g. as in Erl2Toggle)
                         f = ttk.Frame(controlF, padding='2 2', relief='flat', borderwidth=0)
                         f.grid(row=ind+1, column=0, padx='2', pady='2', sticky='nesw')
@@ -215,12 +215,12 @@ class Erl2Readout():
                         l.grid(row=0, column=1, padx='2', pady='0', sticky='e')
                         self.__displayWidgets[sub][controlList[ind] + '.setting'] = l
                         self.__allWidgets.append(l)
-        
+
                         # this is the Label shown beside the text display widget
                         ttk.Label(f, text='Setting', font='Arial 8'
                             #, relief='solid', borderwidth=1
                             ).grid(row=0, column=0, padx='2', pady='0', sticky='w')
-            
+
                         f.rowconfigure(0,weight=1)
                         f.columnconfigure(0,weight=1,minsize=45)
                         f.columnconfigure(1,weight=1,minsize=76)

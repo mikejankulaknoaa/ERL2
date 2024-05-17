@@ -34,6 +34,9 @@ class Erl2Entry():
         self.__onChangeArg = onChangeArg
         self.erl2context = erl2context
 
+        # insist on 'root' always being defined
+        assert('root' in self.erl2context and self.erl2context['root'] is not None)
+
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
@@ -120,7 +123,7 @@ class Erl2Entry():
                 if msg is not None:
                     self.revertEntry()
                     #print (f"{self.__class__.__name__}: Debug: validateEntry(): {msg}")
-                    mb.showerror(title='Range Error', message=msg)
+                    mb.showerror(title='Range Error', message=msg, parent=self.erl2context['root'])
                     return False
 
             # reformat String (only if it changes anything)
@@ -135,7 +138,7 @@ class Erl2Entry():
         except Exception as e:
             self.revertEntry()
             #print (f"{self.__class__.__name__}: Debug: validateEntry() failed [{e}]")
-            mb.showerror(message=f"Validation error")
+            mb.showerror(message=f"Validation error", parent=self.erl2context['root'])
             return False
 
         # trigger other actions in the parent if needed

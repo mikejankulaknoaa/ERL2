@@ -43,8 +43,15 @@
 # (or use None to search all possible addresses in the private ERL2 subnet)
 # ipRange = [2, 63]
 
+# hardcoding: manually specify a list of child IP addresses (default None)
+# example: hardcoding = ['10.141.140.223', '10.141.140.227']
+# hardcoding = None
+
 # any device: how often to refresh GUI stats about network activity (seconds)
 # updateFrequency = 5
+
+# any device: how long to wait before reporting network comms have lapsed (seconds)
+# lapseTime = 60
 
 
 [virtualtemp]

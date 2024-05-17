@@ -26,9 +26,11 @@ from Erl2Useful import locDefaults
 
 class Erl2Startup:
 
-    def __init__(self, root, erl2context={}):
-        self.root = root
+    def __init__(self, erl2context={}):
         self.erl2context = erl2context
+
+        # insist on 'root' always being defined
+        assert('root' in self.erl2context and self.erl2context['root'] is not None)
 
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
@@ -63,7 +65,7 @@ class Erl2Startup:
                 except:
                     errmsg = "Cannot start Erl2Startup because another process is already running"
 
-                mb.showerror(title='Fatal Error', message=errmsg)
+                mb.showerror(title='Fatal Error', message=errmsg, parent=self.erl2context['root'])
                 sys.exit()
             self.__lockfile.close()
 
@@ -109,9 +111,9 @@ class Erl2Startup:
 
         # start up the main device module
         if self.__deviceType == 'tank':
-            self.__device = Erl2Tank(root=self.root, parent=self, erl2context=self.erl2context)
+            self.__device = Erl2Tank(parent=self, erl2context=self.erl2context)
         elif self.__deviceType == 'controller':
-            self.__device = Erl2Controller(root=self.root, parent=self, erl2context=self.erl2context)
+            self.__device = Erl2Controller(parent=self, erl2context=self.erl2context)
 
     def createFullscreenWidget (self, widgetLoc = {}):
 
@@ -189,7 +191,7 @@ class Erl2Startup:
         self.numPadFrame.columnconfigure(0,weight=0)
         self.numPadFrame.columnconfigure(1,weight=1)
 
-    def createRestartWidget (self, widgetLoc = {}):
+    def createRestartWidget (self, widgetLoc = {}, widgetText='Restart ERL2'):
 
         # nothing to do if no parent is given
         if 'parent' not in widgetLoc:
@@ -212,7 +214,7 @@ class Erl2Startup:
                                   command=self.restartApp)
         restartButton.grid(row=0, column=0, padx='2 2', sticky='w')
         #restartButton.image = self.erl2context['img']['reload']
-        l = ttk.Label(self.restartFrame, text='Restart ERL2', font='Arial 16'
+        l = ttk.Label(self.restartFrame, text=widgetText, font='Arial 16'
             #, relief='solid', borderwidth=1
             )
         l.grid(row=0, column=1, padx='2 2', sticky='w')
@@ -222,7 +224,7 @@ class Erl2Startup:
         self.restartFrame.columnconfigure(0,weight=0)
         self.restartFrame.columnconfigure(1,weight=1)
 
-    def createExitWidget (self, widgetLoc = {}):
+    def createExitWidget (self, widgetLoc = {}, widgetText='Shut down ERL2'):
 
         # nothing to do if no parent is given
         if 'parent' not in widgetLoc:
@@ -244,7 +246,7 @@ class Erl2Startup:
                                activebackground='#DBDBDB',
                                command=self.exitApp)
         exitButton.grid(row=0, column=0, padx='2 2', sticky='w')
-        l = ttk.Label(self.exitFrame, text='Shut down ERL2', font='Arial 16'
+        l = ttk.Label(self.exitFrame, text=widgetText, font='Arial 16'
             #, relief='solid', borderwidth=1
             )
         l.grid(row=0, column=1, padx='2 2', sticky='w')
@@ -268,7 +270,7 @@ class Erl2Startup:
         self.erl2context['state'].set([('system','fullscreen',val)])
 
         # apply requested state to window
-        self.root.attributes('-fullscreen', bool(val))
+        self.erl2context['root'].attributes('-fullscreen', bool(val))
 
     # a method to enable / disable the Erl2NumPad popups
     def setNumPad(self, event=None):
@@ -284,7 +286,9 @@ class Erl2Startup:
     def restartApp(self, event=None):
 
         # ask for confirmation
-        if mb.askyesno('Restart Confirmation','Are you sure you want to restart the ERL2 App now?'):
+        if mb.askyesno('Restart Confirmation',
+                       'Are you sure you want to restart the ERL2 App now?',
+                       parent=self.erl2context['root']):
 
             # mention this in the log
             self.__systemLog.writeMessage('ERL2 system restart requested by GUI user')
@@ -297,7 +301,9 @@ class Erl2Startup:
     def exitApp(self, event=None):
 
         # ask for confirmation
-        if mb.askyesno('Shut Down Confirmation','Are you sure you want to shut down the ERL2 App now?'):
+        if mb.askyesno('Shut Down Confirmation',
+                       'Are you sure you want to shut down the ERL2 App now?',
+                       parent=self.erl2context['root']):
 
             # mention this in the log
             self.__systemLog.writeMessage('ERL2 system exit requested by GUI user')
@@ -340,12 +346,12 @@ class Erl2Startup:
         # terminate the current system and start it up again (if asked to do so)
         if self.__restart:
             python = sys.executable
-            os.execl(python, python, * sys.argv)
+            os.execv(python, ['python'] + sys.argv)
 
         # otherwise, just terminate the system
         else:
-            #self.root.destroy() # this was leaving some .after() callbacks hanging
-            tk.Tk.quit(self.root)
+            #self.erl2context['root'].destroy() # this was leaving some .after() callbacks hanging
+            tk.Tk.quit(self.erl2context['root'])
 
 def main():
 
@@ -353,7 +359,7 @@ def main():
     root.rowconfigure(0,weight=1)
     root.columnconfigure(0,weight=1)
 
-    startup = Erl2Startup(root)
+    startup = Erl2Startup({'root':root})
     startup.setFullscreen()
 
     # set things up for graceful termination

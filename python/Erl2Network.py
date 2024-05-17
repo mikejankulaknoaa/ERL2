@@ -289,6 +289,9 @@ class Erl2Network():
         self.__systemLog = systemLog
         self.erl2context = erl2context
 
+        # insist on 'root' always being defined
+        assert('root' in self.erl2context and self.erl2context['root'] is not None)
+
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
@@ -313,7 +316,12 @@ class Erl2Network():
         self.__statusWidgets = []
         self.__childrenWidgets = []
         self.__childrenHeaders = False
-        self.__allWidgets = []
+
+        # .after() scheduling requires dedicated widgets (and Erl2Network may not use widgets)
+        #self.__allWidgets = []
+        self.__afterUpdateDisplays = None
+        self.__afterManageQueues = None
+        self.__afterPollChildren = None
 
         # multithreading: what processes are running, queues for sharing data, received data
         self.__listenProcess = None
@@ -333,8 +341,9 @@ class Erl2Network():
         self.__controllerIP = self.erl2context['conf']['network']['controllerIP']
         self.__ipNetworkStub = self.erl2context['conf']['network']['ipNetworkStub']
         self.__ipRange = self.erl2context['conf']['network']['ipRange']
-        self.__updateFrequency = self.erl2context['conf']['network']['updateFrequency']
         self.__hardcoding = self.erl2context['conf']['network']['hardcoding']
+        self.__updateFrequency = self.erl2context['conf']['network']['updateFrequency']
+        self.__lapseTime = self.erl2context['conf']['network']['lapseTime']
 
         # and also these system-level Erl2Config parameters
         self.__timezone = self.erl2context['conf']['system']['timezone']
@@ -580,7 +589,8 @@ class Erl2Network():
                 elif displayType == 'status': self.__statusWidgets.append(l)
 
                 # keep a separate list of all widgets
-                self.__allWidgets.append(l)
+                self.erl2context['conf']['system']['allWidgets'].append(l)
+                #print (f"{self.__class__.__name__}: Debug: createDisplays: allWidgets length [{len(self.erl2context['conf']['system']['allWidgets'])}]")
 
         # children widgets are a little different
         if displayType == 'children' and len(self.__childrenLocs) > 0:
@@ -597,7 +607,8 @@ class Erl2Network():
                 self.__childrenWidgets.append(f)
 
                 # keep a separate list of all widgets
-                self.__allWidgets.append(f)
+                self.erl2context['conf']['system']['allWidgets'].append(f)
+                #print (f"{self.__class__.__name__}: Debug: createDisplays/childrenLocs: allWidgets length [{len(self.erl2context['conf']['system']['allWidgets'])}]")
 
     def updateDisplays(self, scheduleNext=True):
 
@@ -689,7 +700,8 @@ class Erl2Network():
                                  f"keeping [{chosenMac}][{newChildrenDict[chosenMac]['ip']}] and " +
                                  f"ignoring the one{plur} at {', '.join(dupMacsAndIPs)}. " +
                                  f"Please shut down the conflicting device{plur} " +
-                                 f"and edit the ID in {pron} erl2.conf configuration file{plur}.")
+                                 f"and edit the ID in {pron} erl2.conf configuration file{plur}.",
+                                 parent=self.erl2context['root'])
 
                     # note duplicate ids in log
                     self.__networkLog.writeMessage(f"scan results: duplicate IDs, keeping " +
@@ -725,7 +737,8 @@ class Erl2Network():
                         newType = newChildrenDict[thisMac]['deviceType']
                         mb.showwarning(f"Warning: Device ID [{thisID}] used to be online with " +
                                        f"device type [{oldType}] but now has device type [{newType}]. " +
-                                       f"Previous settings and data will be retained.")
+                                       f"Previous settings and data will be retained.",
+                                       parent=self.erl2context['root'])
                         self.childrenDict[thisMac]['deviceType'] = newChildrenDict[thisMac]['deviceType']
                         dictChanged = True
 
@@ -739,7 +752,8 @@ class Erl2Network():
                         newIP = newChildrenDict[thisMac]['ip']
                         mb.showwarning(f"Warning: Device ID [{thisID}] used to be online with " +
                                        f"IP address [{oldIP}] but now has IP address [{newIP}]. " +
-                                       f"Previous settings and data will be retained.")
+                                       f"Previous settings and data will be retained.",
+                                       parent=self.erl2context['root'])
                         self.childrenDict[thisMac]['ip'] = newChildrenDict[thisMac]['ip']
                         dictChanged = True
 
@@ -761,7 +775,8 @@ class Erl2Network():
                     mb.showwarning(f"Warning: MAC address [{thisMac}] used to be online with " +
                                    f"Device ID [{oldID}] but now has Device ID [{newID}]. " +
                                    f"Previous settings and data will be discarded and everything " +
-                                   f"loaded anew from the device.")
+                                   f"loaded anew from the device.",
+                                   parent=self.erl2context['root'])
                     self.childrenDict[thisMac] = newChildrenDict[thisMac]
                     dictChanged = True
 
@@ -779,7 +794,8 @@ class Erl2Network():
                     mb.showwarning(f"Warning: Device ID [{thisID}] used to be online with " +
                                    f"MAC address [{oldMac}] but now has MAC address [{thisMac}]. " +
                                    f"Previous settings and data will be discarded and everything " +
-                                   f"loaded anew from the device.")
+                                   f"loaded anew from the device.",
+                                   parent=self.erl2context['root'])
                     self.childrenDict[thisMac] = newChildrenDict[thisMac]
                     dictChanged = True
 
@@ -789,9 +805,9 @@ class Erl2Network():
 
                 # the final alternative is that this is an entirely new MAC and ID
                 else:
- 
+
                     #print (f"{self.__class__.__name__}: updateDisplays: Debug: [{thisMac}] new MAC never seen before")
- 
+
                     # no warning needed, just add it
                     self.childrenDict[thisMac] = newChildrenDict[thisMac]
                     dictChanged = True
@@ -899,7 +915,7 @@ class Erl2Network():
         else: upd = self.__lastActive.astimezone(self.__timezone).strftime(self.__dtFormat)
 
         # adjust the formatting if the communications have gone quiet
-        if self.__lastActive is None or currentTime.timestamp() - self.__lastActive.timestamp() > 300:
+        if self.__lastActive is None or currentTime.timestamp() - self.__lastActive.timestamp() > self.__lapseTime:
             fnt = 'Arial 14 bold'
             fgd = '#A93226' # red
         else:
@@ -955,7 +971,7 @@ class Erl2Network():
                     # special formatting for lastActive
                     lastA = self.childrenDict[mac]['lastActive']
                     upd = lastA.astimezone(self.__timezone).strftime(self.__dtFormat)
-                    if lastA is None or currentTime.timestamp() - lastA.timestamp() > 300:
+                    if lastA is None or currentTime.timestamp() - lastA.timestamp() > self.__lapseTime:
                         fnt = 'Arial 14 bold'
                         fgd = '#A93226' # red
                     else:
@@ -1008,16 +1024,23 @@ class Erl2Network():
             delay = int((nextUpdateTime - currentTime.timestamp())*1000)
 
             # update the display widgets again after waiting an appropriate number of milliseconds
-            self.__allWidgets[0].after(delay, self.updateDisplays)
+            if self.__afterUpdateDisplays is None:
+                self.__afterUpdateDisplays = self.erl2context['conf']['system']['allWidgets'].pop()
+                #print (f"{self.__class__.__name__}: Debug: scheduling updateDisplays: allWidgets length [{len(self.erl2context['conf']['system']['allWidgets'])}]")
+            self.__afterUpdateDisplays.after(delay, self.updateDisplays)
 
     def rescanSubnet(self, event=None, init=False):
 
         if self.scanning():
-            mb.showinfo(title='Rescan ERL2 Subnet', message="Another scan is already running.")
+            mb.showinfo(title='Rescan ERL2 Subnet',
+                        message="Another scan is already running.",
+                        parent=self.erl2context['root'])
 
         else:
             # ask for confirmation unless this is the first scan during initialization
-            if init or (mb.askyesno(title='Rescan ERL2 Subnet', message="Are you sure you want to scan for new devices on the ERL2 subnet?")):
+            if init or (mb.askyesno(title='Rescan ERL2 Subnet',
+                                    message="Are you sure you want to scan for new devices on the ERL2 subnet?",
+                                    parent=self.erl2context['root'])):
                 self.wrapperScan()
 
     def wrapperListen(self):
@@ -1224,7 +1247,10 @@ class Erl2Network():
                 self.erl2context['state'].set([('network','childrenDict',self.childrenDict)])
 
         # call this method again after waiting 1s
-        self.__allWidgets[1].after(1000, self.manageQueues)
+        if self.__afterManageQueues is None:
+            self.__afterManageQueues = self.erl2context['conf']['system']['allWidgets'].pop()
+            #print (f"{self.__class__.__name__}: Debug: scheduling manageQueues: allWidgets length [{len(self.erl2context['conf']['system']['allWidgets'])}]")
+        self.__afterManageQueues.after(1000, self.manageQueues)
 
     def pollChildren(self):
 
@@ -1278,7 +1304,10 @@ class Erl2Network():
                     self.sendCommand(thisMac, b"GETLOG" + b"|" + lastLog.encode())
 
         # call this method again after waiting 5s
-        self.__allWidgets[2].after(5000, self.pollChildren)
+        if self.__afterPollChildren is None:
+            self.__afterPollChildren = self.erl2context['conf']['system']['allWidgets'].pop()
+            #print (f"{self.__class__.__name__}: Debug: scheduling pollChildren: allWidgets length [{len(self.erl2context['conf']['system']['allWidgets'])}]")
+        self.__afterPollChildren.after(5000, self.pollChildren)
 
     def scanning(self):
         return self.__scanProcess is not None and self.__scanProcess.is_alive()

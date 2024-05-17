@@ -68,8 +68,8 @@ class Erl2VirtualTemp(Erl2Sensor):
 
         # sneak a peak at whether the system has the heater or chiller turned on
         try:
-            heaterOn = self.__parent.controls['heater'].state
-            chillerOn = self.__parent.controls['chiller'].state
+            heaterOn = self.__parent.controls['heater'].setting
+            chillerOn = self.__parent.controls['chiller'].setting
         except:
             heaterOn = 0
             chillerOn = 0

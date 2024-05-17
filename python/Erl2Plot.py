@@ -253,7 +253,7 @@ class Erl2Plot():
 
                             # we want the appropriate number formatting, but default to 1 decimal if missing
                             decPl = self.__displayDecimals if self.__displayDecimals is not None else 1
-                            
+
                             self.__meanDisplay.config(text=f"{float(round(data[specs['yName']].mean(),decPl)):.{decPl}f}")
                             self.__stdDisplay.config(text=f"{float(round(data[specs['yName']].std(),decPl+1)):.{decPl+1}f}")
                             statsUpdated = True
@@ -288,14 +288,14 @@ class Erl2Plot():
 
         # hardcode the appearance of certain parameters
         if name == 'to.raise':
-            return {'yName':'On (seconds)',
+            return {'yName':'Average Setting',
                     'yLabel':'Heat',
-                    'yLimit':300.,
+                    'yLimit':1.,
                     'color':'red'}
         if name == 'to.lower':
-            return {'yName':'On (seconds)',
+            return {'yName':'Average Setting',
                     'yLabel':'Chill',
-                    'yLimit':300.,
+                    'yLimit':1.,
                     'color':'blue'}
         if name == 'mfc.air':
             return {'yName':'Average Setting',

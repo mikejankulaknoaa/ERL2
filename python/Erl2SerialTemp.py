@@ -79,7 +79,7 @@ class Erl2SerialTemp(Erl2Sensor):
             self.__conn.reset_input_buffer()
 
             #print (f"{self.__class__.__name__}: Debug: connect(): sending 'status' to serial device")
- 
+
             # check if 'status' is answered with a string beginning '?STATUS'
             self.__conn.write(bytes('status\r','utf8'))
             ans = self.__conn.read(7)
@@ -152,7 +152,7 @@ class Erl2SerialTemp(Erl2Sensor):
 
         # tell the serial device to take a measurement
         if self.__conn is not None:
-        
+
             # reset buffer, then ask for a temperature reading
             self.__conn.reset_input_buffer()
             self.__conn.write(bytes('r\r','utf8'))

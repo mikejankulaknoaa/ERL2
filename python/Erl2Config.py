@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.48b (2024-05-03c)'
+    VERSION = '0.49b (2024-05-17)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -36,8 +36,9 @@ class Erl2Config():
         self.__default['network']['enabled'] = 'False'
         self.__default['network']['ipNetworkStub'] = '192.168.2.'
         self.__default['network']['ipRange'] = '[2, 63]'
-        self.__default['network']['updateFrequency'] = '5'
         self.__default['network']['hardcoding'] = 'None'
+        self.__default['network']['updateFrequency'] = '5'
+        self.__default['network']['lapseTime'] = '60'
 
         self.__default['virtualtemp']['enabled'] = 'False'
 
@@ -264,6 +265,10 @@ class Erl2Config():
             if not path.isdir(path.dirname(self.__erl2conf['system'][dname])):
                 raise TypeError(f"{self.__class__.__name__}: ['system']['{dname}'] = [{self.__erl2conf['system'][dname]}] is not a valid directory")
 
+        # placeholder for allWidgets system-level array
+        self.__erl2conf['system']['allWidgets'] = []
+        #print (f"{self.__class__.__name__}: Debug: allWidgets length [{len(self.__erl2conf['system']['allWidgets'])}]")
+
         # here is where we will define default values for key parameters,
         # in case any crucial values are missing from the erl2.conf file.
         # we are also doing some type-checking at the same time.
@@ -287,9 +292,11 @@ class Erl2Config():
         self.validate(str,  'network', 'controllerIP')
         self.validate(bool, 'network', 'enabled')
         self.validate(str,  'network', 'ipNetworkStub')
-        self.validate(int,  'network', 'updateFrequency', min=1)
 
         self.validateList(str, 'network', 'hardcoding')
+
+        self.validate(int,  'network', 'updateFrequency', min=1)
+        self.validate(int,  'network', 'lapseTime', min=1)
 
         # ipRange has some extra logic (non-decreasing order)
         self.validateList(int, 'network', 'ipRange', 2)

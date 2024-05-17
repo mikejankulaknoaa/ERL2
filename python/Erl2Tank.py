@@ -21,16 +21,20 @@ from Erl2Useful import nextIntervalTime
 
 class Erl2Tank:
 
-    def __init__(self, root, parent=None, erl2context={}):
-        self.root = root
+    def __init__(self, parent=None, erl2context={}):
         self.parent = parent
         self.erl2context = erl2context
 
+        # insist on 'root' always being defined
+        assert('root' in self.erl2context and self.erl2context['root'] is not None)
+
         # pop up a warning message if called directly
         if self.parent is None:
-            if not mb.askyesno('Warning','You have started up the Erl2Tank module directly,'
-                                         ' which is deprecated in favor of using the newer'
-                                         ' ErlStartup module. Are you sure you wish to do this?'):
+            if not mb.askyesno('Warning',
+                               'You have started up the Erl2Tank module directly,'
+                               ' which is deprecated in favor of using the newer'
+                               ' ErlStartup module. Are you sure you wish to do this?',
+                               parent=self.erl2context['root']):
                 sys.exit()
 
         # read in the system configuration file if needed
@@ -72,7 +76,7 @@ class Erl2Tank:
         self.network = None
 
         # the top-level element is a notebook (tabbed screens)
-        self.__mainTabs = ttk.Notebook(self.root,padding='5 5 5 2')
+        self.__mainTabs = ttk.Notebook(self.erl2context['root'],padding='5 5 5 2')
         self.__mainTabs.grid(row=0,column=0,pady='0',sticky='nesw')
         self.__mainTabs.rowconfigure(0,weight=1)
         self.__mainTabs.columnconfigure(0,weight=1)
@@ -91,8 +95,12 @@ class Erl2Tank:
             self.__tabs[p].grid_columnconfigure(0,weight=1)
             self.__mainTabs.add(self.__tabs[p],text=p,padding='0')
 
+            # add frames to allWidgets array for widgetless modules add use .after() methods
+            self.erl2context['conf']['system']['allWidgets'].append(self.__tabs[p])
+            #print (f"{self.__class__.__name__}: Debug: tabNames[{p}]: allWidgets length [{len(self.erl2context['conf']['system']['allWidgets'])}]")
+
         # add a clock widget in the upper right corner
-        clock = Erl2Clock(clockLoc={'parent':self.root,'row':0,'column':0},
+        clock = Erl2Clock(clockLoc={'parent':self.erl2context['root'],'row':0,'column':0},
                           erl2context=self.erl2context)
 
         # quickly create 3x4 grids of frames in all tabs except Settings
@@ -735,7 +743,7 @@ def main():
     root.rowconfigure(0,weight=1)
     root.columnconfigure(0,weight=1)
 
-    tank = Erl2Tank(root)
+    tank = Erl2Tank({'root':root})
 
     root.mainloop()
 
