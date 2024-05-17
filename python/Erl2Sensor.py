@@ -1,4 +1,5 @@
 from datetime import datetime as dt
+from datetime import timedelta as td
 from datetime import timezone as tz
 from random import random as random
 import tkinter as tk
@@ -57,10 +58,14 @@ class Erl2Sensor():
         # read these useful parameters from Erl2Config
         self.__sampleFrequency = self.erl2context['conf'][self.sensorType]['sampleFrequency']
         self.__loggingFrequency = self.erl2context['conf'][self.sensorType]['loggingFrequency']
+        self.__systemFrequency = self.erl2context['conf']['system']['loggingFrequency']
         self.__displayParameter = self.erl2context['conf'][self.sensorType]['displayParameter']
         self.__displayDecimals = self.erl2context['conf'][self.sensorType]['displayDecimals']
         self.__offsetParameter = self.erl2context['conf'][self.sensorType]['offsetParameter']
         self.__offsetDefault = self.erl2context['conf'][self.sensorType]['offsetDefault']
+
+        # a record of recent sensor values for running averages
+        self.recentValues = []
 
         # we also keep track of what the active offset parameter is
         # (try to read one back from saved system state)
@@ -166,11 +171,28 @@ class Erl2Sensor():
 
     def readSensor(self):
 
+        # make note of previous measurement value
+        previousValue = None
+        if self.__displayParameter in self.value:
+            previousValue = self.value[self.__displayParameter]
+
         # take a measurement
         currentTime, measurement, online = self.measure()
 
         # apply the corrective offset
         self.applyOffset(measurement)
+
+        # make note of current measurement value
+        currentValue = None
+        if self.__displayParameter in self.value:
+            currentValue = self.value[self.__displayParameter]
+
+        # keep a record of recent sensor measurement values
+        self.recentValues.append({'ts':currentTime, 'prev':previousValue, 'curr':currentValue})
+
+        # filter out recent values that have gotten too old
+        tooOld = currentTime - td(seconds=max(self.__loggingFrequency,self.__systemFrequency))
+        self.recentValues = [ x for x in self.recentValues if x['ts'] > tooOld ]
 
         #print (f"{self.__class__.__name__}: Debug: readSensor() receiving [{str(currentTime)}][{str(measurement)}][{str(online)}]")
 
@@ -192,6 +214,11 @@ class Erl2Sensor():
 
                 # only log this measurement if the sensor is online
                 if self.online:
+
+                    # add an average value for the reporting period
+                    _, measurement['avg.value'] = self.reportValue()
+
+                    # write record to file
                     self.log.writeData(measurement)
 
         # if the next file-writing interval time is empty or in the past, update it
@@ -359,12 +386,64 @@ class Erl2Sensor():
             # notify application that its state has changed
             self.erl2context['state'].set([(self.sensorType,'offset',self.__offsetFloat)])
 
-    def reportValue(self):
+    def reportValue(self, period=None):
 
-        if (self.online and self.__displayParameter in self.value):
-            return self.value[self.__displayParameter]
+        # default to sensor's own logging frequency
+        if period is None:
+            period = self.__loggingFrequency
+
+        # timing
+        currentTime = dt.now(tz=tz.utc)
+        oldestTime = currentTime - td(seconds=period)
+
+        # running totals
+        runningTotal = 0.
+        runningTime = 0.
+
+        # from the previous time through the loop
+        lastTime = lastCurr = None
+
+        # loop through all recent values
+        for val in self.recentValues:
+
+            # too old
+            if val['ts'] < oldestTime:
+                lastTime = oldestTime
+                lastCurr = val['curr']
+                continue
+
+            # too new (probably not possible)
+            elif val['ts'] > currentTime:
+                break
+
+            # only do the math if value is defined
+            if val['prev'] is not None:
+
+                # is this the earliest record?
+                if lastTime is None:
+                    delta = (val['ts'] - oldestTime).total_seconds()
+                    runningTime += delta
+                    runningTotal += val['prev'] * delta
+                else:
+                    delta = (val['ts'] - lastTime).total_seconds()
+                    runningTime += delta
+                    runningTotal += val['prev'] * delta
+
+            # remember vals from the last time through the loop
+            lastTime = val['ts']
+            lastCurr = val['curr']
+
+        # current value is added to the mix
+        if lastTime is not None and lastCurr is not None:
+            delta = (currentTime - lastTime).total_seconds()
+            runningTime += delta
+            runningTotal += lastCurr * delta
+
+        # final math
+        if runningTime > 0.:
+            return lastCurr, runningTotal/runningTime
         else:
-            return None
+            return lastCurr, None
 
 def main():
 

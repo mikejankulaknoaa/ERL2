@@ -50,6 +50,7 @@ class Erl2Tank:
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__serialTemp = self.erl2context['conf']['temperature']['serialPort']
         self.__virtualTemp = self.erl2context['conf']['virtualtemp']['enabled']
+        self.__systemFrequency = self.erl2context['conf']['system']['loggingFrequency']
 
         # this parameter is written (to share w/controller) but never read
         self.erl2context['state'].set([('virtualtemp','enabled',self.__virtualTemp)])
@@ -631,76 +632,18 @@ class Erl2Tank:
                 m = {'Timestamp.UTC': currentTime.strftime(self.__dtFormat),
                      'Timestamp.Local': currentTime.astimezone(self.__timezone).strftime(self.__dtFormat)}
 
-                # sensor / temperature : 'temp.degC'
-                if ('temperature' in self.sensors
-                    and hasattr(self.sensors['temperature'], 'value')
-                    and 'temp.degC' in self.sensors['temperature'].value):
-                    m['temperature'] = self.sensors['temperature'].value['temp.degC']
-                else:
-                    m['temperature'] = None
-
-                # sensor / pH : 'pH'
-                if ('pH' in self.sensors
-                    and hasattr(self.sensors['pH'], 'value')
-                    and 'pH' in self.sensors['pH'].value):
-                    m['pH'] = self.sensors['pH'].value['pH']
-                else:
-                    m['pH'] = None
-
-                # sensor / DO : 'uM'
-                if ('DO' in self.sensors
-                    and hasattr(self.sensors['DO'], 'value')
-                    and 'uM' in self.sensors['DO'].value):
-                    m['DO'] = self.sensors['DO'].value['uM']
-                else:
-                    m['DO'] = None
-
-                # control / chiller : 'On (seconds)'
-                if ('chiller' in self.controls
-                    and hasattr(self.controls['chiller'], 'value')
-                    and 'On (seconds)' in self.controls['chiller'].value):
-                    m['chiller'] = self.controls['chiller'].value['On (seconds)']
-                else:
-                    m['chiller'] = None
-
-                # control / heater : 'On (seconds)'
-                if ('heater' in self.controls
-                    and hasattr(self.controls['heater'], 'value')
-                    and 'On (seconds)' in self.controls['heater'].value):
-                    m['heater'] = self.controls['heater'].value['On (seconds)']
-                else:
-                    m['heater'] = None
-
-                # control / mfc.air : 'Average Flow Setting'
-                if ('mfc.air' in self.controls
-                    and hasattr(self.controls['mfc.air'], 'value')
-                    and 'Average Flow Setting' in self.controls['mfc.air'].value):
-                    m['mfc.air'] = self.controls['mfc.air'].value['Average Flow Setting']
-                else:
-                    m['mfc.air'] = None
-
-                # control / mfc.co2 : 'Average Flow Setting'
-                if ('mfc.co2' in self.controls
-                    and hasattr(self.controls['mfc.co2'], 'value')
-                    and 'Average Flow Setting' in self.controls['mfc.co2'].value):
-                    m['mfc.co2'] = self.controls['mfc.co2'].value['Average Flow Setting']
-                else:
-                    m['mfc.co2'] = None
-
-                # control / mfc.n2 : 'Average Flow Setting'
-                if ('mfc.n2' in self.controls
-                    and hasattr(self.controls['mfc.n2'], 'value')
-                    and 'Average Flow Setting' in self.controls['mfc.n2'].value):
-                    m['mfc.n2'] = self.controls['mfc.n2'].value['Average Flow Setting']
-                else:
-                    m['mfc.n2'] = None
+                # first sensors, then controls: current values and average values
+                for s in self.sensors:
+                    m['s.'+s], m['s.'+s+'.avg'] = self.sensors[s].reportValue(self.__systemFrequency)
+                for c in self.controls:
+                    m['c.'+c], m['c.'+c+'.avg'] = self.controls[c].reportValue(self.__systemFrequency)
 
                 # write out the composite log record for the tank
                 self.__systemLog.writeData(m)
 
         # if the next file-writing interval time is empty or in the past, update it
         if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
-            self.__nextFileTime = nextIntervalTime(currentTime, self.erl2context['conf']['system']['loggingFrequency'])
+            self.__nextFileTime = nextIntervalTime(currentTime, self.__systemFrequency)
 
         # update the log again after waiting an appropriate number of milliseconds
         delay = int((self.__nextFileTime - currentTime.timestamp())*1000)
