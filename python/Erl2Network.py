@@ -1343,10 +1343,21 @@ class Erl2Network():
                 # all other updatable widgets are just plain labels
                 else:
 
-                    # add a Label widget to show the current value
-                    l = ttk.Label(loc['parent'], padding=loc['padding'], relief=loc['relief'], borderwidth=loc['borderwidth']
-                        , text=upd, font=fnt, foreground=fgd)
-                    l.grid(row=loc['row'], column=loc['column'], rowspan=loc['rowspan'], columnspan=loc['columnspan'], sticky=loc['sticky'])
+                    # note that online widgets are images, not text
+                    if widgetType == 'online':
+
+                        # add a Label widget to show the current value
+                        l = ttk.Label(loc['parent'], padding=loc['padding'], relief=loc['relief'], borderwidth=loc['borderwidth'],
+                            image=self.__onlineImages[upd])
+                        l.grid(row=loc['row'], column=loc['column'], rowspan=loc['rowspan'], columnspan=loc['columnspan'], sticky=loc['sticky'])
+
+                    # other widgets are text labels
+                    else:
+
+                        # add a Label widget to show the current value
+                        l = ttk.Label(loc['parent'], padding=loc['padding'], relief=loc['relief'], borderwidth=loc['borderwidth'],
+                            text=upd, font=fnt, foreground=fgd)
+                        l.grid(row=loc['row'], column=loc['column'], rowspan=loc['rowspan'], columnspan=loc['columnspan'], sticky=loc['sticky'])
 
                     # add this location and widget reference to the list
                     self.__netWidgets[widgetType].append({'loc':loc, 'ref':l})

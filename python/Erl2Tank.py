@@ -99,9 +99,18 @@ class Erl2Tank:
             self.erl2context['conf']['system']['allWidgets'].append(self.__tabs[p])
             #print (f"{self.__class__.__name__}: Debug: tabNames[{p}]: allWidgets length [{len(self.erl2context['conf']['system']['allWidgets'])}]")
 
-        # add a clock widget in the upper right corner
-        clock = Erl2Clock(clockLoc={'parent':self.erl2context['root'],'row':0,'column':0},
+        # in the upper right corner...
+        corner = ttk.Frame(self.erl2context['root'], relief='flat', borderwidth=0)
+        corner.grid(row=0, column=0, sticky='ne')
+
+        # ...add a clock widget...
+        #clock = Erl2Clock(clockLoc={'parent':self.erl2context['root'],'row':0,'column':0},
+        #                  erl2context=self.erl2context)
+        clock = Erl2Clock(clockLoc={'parent':corner,'row':0,'column':1},
                           erl2context=self.erl2context)
+
+        # ...and a network status indicator (see below)
+        onlineLocs = [{'parent':corner, 'row':0, 'column':0, 'sticky':'ew'}]
 
         # quickly create 3x4 grids of frames in all tabs except Settings
         for p in [x for x in self.__tabNames if x != 'Settings']:
@@ -535,7 +544,8 @@ class Erl2Tank:
                 # go back and add network-related widgets
                 self.erl2context['network'].addWidgets(ipLocs=ipLocs,
                                                        macLocs=macLocs,
-                                                       statusLocs=statusLocs)
+                                                       statusLocs=netStatusLocs,
+                                                       onlineLocs=onlineLocs)
 
         # standardized labels for some Temp, pH and DO frames
         for name in ['Temp', 'pH', 'DO']:
