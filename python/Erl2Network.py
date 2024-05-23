@@ -17,7 +17,7 @@ from Erl2Config import Erl2Config
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
 from Erl2State import Erl2State
-from Erl2Useful import nextIntervalTime
+from Erl2Useful import locDefaults, nextIntervalTime
 
 # Erl2Network needs some functions defined outside of the class, because
 # in macOS and Windows, you cannot start a process in a subthread if it is
@@ -267,25 +267,20 @@ class Erl2Network():
     PORT = 65432
 
     def __init__(self,
+                 standalone=False,
                  typeLocs=[],
-                 idLocs=[],
+                 nameLocs=[],
                  interfaceLocs=[],
                  ipLocs=[],
                  macLocs=[],
                  statusLocs=[],
+                 buttonLocs=[],
                  childrenLocs=[],
-                 buttonLoc={},
+                 onlineLocs=[],
                  systemLog=None,
                  erl2context={}):
 
-        self.__typeLocs = typeLocs
-        self.__idLocs = idLocs
-        self.__interfaceLocs = interfaceLocs
-        self.__ipLocs = ipLocs
-        self.__macLocs = macLocs
-        self.__statusLocs = statusLocs
-        self.__childrenLocs = childrenLocs
-        self.__buttonLoc = buttonLoc
+        self.__standalone = standalone
         self.__systemLog = systemLog
         self.erl2context = erl2context
 
@@ -307,18 +302,17 @@ class Erl2Network():
         # load this image that may be needed for Erl2Network controls
         self.erl2context['img'].addImage('rescan', 'network-25.png')
 
+        # and these images are for the online / offline indicator
+        self.erl2context['img'].addImage('online', 'network-on-25.png')
+        self.erl2context['img'].addImage('offline', 'network-off-25.png')
+        self.__onlineImages=[self.erl2context['img']['offline'],
+                             self.erl2context['img']['online']]
+
         # remember what widgets are active for this network
-        self.__typeWidgets = []
-        self.__idWidgets = []
-        self.__interfaceWidgets = []
-        self.__ipWidgets = []
-        self.__macWidgets = []
-        self.__statusWidgets = []
-        self.__childrenWidgets = []
         self.__childrenHeaders = False
+        self.__netWidgets = {}
 
         # .after() scheduling requires dedicated widgets (and Erl2Network may not use widgets)
-        #self.__allWidgets = []
         self.__afterUpdateDisplays = None
         self.__afterManageQueues = None
         self.__afterPollChildren = None
@@ -405,62 +399,29 @@ class Erl2Network():
         self.__mac = None
         self.__stub = None
 
-        # start by creating the display widgets, if needed
-        self.createDisplays('type')
-        self.createDisplays('id')
-        self.createDisplays('interface')
-        self.createDisplays('ip')
-        self.createDisplays('mac')
-        self.createDisplays('status')
-        self.createDisplays('children')
-
-        # provide a 'rescan' button (controller only) if given a place for it
-        if self.__deviceType == 'controller' and 'parent' in self.__buttonLoc:
-
-            # create a frame for the button
-            if 'columnspan' in self.__buttonLoc: cspan = self.__buttonLoc['columnspan']
-            else: cspan = 1
-            rescanFrame = ttk.Frame(self.__buttonLoc['parent']) #, padding='0', relief='solid', borderwidth=1)
-            rescanFrame.grid(row=self.__buttonLoc['row'], column=self.__buttonLoc['column'], columnspan=cspan, sticky='nesw')
-
-            # frame within the frame? for placement (pad with side frames to force it to center)
-            f0 = ttk.Frame(rescanFrame) #, padding='0', relief='solid', borderwidth=1)
-            f0.grid(row=0, column=0, sticky='nesw')
-            f1 = ttk.Frame(rescanFrame) #, padding='0', relief='solid', borderwidth=1)
-            f1.grid(row=0, column=1, sticky='nesw')
-            f2 = ttk.Frame(rescanFrame) #, padding='0', relief='solid', borderwidth=1)
-            f2.grid(row=0, column=2, sticky='nesw')
-            rescanFrame.rowconfigure(0,weight=1)
-            rescanFrame.columnconfigure(0,weight=1)
-            rescanFrame.columnconfigure(1,weight=0)
-            rescanFrame.columnconfigure(2,weight=1)
-
-            # create the button, and its clickable label
-            rescanButton = tk.Button(f1,
-                                     image=self.erl2context['img']['rescan'],
-                                     height=40,
-                                     width=40,
-                                     bd=0,
-                                     highlightthickness=0,
-                                     activebackground='#DBDBDB',
-                                     command=self.rescanSubnet,
-                                     )
-            rescanButton.grid(row=0, column=0, padx='2 2', sticky='w')
-            l = ttk.Label(f1, text='Rescan ERL2 Subnet', font='Arial 16'
-                #, relief='solid', borderwidth=1
-                )
-            l.grid(row=0, column=1, padx='2 2', sticky='w')
-            l.bind('<Button-1>', self.rescanSubnet)
-
-            f1.rowconfigure(0,weight=1)
-            f1.columnconfigure(0,weight=0)
-            f1.columnconfigure(1,weight=1)
-
         # determine what IP address(es) are associated with this system's network interfaces
         self.getAddresses()
         #print (f"{self.__class__.__name__}: __init: Debug: self.__deviceAddresses is {self.__deviceAddresses}")
         #print (f"{self.__class__.__name__}: __init: Debug: self.__networkStubs is {self.__networkStubs}")
         #print (f"{self.__class__.__name__}: __init: Debug: self.__hardcoding is {self.__hardcoding}")
+
+        # location defaults for network module
+        self.modDefaults={'relief':'flat', 'borderwidth':0, 'padx':'0', 'pady':'0', 'sticky':'nw'}
+
+        # widget creation can be done at instantiation or later with separate addWidgets call
+        if (len(typeLocs) + len(nameLocs) + len(interfaceLocs) + len(ipLocs) + len(macLocs)
+                + len(statusLocs) + len(buttonLocs) + len(childrenLocs) > 0):
+
+            self.addWidgets(typeLocs=typeLocs,
+                            nameLocs=nameLocs,
+                            interfaceLocs=interfaceLocs,
+                            ipLocs=ipLocs,
+                            macLocs=macLocs,
+                            statusLocs=statusLocs,
+                            buttonLocs=buttonLocs,
+                            childrenLocs=childrenLocs,
+                            onlineLocs=onlineLocs,
+                            )
 
         # if controller, start scanning for child devices (only if networkStubs were found)
         if self.__deviceType == 'controller' and len(self.__networkStubs) > 0:
@@ -561,59 +522,6 @@ class Erl2Network():
                     self.__ip = self.__deviceAddresses[0]['IP']
                     self.__mac = self.__deviceAddresses[0]['MAC']
                     break
-
-    def createDisplays(self, displayType):
-
-        locations = None
-
-        # reuse this method for all the different display fields
-        if displayType == 'type': locations = self.__typeLocs
-        elif displayType == 'id': locations = self.__idLocs
-        elif displayType == 'interface': locations = self.__interfaceLocs
-        elif displayType == 'ip': locations = self.__ipLocs
-        elif displayType == 'mac': locations = self.__macLocs
-        elif displayType == 'status': locations = self.__statusLocs
-
-        if locations is not None:
-            for loc in locations:
-
-                # create the display widget's base frame as a child of its parent
-                f = ttk.Frame(loc['parent'], padding='0 0', relief='flat', borderwidth=0)
-                f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nw')
-
-                # add a Label widget to show the current value
-                l = ttk.Label(f, text='--', font='Arial 14')
-                l.grid(row=0, column=0, sticky='nw')
-
-                # keep a list of widgets for this display
-                if displayType == 'type': self.__typeWidgets.append(l)
-                elif displayType == 'id': self.__idWidgets.append(l)
-                elif displayType == 'interface': self.__interfaceWidgets.append(l)
-                elif displayType == 'ip': self.__ipWidgets.append(l)
-                elif displayType == 'mac': self.__macWidgets.append(l)
-                elif displayType == 'status': self.__statusWidgets.append(l)
-
-                # keep a separate list of all widgets
-                self.erl2context['conf']['system']['allWidgets'].append(l)
-                #print (f"{self.__class__.__name__}: Debug: createDisplays: allWidgets length [{len(self.erl2context['conf']['system']['allWidgets'])}]")
-
-        # children widgets are a little different
-        if displayType == 'children' and len(self.__childrenLocs) > 0:
-
-            for loc in self.__childrenLocs:
-
-                # create an empty Frame widget
-                if 'columnspan' in loc: cspan = loc['columnspan']
-                else: cspan = 1
-                f = ttk.Frame(loc['parent'], padding='2', relief='solid', borderwidth=1)
-                f.grid(row=loc['row'], column=loc['column'], columnspan=cspan, padx='2', pady='0', sticky='nw')
-
-                # keep a list of children widgets
-                self.__childrenWidgets.append(f)
-
-                # keep a separate list of all widgets
-                self.erl2context['conf']['system']['allWidgets'].append(f)
-                #print (f"{self.__class__.__name__}: Debug: createDisplays/childrenLocs: allWidgets length [{len(self.erl2context['conf']['system']['allWidgets'])}]")
 
     def updateDisplays(self, scheduleNext=True):
 
@@ -865,161 +773,43 @@ class Erl2Network():
         # default font
         fnt = 'Arial 14'
 
-        # loop through all placements of the type widgets
-        for w in self.__typeWidgets:
+        # loop through widget types
+        for wType in self.__netWidgets:
 
-            # set the update value
-            if self.__deviceType is None: upd = '--'
-            else: upd = self.__deviceType
+            # children widgets are a little different
+            if wType == 'children':
+                self.populateChildrenTables(currentTime=currentTime)
 
-            # update the display
-            w.config(text=upd, font=fnt)
+            else:
+                # first, get info for drawing this label
+                upd, fnt, fgd = self.getDisplayVals(wType, currentTime=currentTime)
 
-        # loop through all placements of the id widgets
-        for w in self.__idWidgets:
+                # loop through widgets of this type
+                ind = 0
+                found = False
+                while ind < len(self.__netWidgets[wType]):
 
-            # set the update value
-            if self.__id is None: upd = '--'
-            else: upd = self.__id
+                    # look for, and delete, widgets that no longer exist
+                    if ('ref' not in self.__netWidgets[wType][ind]
+                            or not self.__netWidgets[wType][ind]['ref'].winfo_exists()):
 
-            # update the display
-            w.config(text=upd, font=fnt)
+                        # delete this list entry because its widget is gone
+                        #print (f"{self.__class__.__name__}: updateDisplays: Debug: deleting list entry of type [{wType}]")
+                        self.__netWidgets[wType].pop(ind)
 
-        # loop through all placements of the interface widgets
-        for w in self.__interfaceWidgets:
+                        # move on to next element in list
+                        continue
 
-            # set the update value
-            if self.__interface is None: upd = '--'
-            else: upd = self.__interface
+                    # special case: update the image on the 'online' widget
+                    if wType == 'online':
+                        self.__netWidgets[wType][ind]['ref'].config(image=self.__onlineImages[upd])
 
-            # update the display
-            w.config(text=upd, font=fnt)
-
-        # loop through all placements of the ip widgets
-        for w in self.__ipWidgets:
-
-            # set the update value
-            if self.__ip is None: upd = '--'
-            else: upd = self.__ip
-
-            # update the display
-            w.config(text=upd, font=fnt)
-
-        # loop through all placements of the mac widgets
-        for w in self.__macWidgets:
-
-            # set the update value
-            if self.__mac is None: upd = '--'
-            else: upd = self.__mac
-
-            # update the display
-            w.config(text=upd, font=fnt)
-
-        # set the update value
-        if self.__lastActive is None: upd = 'never'
-        else: upd = self.__lastActive.astimezone(self.__timezone).strftime(self.__dtFormat)
-
-        # adjust the formatting if the communications have gone quiet
-        if self.__lastActive is None or currentTime.timestamp() - self.__lastActive.timestamp() > self.__lapseTime:
-            fnt = 'Arial 14 bold'
-            fgd = '#A93226' # red
-        else:
-            fnt = 'Arial 14'
-            fgd = '#1C4587' # blue
-
-        # loop through all placements of the status widgets
-        for w in self.__statusWidgets:
-
-            # update the display
-            w.config(text=upd, font=fnt, foreground=fgd)
-
-        # only draw the childrenWidgets headers once
-        if not self.__childrenHeaders:
-            self.__childrenHeaders = True
-
-            # loop through all placements of the children widgets
-            for w in self.__childrenWidgets:
-
-                # add Label widgets as table headers (each within its own bordered frame)
-
-                f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                f.grid(row=0, column=0, padx='1', pady='1', sticky='nesw')
-                ttk.Label(f, text='Name', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
-
-                f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                f.grid(row=0, column=1, padx='1', pady='1', sticky='nesw')
-                ttk.Label(f, text='IP', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
-
-                f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                f.grid(row=0, column=2, padx='1', pady='1', sticky='nesw')
-                ttk.Label(f, text='MAC', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
-
-                f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                f.grid(row=0, column=3, padx='1', pady='1', sticky='nesw')
-                ttk.Label(f, text='Last Active', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
-
-                f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                f.grid(row=0, column=4, padx='1', pady='1', sticky='nesw')
-                ttk.Label(f, text='Latency', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
-
-        # only makes sense if any children were found
-        if len(self.childrenDict) > 0:
-
-            # loop through all placements of the children widgets
-            for w in self.__childrenWidgets:
-
-                thisrow = 0
-                for mac in self.sortedMacs:
-
-                    thisrow += 1
-
-                    # special formatting for lastActive
-                    lastA = self.childrenDict[mac]['lastActive']
-                    upd = lastA.astimezone(self.__timezone).strftime(self.__dtFormat)
-                    if lastA is None or currentTime.timestamp() - lastA.timestamp() > self.__lapseTime:
-                        fnt = 'Arial 14 bold'
-                        fgd = '#A93226' # red
+                    # everything else is just a text label
                     else:
-                        fnt = 'Arial 14'
-                        fgd = '#1C4587' # blue
+                        self.__netWidgets[wType][ind]['ref'].config(text=upd, font=fnt, foreground=fgd)
 
-                    # latency might not be populated at first
-                    if 'latency' not in self.childrenDict[mac]: lat = '--'
-                    else: lat = round(self.childrenDict[mac]['latency'],5)
-
-                    # if this is a new row in the grid (pls forgive the offensive tkinter method name)...
-                    if (len(w.grid_slaves(row=thisrow,column=4))==0):
-
-                        #print (f"{self.__class__.__name__}: updateDisplays: Debug: THIS IS A NEW ROW")
-
-                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                        f.grid(row=thisrow, column=0, padx='1', pady='1', sticky='nesw')
-                        ttk.Label(f, text=self.childrenDict[mac]['id'],font='Arial 14').grid(row=0, column=0, sticky='nw')
-
-                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                        f.grid(row=thisrow, column=1, padx='1', pady='1', sticky='nesw')
-                        ttk.Label(f, text=self.childrenDict[mac]['ip'],font='Arial 14').grid(row=0, column=0, sticky='nw')
-
-                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                        f.grid(row=thisrow, column=2, padx='1', pady='1', sticky='nesw')
-                        ttk.Label(f, text=mac, font='Arial 14').grid(row=0, column=0, sticky='nw')
-
-                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                        f.grid(row=thisrow, column=3, padx='1', pady='1', sticky='nesw')
-                        ttk.Label(f, text=upd, font=fnt, foreground=fgd).grid(row=0, column=0, sticky='nw')
-
-                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
-                        f.grid(row=thisrow, column=4, padx='1', pady='1', sticky='nesw')
-                        ttk.Label(f, text=lat,font='Arial 14').grid(row=0, column=0, sticky='nw')
-
-                    else:
-                        # more references to tkinter's offensive method name
-                        #print (f"{self.__class__.__name__}: updateDisplays: Debug: FOUND AN EXISTING ROW [{w.grid_slaves(row=thisrow,column=4)}]")
-                        w.grid_slaves(row=thisrow,column=0)[0].grid_slaves(row=0,column=0)[0].config(text=self.childrenDict[mac]['id'])
-                        w.grid_slaves(row=thisrow,column=1)[0].grid_slaves(row=0,column=0)[0].config(text=self.childrenDict[mac]['ip'])
-                        w.grid_slaves(row=thisrow,column=2)[0].grid_slaves(row=0,column=0)[0].config(text=mac)
-                        w.grid_slaves(row=thisrow,column=3)[0].grid_slaves(row=0,column=0)[0].config(text=upd, font=fnt, foreground=fgd)
-                        w.grid_slaves(row=thisrow,column=4)[0].grid_slaves(row=0,column=0)[0].config(text=lat)
+                    # continue stepping through the list
+                    ind += 1
 
         # if asked to, schedule the next display update
         if scheduleNext:
@@ -1279,6 +1069,10 @@ class Erl2Network():
                     # log the reply
                     self.__networkLog.writeMessage(f"Received reply to command [{rs.command}] from [{rs.addr}], [{getsizeof(rs.replyString)}] bytes")
 
+                    # update time of last device comms
+                    self.__lastActive = dt.now(tz=tz.utc)
+                    self.erl2context['state'].set([('network','lastActive',self.__lastActive)])
+
             # if any changes, save objects to state file
             if dictChanged:
                 self.erl2context['state'].set([('network','childrenDict',self.childrenDict)])
@@ -1296,7 +1090,7 @@ class Erl2Network():
 
         # what updates are we doing?
         nowTIME = nowSTATE = nowLOG = False
-        if self.__lastTIME is None or (currentTime - self.__lastTIME).seconds >= 5*60: # five minutes
+        if self.__lastTIME is None or (currentTime - self.__lastTIME).seconds >= 30: # thirty seconds
             self.__lastTIME = currentTime
             nowTIME = True
         if self.__lastSTATE is None or (currentTime - self.__lastSTATE).seconds >= 5: # five seconds
@@ -1410,6 +1204,337 @@ class Erl2Network():
 
         return lookupByID, lookupByIP
 
+    def addWidgets(self,
+                   typeLocs=[],
+                   nameLocs=[],
+                   interfaceLocs=[],
+                   ipLocs=[],
+                   macLocs=[],
+                   statusLocs=[],
+                   buttonLocs=[],
+                   childrenLocs=[],
+                   onlineLocs=[],
+                   ):
+
+        # pass each kind of widget to the create fn in turn
+        if len(typeLocs)>0:      self.createWidgets('type',      typeLocs)
+        if len(nameLocs)>0:      self.createWidgets('name',      nameLocs)
+        if len(interfaceLocs)>0: self.createWidgets('interface', interfaceLocs)
+        if len(ipLocs)>0:        self.createWidgets('ip',        ipLocs)
+        if len(macLocs)>0:       self.createWidgets('mac',       macLocs)
+        if len(statusLocs)>0:    self.createWidgets('status',    statusLocs)
+        if len(childrenLocs)>0:  self.createWidgets('children',  childrenLocs)
+        if len(onlineLocs)>0:    self.createWidgets('online',    onlineLocs)
+
+        # a different method for network rescan buttons
+        if len(buttonLocs)>0:
+            self.addRescanButtons(buttonLocs)
+
+    def addRescanButtons(self, buttonLocs=[]):
+
+        # rescan button only makes sense for the controller
+        if self.__deviceType == 'controller':
+
+            # loop through locations
+            for buttonLoc in buttonLocs:
+
+                # read location parameter, set defaults if unspecified
+                loc = locDefaults(loc=buttonLoc, modDefaults=self.modDefaults)
+
+                # if the location is fully defined
+                if 'parent' in loc:
+
+                    # create a frame for the button
+                    rescanFrame = ttk.Frame(loc['parent'], padding=loc['padding'], relief=loc['relief'], borderwidth=loc['borderwidth'])
+                    rescanFrame.grid(row=loc['row'], column=loc['column'], rowspan=loc['rowspan'], columnspan=loc['columnspan'],
+                                     padx=loc['padx'], pady=loc['pady'], sticky=loc['sticky'])
+
+                    # frame within the frame? for placement (pad with side frames to force it to center)
+                    f0 = ttk.Frame(rescanFrame) #, padding='0', relief='solid', borderwidth=1)
+                    f0.grid(row=0, column=0, sticky='nesw')
+                    f1 = ttk.Frame(rescanFrame) #, padding='0', relief='solid', borderwidth=1)
+                    f1.grid(row=0, column=1, sticky='nesw')
+                    f2 = ttk.Frame(rescanFrame) #, padding='0', relief='solid', borderwidth=1)
+                    f2.grid(row=0, column=2, sticky='nesw')
+                    rescanFrame.rowconfigure(0,weight=1)
+                    rescanFrame.columnconfigure(0,weight=1)
+                    rescanFrame.columnconfigure(1,weight=0)
+                    rescanFrame.columnconfigure(2,weight=1)
+
+                    # create the button, and its clickable label
+                    rescanButton = tk.Button(f1,
+                                             image=self.erl2context['img']['rescan'],
+                                             height=40,
+                                             width=40,
+                                             bd=0,
+                                             highlightthickness=0,
+                                             activebackground='#DBDBDB',
+                                             command=self.rescanSubnet,
+                                             )
+                    rescanButton.grid(row=0, column=0, padx='2 2', sticky='w')
+                    l = ttk.Label(f1, text='Rescan ERL2 Subnet', font='Arial 16'
+                        #, relief='solid', borderwidth=1
+                        )
+                    l.grid(row=0, column=1, padx='2 2', sticky='w')
+                    l.bind('<Button-1>', self.rescanSubnet)
+
+                    f1.rowconfigure(0,weight=1)
+                    f1.columnconfigure(0,weight=0)
+                    f1.columnconfigure(1,weight=1)
+
+    def createWidgets(self, widgetType, locations):
+
+        # remember if we created any new children widgets
+        newChildren = False
+
+        # nothing to do if locations is empty
+        if locations is None or len(locations) == 0:
+            return
+
+        # first, get info for drawing this label
+        upd, fnt, fgd = self.getDisplayVals(widgetType)
+
+        # make sure there's already a list for this widgetType
+        if widgetType not in self.__netWidgets:
+            self.__netWidgets[widgetType] = []
+
+        # loop through all requested locations
+        for l in locations:
+
+            # apply default location parameters
+            loc = locDefaults(l, modDefaults=self.modDefaults)
+
+            # loop through all prior widget definitions of this type
+            for wDef in self.__netWidgets[widgetType]:
+
+                # make sure this is an active widget
+                if 'ref' in wDef and wDef['ref'].winfo_exists():
+
+                    # if the requested location is already in the list
+                    if loc == wDef['loc']:
+                        print (f"{self.__class__.__name__}: createWidgets({widgetType}): Debug: found matching location")
+                        break
+
+            # for/else is executed only if we didn't 'break'
+            else:
+
+                ## create the display widget's base frame as a child of its parent
+                #f = ttk.Frame(loc['parent'], padding='0 0', relief='solid', borderwidth=1)
+                #f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nw')
+
+                # children widgets are a little different
+                if widgetType == 'children':
+
+                    # create an empty Frame widget to hold the table of children details
+                    f = ttk.Frame(loc['parent'], padding=loc['padding'], relief=loc['relief'], borderwidth=loc['borderwidth'])
+                    f.grid(row=loc['row'], column=loc['column'], rowspan=loc['rowspan'], columnspan=loc['columnspan'],
+                           padx=loc['padx'], pady=loc['pady'], sticky=loc['sticky'])
+
+                    # add this location and widget reference to the list
+                    self.__netWidgets[widgetType].append({'loc':loc, 'ref':f})
+
+                    # add to internal widget list if standalone
+                    if self.__standalone:
+                        self.erl2context['conf']['system']['allWidgets'].append(f)
+
+                    # this means we've created new children widgets
+                    newChildren = True
+
+                # all other updatable widgets are just plain labels
+                else:
+
+                    # add a Label widget to show the current value
+                    l = ttk.Label(loc['parent'], padding=loc['padding'], relief=loc['relief'], borderwidth=loc['borderwidth']
+                        , text=upd, font=fnt, foreground=fgd)
+                    l.grid(row=loc['row'], column=loc['column'], rowspan=loc['rowspan'], columnspan=loc['columnspan'], sticky=loc['sticky'])
+
+                    # add this location and widget reference to the list
+                    self.__netWidgets[widgetType].append({'loc':loc, 'ref':l})
+
+                    # add to internal widget list if standalone
+                    if self.__standalone:
+                        self.erl2context['conf']['system']['allWidgets'].append(l)
+
+        # if there are new children, we should populate those tables
+        if newChildren:
+            self.populateChildrenTables()
+
+    def getDisplayVals(self, widgetType=None, currentTime=None):
+
+        # we only need currentTime, if not supplied, for status and online
+        if widgetType in ['status', 'online'] and currentTime is None:
+            currentTime = dt.now(tz=tz.utc)
+
+        # default update text
+        upd = '--'
+
+        # default font
+        fnt = 'Arial 14'
+
+        # default color (may be system dependent)
+        fgd = ''
+
+        if widgetType == 'type':
+            upd = self.__deviceType
+        elif widgetType == 'name':
+            upd = self.__id
+        elif widgetType == 'interface':
+            upd = self.__interface
+        elif widgetType == 'ip':
+            upd = self.__ip
+        elif widgetType == 'mac':
+            upd = self.__mac
+
+        # more logic for status and online widgets (based on lastActive and lapseTime)
+        elif widgetType in ['status', 'online']:
+
+            # defaults
+            online = False
+            upd = 'never'
+
+            # adjust the formatting if the communications have gone quiet
+            if self.__lastActive is None or currentTime.timestamp() - self.__lastActive.timestamp() > self.__lapseTime:
+                fnt = 'Arial 14 bold'
+                fgd = '#A93226' # red
+            else:
+                fnt = 'Arial 14'
+                fgd = '#1C4587' # blue
+                online = True
+
+            # datetimes need to be formatted for display
+            if widgetType == 'status' and self.__lastActive is not None:
+                upd = self.__lastActive.astimezone(self.__timezone).strftime(self.__dtFormat)
+
+            # but 'online' just returns 0 for offline and 1 for online
+            elif widgetType == 'online':
+                upd = int(online)
+
+            #print (f"{self.__class__.__name__}: getDisplayVals({widgetType}): Debug: "
+            #       f"upd [{upd}], fnt [{fnt}], fgd [{fgd}], "
+            #       f"currentTime [{currentTime}], lastActive [{self.__lastActive}]")
+
+        # return all three parameters
+        return upd, fnt, fgd
+
+    def populateChildrenTables(self, currentTime=None):
+
+        # nothing to do if there aren't any children widgets
+        if 'children' not in self.__netWidgets or len(self.__netWidgets['children']) == 0:
+            return
+
+        # all of this code deals with children widgets
+        wType = 'children'
+
+        # current time, if not supplied
+        if currentTime is None:
+            currentTime = dt.now(tz=tz.utc)
+
+        # loop through children widgets
+        ind = 0
+        while ind < len(self.__netWidgets[wType]):
+
+            # look for, and delete, widgets that no longer exist
+            if ('ref' not in self.__netWidgets[wType][ind]
+                    or not self.__netWidgets[wType][ind]['ref'].winfo_exists()):
+
+                # delete this list entry because its widget is gone
+                #print (f"{self.__class__.__name__}: populateChildrenTables: Debug: deleting list entry of type [{wType}]")
+                self.__netWidgets[wType].pop(ind)
+
+                # move on to next element in list
+                continue
+
+            # save some typing below
+            w = self.__netWidgets[wType][ind]['ref']
+
+            # only draw the children table headers once
+            if ('headers' not in self.__netWidgets[wType][ind]
+                    or not self.__netWidgets[wType][ind]['headers']):
+
+                #print (f"{self.__class__.__name__}: populateChildrenTable: Debug: drawing headers")
+                self.__netWidgets[wType][ind]['headers'] = True
+
+                # add Label widgets as table headers (each within its own bordered frame)
+
+                f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                f.grid(row=0, column=0, padx='1', pady='1', sticky='nesw')
+                ttk.Label(f, text='Name', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
+
+                f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                f.grid(row=0, column=1, padx='1', pady='1', sticky='nesw')
+                ttk.Label(f, text='IP', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
+
+                f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                f.grid(row=0, column=2, padx='1', pady='1', sticky='nesw')
+                ttk.Label(f, text='MAC', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
+
+                f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                f.grid(row=0, column=3, padx='1', pady='1', sticky='nesw')
+                ttk.Label(f, text='Last Active', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
+
+                f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                f.grid(row=0, column=4, padx='1', pady='1', sticky='nesw')
+                ttk.Label(f, text='Latency', font='Arial 14 bold').grid(row=0, column=0, sticky='nw')
+
+            # this next part only makes sense if any children were found
+            if len(self.childrenDict) > 0:
+
+                thisrow = 0
+                for mac in self.sortedMacs:
+
+                    thisrow += 1
+
+                    # special formatting for lastActive
+                    lastA = self.childrenDict[mac]['lastActive']
+                    upd = lastA.astimezone(self.__timezone).strftime(self.__dtFormat)
+                    if lastA is None or currentTime.timestamp() - lastA.timestamp() > self.__lapseTime:
+                        fnt = 'Arial 14 bold'
+                        fgd = '#A93226' # red
+                    else:
+                        fnt = 'Arial 14'
+                        fgd = '#1C4587' # blue
+
+                    # latency might not be populated at first
+                    if 'latency' not in self.childrenDict[mac]: lat = '--'
+                    else: lat = round(self.childrenDict[mac]['latency'],5)
+
+                    # if this is a new row in the grid (pls forgive the offensive tkinter method name)...
+                    if (len(w.grid_slaves(row=thisrow,column=4))==0):
+
+                        #print (f"{self.__class__.__name__}: updateDisplays: Debug: THIS IS A NEW ROW")
+
+                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                        f.grid(row=thisrow, column=0, padx='1', pady='1', sticky='nesw')
+                        ttk.Label(f, text=self.childrenDict[mac]['id'],font='Arial 14').grid(row=0, column=0, sticky='nw')
+
+                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                        f.grid(row=thisrow, column=1, padx='1', pady='1', sticky='nesw')
+                        ttk.Label(f, text=self.childrenDict[mac]['ip'],font='Arial 14').grid(row=0, column=0, sticky='nw')
+
+                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                        f.grid(row=thisrow, column=2, padx='1', pady='1', sticky='nesw')
+                        ttk.Label(f, text=mac, font='Arial 14').grid(row=0, column=0, sticky='nw')
+
+                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                        f.grid(row=thisrow, column=3, padx='1', pady='1', sticky='nesw')
+                        ttk.Label(f, text=upd, font=fnt, foreground=fgd).grid(row=0, column=0, sticky='nw')
+
+                        f = ttk.Frame(w, padding='2', relief='solid', borderwidth=1)
+                        f.grid(row=thisrow, column=4, padx='1', pady='1', sticky='nesw')
+                        ttk.Label(f, text=lat,font='Arial 14').grid(row=0, column=0, sticky='nw')
+
+                    else:
+                        # more references to tkinter's offensive method name
+                        #print (f"{self.__class__.__name__}: updateDisplays: Debug: FOUND AN EXISTING ROW [{w.grid_slaves(row=thisrow,column=4)}]")
+                        w.grid_slaves(row=thisrow,column=0)[0].grid_slaves(row=0,column=0)[0].config(text=self.childrenDict[mac]['id'])
+                        w.grid_slaves(row=thisrow,column=1)[0].grid_slaves(row=0,column=0)[0].config(text=self.childrenDict[mac]['ip'])
+                        w.grid_slaves(row=thisrow,column=2)[0].grid_slaves(row=0,column=0)[0].config(text=mac)
+                        w.grid_slaves(row=thisrow,column=3)[0].grid_slaves(row=0,column=0)[0].config(text=upd, font=fnt, foreground=fgd)
+                        w.grid_slaves(row=thisrow,column=4)[0].grid_slaves(row=0,column=0)[0].config(text=lat)
+
+            # continue stepping through the list
+            ind += 1
+
 def main():
 
     root = tk.Tk()
@@ -1425,14 +1550,16 @@ def main():
     childrenFrame = ttk.Frame(root)
     childrenFrame.grid(row=7,column=0,columnspan=2)
 
-    network = Erl2Network(typeLocs=[{'parent':root,'row':1,'column':1}],
+    network = Erl2Network(standalone=True,
+                          typeLocs=[{'parent':root,'row':1,'column':1}],
                           nameLocs=[{'parent':root,'row':2,'column':1}],
                           interfaceLocs=[{'parent':root,'row':3,'column':1}],
                           ipLocs=[{'parent':root,'row':4,'column':1}],
                           macLocs=[{'parent':root,'row':5,'column':1}],
                           statusLocs=[{'parent':root,'row':6,'column':1}],
+                          buttonLocs=[{'parent':root,'row':8,'column':0,'columnspan':2}],
                           childrenLocs=[{'parent':childrenFrame,'row':0,'column':0}],
-                          buttonLoc={'parent':root,'row':8,'column':0,'columnspan':2},
+                          erl2context={'root':root},
                           )
 
     # set things up for graceful termination

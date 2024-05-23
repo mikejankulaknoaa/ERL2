@@ -9,7 +9,7 @@ from Erl2State import Erl2State
 class Erl2VirtualTemp(Erl2Sensor):
 
     def __init__(self,
-                 parent=None,
+                 erl2Parent=None,
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
@@ -35,7 +35,7 @@ class Erl2VirtualTemp(Erl2Sensor):
             self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
 
         # private attributes specific to Erl2VirtualTemp
-        self.__parent = parent
+        self.__erl2Parent = erl2Parent
         self.__midpoint = 26.
         self.__range = 1.
 
@@ -68,8 +68,8 @@ class Erl2VirtualTemp(Erl2Sensor):
 
         # sneak a peak at whether the system has the heater or chiller turned on
         try:
-            heaterOn = self.__parent.controls['heater'].setting
-            chillerOn = self.__parent.controls['chiller'].setting
+            heaterOn = self.__erl2Parent.controls['heater'].setting
+            chillerOn = self.__erl2Parent.controls['chiller'].setting
         except:
             heaterOn = 0
             chillerOn = 0

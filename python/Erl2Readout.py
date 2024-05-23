@@ -20,10 +20,12 @@ LBLS={'temperature':['Heater','Chiller'],
 class Erl2Readout():
 
     def __init__(self,
+                 labelText=None,
                  deviceState=None,
                  displayLoc={},
                  erl2context={}):
 
+        self.__labelText = labelText
         self.__deviceState = deviceState
         self.__displayLoc = displayLoc
         self.erl2context = erl2context
@@ -39,20 +41,31 @@ class Erl2Readout():
         # read these useful parameters from Erl2Config
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
+        self.__lapseTime = self.erl2context['conf']['network']['lapseTime']
 
         # if necessary, create an object to hold/remember image objects
         if 'img' not in self.erl2context:
             self.erl2context['img'] = Erl2Image(erl2context=self.erl2context)
 
         # load the images needed for readouts
-        for i in ['button-grey-30.png','button-red-30.png','button-blue-30.png']:
+        for i in ['button-grey-30.png',
+                  'button-red-30.png',
+                  'button-blue-30.png',
+                  'network-off-25.png',
+                  'network-on-25.png',
+                  ]:
             self.erl2context['img'].addImage(i,i)
 
         # hardcode which image is which (heater, then chiller)
         self.__displayImages = [ ['button-grey-30.png','button-red-30.png'],
                                  ['button-grey-30.png','button-blue-30.png'] ]
 
+        # hardcode which image is which (online status)
+        self.__onlineImages = ['network-off-25.png','network-on-25.png']
+
         # remember what widgets are active for this readout
+        self.__onlineWidget = None
+        self.__labelWidget = None
         self.__displayWidgets = {}
         self.__allWidgets = []
 
@@ -68,6 +81,41 @@ class Erl2Readout():
                 and 'column' in self.__displayLoc and self.__displayLoc['column'] is not None):
             self.__parentFrame.grid(row=self.__displayLoc['row'], column=self.__displayLoc['column'], padx='0', pady='0', sticky='nesw')
 
+        # column count in first row
+        c1 = -1
+
+        # readouts have two rows, each with their own frame
+        f1 = ttk.Frame(self.__parentFrame, padding='0', relief='flat', borderwidth=0)
+        f1.grid(row=0, column=0, padx='0', pady='0', sticky='nesw')
+        f2 = ttk.Frame(self.__parentFrame, padding='0', relief='flat', borderwidth=0)
+        f2.grid(row=1, column=0, padx='0', pady='0', sticky='nesw')
+
+        # at startup, figure out how long it's been since a network update
+        self.__online = 1
+        self.checkOnline()
+        lastActive = self.__deviceState.get('network','lastActive',None)
+        currentTime = dt.now(tz=tz.utc)
+        if lastActive is None or currentTime.timestamp() - lastActive.timestamp() > self.__lapseTime:
+            self.__online = 0
+
+        # add a widget to indicate online/offline depending on time since last update
+        c1 += 1
+        l = ttk.Label(f1, image=self.erl2context['img'][self.__onlineImages[self.__online]]
+            #, relief='solid', borderwidth=1
+            )
+        l.grid(row=0, column=c1, sticky='ew')
+        self.__onlineWidget = l
+        self.__allWidgets.append(l)
+
+        # device label in first row
+        c1 += 1
+        l = ttk.Label(f1, text=self.__labelText, font='Arial 12 bold'
+            #, relief='solid', borderwidth=1
+            )
+        l.grid(row=0, column=c1, sticky='ew')
+        self.__labelWidget = l
+        self.__allWidgets.append(l)
+
         # loop through list of possible subsystems
         self.__subSystemCount = 0
         for sub in SUBS:
@@ -80,12 +128,12 @@ class Erl2Readout():
                     self.__displayWidgets[sub] = {}
 
                 # frame for sensor info
-                sensorF = ttk.Frame(self.__parentFrame, padding='2', relief='solid', borderwidth=1)
-                sensorF.grid(row=0, column=2*self.__subSystemCount, padx='2', pady='2', sticky='nesw')
+                sensorF = ttk.Frame(f2, padding='2', relief='solid', borderwidth=1)
+                sensorF.grid(row=1, column=2*self.__subSystemCount, padx='2', pady='2', sticky='nesw')
 
                 # frame for control info
-                controlF = ttk.Frame(self.__parentFrame, padding='2', relief='solid', borderwidth=1)
-                controlF.grid(row=0, column=2*self.__subSystemCount+1, padx='2', pady='2', sticky='nesw')
+                controlF = ttk.Frame(f2, padding='2', relief='solid', borderwidth=1)
+                controlF.grid(row=1, column=2*self.__subSystemCount+1, padx='2', pady='2', sticky='nesw')
 
                 # label for sensor frame
                 sensorLabel = None
@@ -227,13 +275,14 @@ class Erl2Readout():
 
                     # note: ignoring lastValid info for control "sensors"
 
-                # network lastActive info
-
                 # increment subsystem count
                 self.__subSystemCount += 1
 
         # try an initial "refresh" of values when initialization is done
         self.refreshDisplays()
+
+        # last step is, start monitoring for inactivity
+        self.checkInactivity()
 
     def refreshDisplays(self):
 
@@ -329,24 +378,26 @@ class Erl2Readout():
                         self.__displayWidgets[sub][controlList[ind] + '.value'].config(text=valueText)
                         self.__displayWidgets[sub][controlList[ind] + '.setting'].config(text=settingText)
 
-        ## the status message conveys information about how current the reading is and on/offline status
-        #if self.lastValid is not None:
-        #    upd = self.lastValid.astimezone(self.__timezone).strftime(self.__dtFormat)
-        #else:
-        #    upd = 'never'
+    def checkOnline(self):
 
-        #if self.online:
-        #    fnt = 'Arial 14'
-        #    fgd = '#1C4587'
-        #else:
-        #    fnt = 'Arial 14 bold'
-        #    fgd = '#A93226'
+        lastActive = self.__deviceState.get('network','lastActive',None)
+        currentTime = dt.now(tz=tz.utc)
+        if lastActive is None or currentTime.timestamp() - lastActive.timestamp() > self.__lapseTime:
+            self.__online = 0
+        else:
+            self.__online = 1
 
-        ## loop through all placements of this sensor's status widgets
-        #for w in self.__statusWidgets:
+    def checkInactivity(self):
 
-        #    # update the display
-        #    w.config(text=upd,font=fnt,foreground=fgd)
+        # first, refresh online status
+        self.checkOnline()
+
+        # next, apply correct image to online widget
+        if self.__onlineWidget is not None:
+            self.__onlineWidget.configure(image=self.erl2context['img'][self.__onlineImages[self.__online]])
+
+            # call this method again after 5 seconds
+            self.__onlineWidget.after(5000, self.checkInactivity)
 
 def main():
 

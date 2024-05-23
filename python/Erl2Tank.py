@@ -21,15 +21,14 @@ from Erl2Useful import nextIntervalTime
 
 class Erl2Tank:
 
-    def __init__(self, parent=None, erl2context={}):
-        self.parent = parent
+    def __init__(self, erl2context={}):
         self.erl2context = erl2context
 
         # insist on 'root' always being defined
         assert('root' in self.erl2context and self.erl2context['root'] is not None)
 
         # pop up a warning message if called directly
-        if self.parent is None:
+        if 'startup' not in self.erl2context:
             if not mb.askyesno('Warning',
                                'You have started up the Erl2Tank module directly,'
                                ' which is deprecated in favor of using the newer'
@@ -74,7 +73,7 @@ class Erl2Tank:
         self.subsystems = {}
 
         # remember if network module is active
-        self.network = None
+        #self.network = None
 
         # the top-level element is a notebook (tabbed screens)
         self.__mainTabs = ttk.Notebook(self.erl2context['root'],padding='5 5 5 2')
@@ -327,29 +326,29 @@ class Erl2Tank:
         self.__frames['Settings'][0][1].columnconfigure(0,weight=1)
         self.__frames['Settings'][0][1].columnconfigure(1,weight=1)
 
-        # these controls are defined in the parent module
-        if (self.parent is not None):
+        # these controls are defined in the startup module
+        if ('startup' in self.erl2context):
 
             # add a control to set / unset fullscreen mode
             r = 1
-            self.parent.createFullscreenWidget(widgetLoc={'parent':self.__frames['Settings'][0][0],'row':r})
+            self.erl2context['startup'].createFullscreenWidget(widgetLoc={'parent':self.__frames['Settings'][0][0],'row':r})
 
             # add a control to enable / disable the Erl2NumPad popups
             r += 1
-            self.parent.createNumPadWidget(widgetLoc={'parent':self.__frames['Settings'][0][0],'row':r})
+            self.erl2context['startup'].createNumPadWidget(widgetLoc={'parent':self.__frames['Settings'][0][0],'row':r})
 
             # add a control to restart the app
             r = 1
-            self.parent.createRestartWidget(widgetLoc={'parent':self.__frames['Settings'][1][0],'row':r})
+            self.erl2context['startup'].createRestartWidget(widgetLoc={'parent':self.__frames['Settings'][1][0],'row':r})
 
             # kill the app completely with this shutdown button
             r += 1
-            self.parent.createExitWidget(widgetLoc={'parent':self.__frames['Settings'][1][0],'row':r})
+            self.erl2context['startup'].createExitWidget(widgetLoc={'parent':self.__frames['Settings'][1][0],'row':r})
 
         # readout displays for the current temperature (virtual, serial, or milliAmps/volts)
         if self.__virtualTemp:
             self.sensors['temperature'] = Erl2VirtualTemp(
-                parent=self,
+                erl2Parent=self,
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
                 statusLocs=tempStatusLocs,
@@ -528,14 +527,15 @@ class Erl2Tank:
         # the logic that enables networking, if enabled
         if self.erl2context['conf']['network']['enabled']:
 
-            # don't do this if Erl2Tank was called directly
-            if self.parent is not None:
-                self.network = Erl2Network(ipLocs=ipLocs,
-                                           macLocs=macLocs,
-                                           statusLocs=netStatusLocs,
-                                           systemLog=self.__systemLog,
-                                           erl2context=self.erl2context,
-                                          )
+            # don't do this unless Erl2Tank was called directly
+            if 'startup' in self.erl2context:
+                self.erl2context['network'] = Erl2Network(systemLog=self.__systemLog,
+                                                          erl2context=self.erl2context)
+
+                # go back and add network-related widgets
+                self.erl2context['network'].addWidgets(ipLocs=ipLocs,
+                                                       macLocs=macLocs,
+                                                       statusLocs=statusLocs)
 
         # standardized labels for some Temp, pH and DO frames
         for name in ['Temp', 'pH', 'DO']:
@@ -677,8 +677,8 @@ class Erl2Tank:
                 c.setControl(0,force=True)
 
         # terminate subthreads in network module
-        if self.network is not None:
-            self.network.atexitHandler()
+        if self.erl2context['network'] is not None:
+            self.erl2context['network'].atexitHandler()
 
 def main():
 

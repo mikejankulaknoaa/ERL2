@@ -32,6 +32,9 @@ class Erl2Startup:
         # insist on 'root' always being defined
         assert('root' in self.erl2context and self.erl2context['root'] is not None)
 
+        # keep reference to startup module
+        self.erl2context['startup'] = self
+
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
@@ -111,9 +114,9 @@ class Erl2Startup:
 
         # start up the main device module
         if self.__deviceType == 'tank':
-            self.__device = Erl2Tank(parent=self, erl2context=self.erl2context)
+            self.__device = Erl2Tank(erl2context=self.erl2context)
         elif self.__deviceType == 'controller':
-            self.__device = Erl2Controller(parent=self, erl2context=self.erl2context)
+            self.__device = Erl2Controller(erl2context=self.erl2context)
 
     def createFullscreenWidget (self, widgetLoc = {}):
 
