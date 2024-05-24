@@ -4,14 +4,14 @@ import sys
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox as mb
-from Erl2Chiller import Erl2Chiller
 from Erl2Clock import Erl2Clock
 from Erl2Config import Erl2Config
-from Erl2Heater import Erl2Heater
+from Erl2GpioOutput import Erl2GpioOutput
 from Erl2Input import Erl2Input
 from Erl2Log import Erl2Log
 from Erl2Mfc import Erl2Mfc
 from Erl2Network import Erl2Network
+from Erl2PwmOutput import Erl2PwmOutput
 from Erl2Pyro import Erl2Pyro
 from Erl2SerialTemp import Erl2SerialTemp
 from Erl2State import Erl2State
@@ -49,6 +49,8 @@ class Erl2Tank:
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__serialTemp = self.erl2context['conf']['temperature']['serialPort']
         self.__virtualTemp = self.erl2context['conf']['virtualtemp']['enabled']
+        self.__heaterType = self.erl2context['conf']['heater']['channelType']
+        self.__chillerType = self.erl2context['conf']['chiller']['channelType']
         self.__systemFrequency = self.erl2context['conf']['system']['loggingFrequency']
 
         # this parameter is written (to share w/controller) but never read
@@ -430,18 +432,40 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # readout and control widgets for the Heater relay
-        self.controls['heater'] = Erl2Heater(
-            displayLocs=[{'parent':self.__frames['Data'][0][1],'row':0,'column':0},
-                         {'parent':self.__frames['Temp'][0][1],'row':0,'column':0}],
-            buttonLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
-            erl2context=self.erl2context)
+        if self.__heaterType == 'pwm':
+            self.controls['heater'] = Erl2PwmOutput(
+                controlType='heater',
+                controlColor='red',
+                displayLocs=[{'parent':self.__frames['Data'][0][1],'row':0,'column':0},
+                             {'parent':self.__frames['Temp'][0][1],'row':0,'column':0}],
+                buttonLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
+                erl2context=self.erl2context)
+        elif self.__heaterType == 'gpio':
+            self.controls['heater'] = Erl2GpioOutput(
+                controlType='heater',
+                controlColor='red',
+                displayLocs=[{'parent':self.__frames['Data'][0][1],'row':0,'column':0},
+                             {'parent':self.__frames['Temp'][0][1],'row':0,'column':0}],
+                buttonLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
+                erl2context=self.erl2context)
 
         # readout and control widgets for the Chiller solenoid
-        self.controls['chiller'] = Erl2Chiller(
-            displayLocs=[{'parent':self.__frames['Data'][0][1],'row':1,'column':0},
-                         {'parent':self.__frames['Temp'][0][1],'row':1,'column':0}],
-            buttonLoc={'parent':self.__frames['Temp'][0][2],'row':2,'column':0},
-            erl2context=self.erl2context)
+        if self.__chillerType == 'pwm':
+            self.controls['chiller'] = Erl2PwmOutput(
+                controlType='chiller',
+                controlColor='blue',
+                displayLocs=[{'parent':self.__frames['Data'][0][1],'row':1,'column':0},
+                             {'parent':self.__frames['Temp'][0][1],'row':1,'column':0}],
+                buttonLoc={'parent':self.__frames['Temp'][0][2],'row':2,'column':0},
+                erl2context=self.erl2context)
+        elif self.__chillerType == 'pwm':
+            self.controls['chiller'] = Erl2GpioOutput(
+                controlType='chiller',
+                controlColor='blue',
+                displayLocs=[{'parent':self.__frames['Data'][0][1],'row':1,'column':0},
+                             {'parent':self.__frames['Temp'][0][1],'row':1,'column':0}],
+                buttonLoc={'parent':self.__frames['Temp'][0][2],'row':2,'column':0},
+                erl2context=self.erl2context)
 
         # readout and control widgets for the Air MFC
         self.controls['mfc.air'] = Erl2Mfc(

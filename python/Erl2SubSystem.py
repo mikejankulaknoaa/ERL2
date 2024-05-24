@@ -5,13 +5,12 @@ from re import sub
 from simple_pid import PID
 import tkinter as tk
 from tkinter import ttk
-from Erl2Chiller import Erl2Chiller
 from Erl2Config import Erl2Config
 from Erl2Entry import Erl2Entry
-from Erl2Heater import Erl2Heater
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
 from Erl2Plot import Erl2Plot
+from Erl2PwmOutput import Erl2PwmOutput
 from Erl2State import Erl2State
 from Erl2VirtualTemp import Erl2VirtualTemp
 
@@ -877,10 +876,14 @@ def main():
                                   statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
                                   correctionLoc={'parent':subSysFrame,'row':0,'column':0})
 
-    heater = Erl2Heater(displayLocs=[{'parent':controlFrame,'row':0,'column':0}],
-                        buttonLoc={'parent':controlFrame,'row':2,'column':0})
-    chiller = Erl2Chiller(displayLocs=[{'parent':controlFrame,'row':1,'column':0}],
-                          buttonLoc={'parent':controlFrame,'row':3,'column':0})
+    heater = Erl2PwmOutput(controlType='heater',
+                           controlColor='red',
+                           displayLocs=[{'parent':controlFrame,'row':0,'column':0}],
+                           buttonLoc={'parent':controlFrame,'row':2,'column':0})
+    chiller = Erl2PwmOutput(controlType='chiller',
+                            controlColor='blue',
+                            displayLocs=[{'parent':controlFrame,'row':1,'column':0}],
+                            buttonLoc={'parent':controlFrame,'row':3,'column':0})
 
     subsystem = Erl2SubSystem(subSystemType='temperature',
                               logic='hysteresis',

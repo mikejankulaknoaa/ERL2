@@ -215,8 +215,21 @@
 
 [heater]
 
+# Output type can be pwm or gpio. PWM (pulse-width modulation) refers to the 0-10V outputs
+# on the sequent microsystems board and require the stackLevel and outputPwmChannel parameters.
+# GPIO (general purpose IO) are the Pi's own pins accessible via the sequent board and
+# require the gpioChannel parameter.
+# channelType = pwm
+
+# sequent microsystems stack level (usually 0, can be up to 7)
+# stackLevel = 0
+
+# sequent microsystems Open-Drain / PWM output channel number (can be 1 - 4), writes 0-100%
+# outputPwmChannel = 2
+
 # Raspberry Pi GPIO channel number (can be 1 - 27), writes 0 or 1, GPIO.LOW or GPIO.HIGH, True or False;
-# ERL2 uses GPIO 23 (pin 16), by default, to avoid conflicts with other Raspberry Pi wiring
+# ERL2's early implementations used GPIO 23 (pin 16), by default, to avoid conflicts with other Raspberry
+# Pi wiring, but a later redesign switched to using a PWM channel
 # gpioChannel = 23
 
 # logging: frequency (seconds)
@@ -226,11 +239,21 @@
 
 [chiller]
 
+# Output type can be pwm or gpio. PWM (pulse-width modulation) refers to the 0-10V outputs
+# on the sequent microsystems board and require the stackLevel and outputPwmChannel parameters.
+# GPIO (general purpose IO) are the Pi's own pins accessible via the sequent board and
+# require the gpioChannel parameter.
+# channelType = pwm
+
 # sequent microsystems stack level (usually 0, can be up to 7)
 # stackLevel = 0
 
 # sequent microsystems Open-Drain / PWM output channel number (can be 1 - 4), writes 0-100%
 # outputPwmChannel = 1
+
+# Raspberry Pi GPIO channel number (can be 1 - 27), writes 0 or 1, GPIO.LOW or GPIO.HIGH, True or False;
+# ERL2 designs have never used a GPIO chiller/solenoid connection but it is included here for flexibility
+# gpioChannel = None
 
 # logging: frequency (seconds)
 # controls how often metrics from the chiller are saved in memory and written to log files

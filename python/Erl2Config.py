@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.52b (2024-05-23b)'
+    VERSION = '0.53b (2024-05-24)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
@@ -127,11 +127,16 @@ class Erl2Config():
                                                         '0.500, 0.629, 0.750, 0.854, 0.933, 0.983, '
                                                         '1.000, 0.983, 0.933, 0.854, 0.750, 0.629]')
 
+        self.__default['heater']['channelType'] = 'pwm'
+        self.__default['heater']['stackLevel'] = '0'
+        self.__default['heater']['outputPwmChannel'] = '2'
         self.__default['heater']['gpioChannel'] = '23'
         self.__default['heater']['loggingFrequency'] = '300'
 
+        self.__default['chiller']['channelType'] = 'pwm'
         self.__default['chiller']['stackLevel'] = '0'
         self.__default['chiller']['outputPwmChannel'] = '1'
+        self.__default['chiller']['gpioChannel'] = 'None'
         self.__default['chiller']['loggingFrequency'] = '300'
 
         self.__default['mfc.air']['stackLevel'] = '0'
@@ -382,10 +387,17 @@ class Erl2Config():
         # the virtual temperature sensor might be required even if not explicitly enabled
         self.__erl2conf['virtualtemp'] = {**self.__erl2conf['virtualtemp'], **self.__erl2conf['temperature']}
 
-        # individual heater/chiller parameters
-        self.validate(int, 'heater',  'gpioChannel',      min=1, max=27)
-        self.validate(int, 'chiller', 'stackLevel',       min=0, max=7)
-        self.validate(int, 'chiller', 'outputPwmChannel', min=1, max=4)
+        # heater/chiller parameters
+        for controlType in ['heater', 'chiller']:
+
+            # what type of output channel does the control use? pwm or gpio
+            self.validate(str, controlType, 'channelType')
+            if self.__erl2conf[controlType]['channelType'] not in ['pwm', 'gpio']:
+                raise TypeError(f"{self.__class__.__name__}: [controlType]['channelType'] = [{self.__erl2conf[controlType]['channelType']}] must be 'pwm' or 'gpio'")
+
+            self.validate(int, controlType, 'stackLevel',       min=0, max=7)
+            self.validate(int, controlType, 'outputPwmChannel', min=1, max=4)
+            self.validate(int, controlType, 'gpioChannel',      min=1, max=27)
 
         # controls (heater, chiller, mfc.air, mfc.co2, mfc.n2) share some parameter logic
         for controlType in ['heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']:

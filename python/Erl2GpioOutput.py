@@ -11,23 +11,31 @@ from Erl2Config import Erl2Config
 from Erl2Control import Erl2Control
 from Erl2Useful import locDefaults
 
-class Erl2Heater(Erl2Control):
+class Erl2GpioOutput(Erl2Control):
 
     def __init__(self,
+                 controlType='generic',
+                 controlColor=None,
                  displayLocs=[],
                  buttonLoc={},
-                 displayImages=['button-grey-30.png','button-red-30.png'],
-                 buttonImages=['radio-off-red-30.png','radio-on-red-30.png'],
-                 label='Heater',
+                 displayImages=['button-grey-30.png','button-blue-30.png'],
+                 buttonImages=['radio-off-blue-30.png','radio-on-blue-30.png'],
                  erl2context={}):
 
-        # controlType will be 'heater'
-        controlType = 'heater'
+        # label is just capitalized controlType
+        label = controlType.capitalize()
 
-        # hack up the displayLocs with heater-specific defaults before calling parent __init__
-        heaterLocs = []
+        # hack up the displayLocs with module-specific defaults before calling parent __init__
+        modDisplayLocs = []
         for loc in displayLocs:
-            heaterLocs.append(locDefaults(loc=loc,modDefaults={'relief':'flat','borderwidth':0, 'padx':'2','pady':'2'}))
+            modDisplayLocs.append(locDefaults(loc=loc,modDefaults={'relief':'flat','borderwidth':0, 'padx':'2','pady':'2'}))
+
+        # hack up images with different color, if supplied
+        modDisplayImages = displayImages.copy()
+        modButtonImages = buttonImages.copy()
+        if controlColor is not None and controlColor != 'blue':
+            modDisplayImages = [ x.replace('blue', controlColor) for x in modDisplayImages ]
+            modButtonImages = [ x.replace('blue', controlColor) for x in modButtonImages ]
 
         # read in the system configuration file if needed
         if 'conf' not in erl2context:
@@ -58,30 +66,34 @@ class Erl2Heater(Erl2Control):
         super().__init__(controlType=controlType,
                          widgetType='button',
                          widgetLoc=buttonLoc,
-                         displayLocs=heaterLocs,
-                         displayImages=displayImages,
-                         buttonImages=buttonImages,
+                         displayLocs=modDisplayLocs,
+                         displayImages=modDisplayImages,
+                         buttonImages=modButtonImages,
                          label=label,
                          erl2context=erl2context)
 
         # start up the timing loop to log control metrics to a log file
-        # (check first if this object is an Erl2Heater or a child class)
-        if self.__class__.__name__ == 'Erl2Heater':
+        # (check first if this object is an Erl2GpioOutput or a child class)
+        if self.__class__.__name__ == 'Erl2GpioOutput':
             self.updateLog()
 
     def changeHardwareSetting(self):
 
-        # apply the new setting to the relay hardware
-        #print (f"{self.__class__.__name__}: Debug: changing heater to setting [{int(self.setting)}] on GPIO channel [{self.__gpioChannel}]")
+        # apply the new setting to the output channel
+        #print (f"{self.__class__.__name__}: Debug: changing [{self.controlType}] to setting [{int(self.setting)}] on GPIO channel [{self.__gpioChannel}]")
+
+        # ignore missing hardware libraries on windows
         if _hwLoaded:
             GPIO.output(self.__gpioChannel, int(self.setting))
 
 def main():
 
     root = tk.Tk()
-    ttk.Label(root,text='Erl2Heater',font='Arial 30 bold').grid(row=0,column=0)
-    heater = Erl2Heater(displayLocs=[{'parent':root,'row':1,'column':0}],
-                        buttonLoc={'parent':root,'row':2,'column':0})
+    ttk.Label(root,text='Erl2GpioOutput',font='Arial 30 bold').grid(row=0,column=0)
+    heater = Erl2GpioOutput(controlType='heater',
+                            controlColor='red',
+                            displayLocs=[{'parent':root,'row':1,'column':0}],
+                            buttonLoc={'parent':root,'row':2,'column':0})
     heater.setActive()
     root.mainloop()
 
