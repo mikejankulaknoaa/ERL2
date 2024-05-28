@@ -19,18 +19,18 @@ class Erl2Plot():
                  plotLoc={},
                  statsLoc={},
                  figsize=(5,3),
-                 displayParameter=None,
+                 displayData=[],
+                 displaySpecs=[],
                  displayDecimals=None,
-                 plotData=[],
                  erl2context={}):
 
         # save the Erl2Plot-specific parameters in attributes
         self.__plotLoc = plotLoc
         self.__statsLoc = statsLoc
         self.__figsize = figsize
-        self.__displayParameter = displayParameter
+        self.__displayData = displayData
+        self.__displaySpecs = displaySpecs
         self.__displayDecimals = displayDecimals
-        self.__plotData = plotData
         self.erl2context = erl2context
 
         # read in the system configuration file if needed
@@ -108,22 +108,22 @@ class Erl2Plot():
         self.__fig = plt.figure(figsize=self.__figsize, dpi=100, facecolor='#dbdbdb')
 
         # loop through subplots
-        for ind in range(len(self.__plotData)):
+        for ind in range(len(self.__displaySpecs)):
 
             # create the subplot
             if ind == 0:
-                self.__fig.add_subplot(len(self.__plotData)+1, 1, (1,2), facecolor='#dbdbdb')
+                self.__fig.add_subplot(len(self.__displaySpecs)+1, 1, (1,2), facecolor='#dbdbdb')
             else:
-                self.__fig.add_subplot(len(self.__plotData)+1, 1, ind+2, sharex=self.__fig.axes[0], facecolor='#dbdbdb')
+                self.__fig.add_subplot(len(self.__displaySpecs)+1, 1, ind+2, sharex=self.__fig.axes[0], facecolor='#dbdbdb')
 
         # pause here to add all the plot lines
         self.updatePlotLines()
 
         # loop through subplots again
-        for ind in range(len(self.__plotData)):
+        for ind in range(len(self.__displaySpecs)):
 
             # determine line specs
-            specs = self.getSpecs(self.__plotData[ind]['name'])
+            specs = self.__displaySpecs[ind]
 
             # format the axes?
             self.__fig.axes[ind].xaxis.set_major_formatter(mdates.DateFormatter('%H'))
@@ -133,7 +133,7 @@ class Erl2Plot():
             self.__fig.axes[ind].grid(visible=False, which='both', axis='x')
 
             # customize axes: this is the x axis of the very last subplot in the figure
-            if ind < len(self.__plotData)-1:
+            if ind < len(self.__displaySpecs)-1:
 
                 # disable tickmarks and labelling
                 self.__fig.axes[ind].tick_params(axis='x',          # changes apply to the x-axis
@@ -146,8 +146,8 @@ class Erl2Plot():
             if ind > 0:
 
                 # don't allow the controls' Y axis range to vary
-                if 'yLimit' in specs and specs['yLimit'] is not None:
-                    self.__fig.axes[ind].set_ylim(0, specs['yLimit'])
+                if 'yLimit' in self.__displaySpecs[ind] and self.__displaySpecs[ind]['yLimit'] is not None:
+                    self.__fig.axes[ind].set_ylim(0, self.__displaySpecs[ind]['yLimit'])
 
                 # disable tickmarks and labelling
                 self.__fig.axes[ind].tick_params(axis='y',          # changes apply to the y-axis
@@ -160,9 +160,9 @@ class Erl2Plot():
                 self.__fig.axes[ind].grid(visible=False, which='both', axis='y')
 
             # axes labels
-            #print (f"{__class__.__name__}: Debug: name [{self.__plotData[ind]['name']}], specs [{specs}]")
-            if 'yLabel' in specs and specs['yLabel'] is not None:
-                self.__fig.axes[ind].set_ylabel(specs['yLabel'], rotation=0, labelpad=15, y=0.0)
+            #print (f"{__class__.__name__}: Debug: name {self.__displaySpecs[ind]}")
+            if 'yLabel' in self.__displaySpecs[ind] and self.__displaySpecs[ind]['yLabel'] is not None:
+                self.__fig.axes[ind].set_ylabel(self.__displaySpecs[ind]['yLabel'], rotation=0, labelpad=15, y=0.0)
 
             # eliminate excessive whitespace around plots
             #plt.subplots_adjust(left=0.12, right=0.99, top=0.98, bottom=0.12)
@@ -183,26 +183,36 @@ class Erl2Plot():
         statsUpdated = False
 
         # loop through subplots
-        for ind in range(len(self.__plotData)):
+        for ind in range(len(self.__displaySpecs)):
 
             # determine line specs
-            specs = self.getSpecs(self.__plotData[ind]['name'])
+            specs = self.__displaySpecs[ind]
+
+            # assume we're using the first and only displayData object for all plotLines
+            dataInd = 0
+
+            # but sometimes there is a different displayData object for every plotLine
+            if 0 < ind < len(self.__displayData):
+                dataInd = ind
 
             # convert log history into a pandas dataframe
-            data = pd.DataFrame(self.__plotData[ind]['log'].history)
+            data = pd.DataFrame(self.__displayData[dataInd].history)
 
-            #print (f"{__class__.__name__}: Debug: updatePlotLines() [{self.__displayParameter}][{self.__plotData[ind]['name']}] length [{len(data)}]")
+            #print (f"{__class__.__name__}: Debug: updatePlotLines() [{self.__displaySpecs[ind]['yName']}][{self.__displaySpecs[ind]['yParameter]}] length [{len(data)}]")
 
             # verify that the parameter we're trying to draw actually exists in the log file
-            if 'yName' in specs and specs['yName'] in data:
+            if 'yParameter' in self.__displaySpecs[ind] and self.__displaySpecs[ind]['yParameter'] in data:
+
+                # save some typing
+                yParameter = self.__displaySpecs[ind]['yParameter']
 
                 # convert x and y axis columns into datetime and numeric types, respectively
                 data['Timestamp.Local'] = pd.to_datetime(data['Timestamp.Local'])
-                data[specs['yName']] = pd.to_numeric(data[specs['yName']],errors='coerce')
+                data[yParameter] = pd.to_numeric(data[yParameter],errors='coerce')
 
                 # eliminate any missing or invalid values
                 data = data[data['Timestamp.Local'].notnull()]
-                data = data[data[specs['yName']].notnull()]
+                data = data[data[yParameter].notnull()]
 
                 data.set_index('Timestamp.Local', inplace=True)
 
@@ -225,7 +235,7 @@ class Erl2Plot():
 
                     # special case: if there are fewer line segments now than in the past, delete the earliest ones
                     while len(self.__fig.axes[ind].lines) > 0 and len(self.__fig.axes[ind].lines) > len(segments):
-                        #print (f"{__class__.__name__}: Debug: updatePlotLines(): DELETING [{self.__displayParameter}][{self.__plotData[ind]['name']}] one line")
+                        #print (f"{__class__.__name__}: Debug: updatePlotLines(): DELETING [{self.__displaySpecs[ind]['yName']}][{yParameter}] one line")
                         self.__fig.axes[ind].lines[0].remove()
 
                     # Plot each segment separately
@@ -234,11 +244,11 @@ class Erl2Plot():
 
                         # if this line segment exists, update its data
                         if len(self.__fig.axes[ind].lines) >= line+1:
-                            self.__fig.axes[ind].lines[line].set_data(segment.index, segment[specs['yName']])
+                            self.__fig.axes[ind].lines[line].set_data(segment.index, segment[yParameter])
 
                         # otherwise, this is a new line segment to be added
                         else:
-                            self.__fig.axes[ind].plot(segment.index, segment[specs['yName']], color=specs['color'])
+                            self.__fig.axes[ind].plot(segment.index, segment[yParameter], color=self.__displaySpecs[ind]['yColor'])
 
                         # increment line for next loop
                         line += 1
@@ -254,12 +264,12 @@ class Erl2Plot():
                             # we want the appropriate number formatting, but default to 1 decimal if missing
                             decPl = self.__displayDecimals if self.__displayDecimals is not None else 1
 
-                            self.__meanDisplay.config(text=f"{float(round(data[specs['yName']].mean(),decPl)):.{decPl}f}")
-                            self.__stdDisplay.config(text=f"{float(round(data[specs['yName']].std(),decPl+1)):.{decPl+1}f}")
+                            self.__meanDisplay.config(text=f"{float(round(data[yParameter].mean(),decPl)):.{decPl}f}")
+                            self.__stdDisplay.config(text=f"{float(round(data[yParameter].std(),decPl+1)):.{decPl+1}f}")
                             statsUpdated = True
 
         # reset stats if they weren't updateable this time through
-        if not statsUpdated:
+        if 'parent' in self.__statsLoc and not statsUpdated:
             self.__meanDisplay.config(text='--')
             self.__stdDisplay.config(text='--')
 
@@ -272,7 +282,7 @@ class Erl2Plot():
         self.updatePlotLines()
 
         # loop through subplots
-        for ind in range(len(self.__plotData)):
+        for ind in range(len(self.__displaySpecs)):
 
             # update the time axes limits
             self.__fig.axes[ind].set_xlim(dayAgo, currentTime)
@@ -316,7 +326,7 @@ class Erl2Plot():
                     'color':'limegreen'}
 
         # default appearance
-        return {'yName':self.__displayParameter,
+        return {'yName':None,
                 'yLabel':None,
                 'yLimit':None,
                 'color':'black'}
@@ -330,7 +340,7 @@ def main():
     f.grid(row=1,column=0,sticky='nesw')
 
     plot = Erl2Plot(plotLoc={'parent':f,'row':0,'column':0},
-                    displayParameter='junk')
+                    displaySpecs=[{'yName':'junk', 'yParameter':'junk'}])
 
     ttk.Button(f,text='Exit',command=lambda:tk.Tk.quit(root)).grid(row=2,column=0)
 

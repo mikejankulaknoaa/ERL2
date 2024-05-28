@@ -7,6 +7,7 @@ from Erl2Config import Erl2Config
 from Erl2Entry import Erl2Entry
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
+from Erl2Plot import Erl2Plot
 from Erl2State import Erl2State
 
 SUBS=['temperature','pH','DO']
@@ -14,19 +15,29 @@ CTRLS={'temperature':['heater','chiller'],
        'pH':['mfc.air','mfc.co2'],
        'DO':['mfc.air','mfc.n2']}
 LBLS={'temperature':['Heater','Chiller'],
-      'pH':['Air',u'CO2\u2082'],
-      'DO':['Air',u'N2\u2082']}
+      'pH':['Air',u'CO\u2082'],
+      'DO':['Air',u'N\u2082']}
+PLOTS={'temperature':['heater','chiller'],
+      'pH':['mfc.air','mfc.co2'],
+      'DO':['mfc.air','mfc.n2']}
+PLOTSPECS={'heater': {'yLabel':'Heat',   'yLimit':1.,    'yColor':'red'},
+           'chiller':{'yLabel':'Chill',  'yLimit':1.,    'yColor':'blue'},
+           'mfc.air':{'yLabel':'Air',    'yLimit':5000., 'yColor':'deepskyblue'},
+           'mfc.co2':{'yLabel':'$CO_2$', 'yLimit':20.,   'yColor':'grey'},
+           'mfc.n2': {'yLabel':'$N_2$',  'yLimit':5000., 'yColor':'limegreen'}}
 
 class Erl2Readout():
 
     def __init__(self,
                  labelText=None,
                  deviceState=None,
+                 deviceLog=None,
                  displayLoc={},
                  erl2context={}):
 
         self.__labelText = labelText
         self.__deviceState = deviceState
+        self.__deviceLog = deviceLog
         self.__displayLoc = displayLoc
         self.erl2context = erl2context
 
@@ -68,6 +79,9 @@ class Erl2Readout():
         self.__labelWidget = None
         self.__displayWidgets = {}
         self.__allWidgets = []
+
+        # remember which plots have been created in this Readout
+        self.__allPlots = []
 
         # if using a virtualTemp sensor, it will be explicitly enabled in the state file
         self.__virtualTemp = (    self.__deviceState.isType('virtualtemp')
@@ -129,11 +143,15 @@ class Erl2Readout():
 
                 # frame for sensor info
                 sensorF = ttk.Frame(f2, padding='2', relief='solid', borderwidth=1)
-                sensorF.grid(row=1, column=2*self.__subSystemCount, padx='2', pady='2', sticky='nesw')
+                sensorF.grid(row=1, column=3*self.__subSystemCount, padx='2', pady='2', sticky='nesw')
 
                 # frame for control info
                 controlF = ttk.Frame(f2, padding='2', relief='solid', borderwidth=1)
-                controlF.grid(row=1, column=2*self.__subSystemCount+1, padx='2', pady='2', sticky='nesw')
+                controlF.grid(row=1, column=3*self.__subSystemCount+1, padx='2', pady='2', sticky='nesw')
+
+                # frame for plots
+                plotF = ttk.Frame(f2, padding='2', relief='solid', borderwidth=1)
+                plotF.grid(row=1, column=3*self.__subSystemCount+2, padx='2', pady='2', sticky='nesw')
 
                 # label for sensor frame
                 sensorLabel = None
@@ -275,6 +293,33 @@ class Erl2Readout():
 
                     # note: ignoring lastValid info for control "sensors"
 
+                # if provided with log data, draw a plot of sensor + control data
+                if self.__deviceLog is not None and type(self.__deviceLog) is Erl2Log:
+
+                    # build up the displaySpecs we need to send
+                    dSpecs = []
+
+                    # first, the specs for the sensor plot
+                    dSpecs.append({'yName':sub, 'yParameter':f"s.{sub}.avg", 'yLabel':None, 'yLimit':None, 'yColor':'black'})
+
+                    # then the associated controls
+                    for ctrl in PLOTS[sub]:
+
+                        # use a dict union (python 3.9 or higher)
+                        dSpecs.append({'yName':ctrl, 'yParameter':f"c.{ctrl}.avg"} | PLOTSPECS[ctrl])
+
+                    # now create the actual plot
+                    thisPlot = Erl2Plot(plotLoc={'parent':plotF,'row':0,'column':0},
+                                       #figsize=(2.500,1.000),
+                                       figsize=(3.000,0.250),
+                                       displayData=[self.__deviceLog],
+                                       displaySpecs=dSpecs,
+                                       #displayDecimals=None,
+                                       )
+
+                    # keep a list of plots we've created here
+                    self.__allPlots.append(thisPlot)
+
                 # increment subsystem count
                 self.__subSystemCount += 1
 
@@ -377,6 +422,10 @@ class Erl2Readout():
                         # update the displays
                         self.__displayWidgets[sub][controlList[ind] + '.value'].config(text=valueText)
                         self.__displayWidgets[sub][controlList[ind] + '.setting'].config(text=settingText)
+
+        # also update the plots in this Readout
+        for p in self.__allPlots:
+            p.updatePlot()
 
     def checkOnline(self):
 

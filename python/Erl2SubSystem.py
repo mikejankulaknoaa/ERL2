@@ -23,6 +23,13 @@ MANUAL=0
 AUTO_STATIC=1
 AUTO_DYNAMIC=2
 
+# temporary hardcoding...
+PLOTSPECS={'to.raise':{'yLabel':'Heat',   'yLimit':1.,    'yColor':'red'},
+           'to.lower':{'yLabel':'Chill',  'yLimit':1.,    'yColor':'blue'},
+           'mfc.air': {'yLabel':'Air',    'yLimit':5000., 'yColor':'deepskyblue'},
+           'mfc.co2': {'yLabel':'$CO_2$', 'yLimit':20.,   'yColor':'grey'},
+           'mfc.n2':  {'yLabel':'$N_2$',  'yLimit':5000., 'yColor':'limegreen'}}
+
 class Erl2SubSystem():
 
     def __init__(self,
@@ -381,11 +388,14 @@ class Erl2SubSystem():
         self.__modeRadioWidgets[0].focus()
 
         # build a list of logs for plotting
-        plotData = []
+        displayData = []
+        displaySpecs = []
         for sens in self.__sensors:
-            plotData.append({'name':sens, 'log':self.__sensors[sens].log})
+            displayData.append(self.__sensors[sens].log)
+            displaySpecs.append({'yName':sens,'yParameter':self.__displayParameter,'yLabel':None,'yLimit':None,'yColor':'black'})
         for ctrl in self.__controls:
-            plotData.append({'name':ctrl, 'log':self.__controls[ctrl].log})
+            displayData.append(self.__controls[ctrl].log)
+            displaySpecs.append({'yName':ctrl,'yParameter':'Average Setting'} | PLOTSPECS[ctrl])
 
         # draw a plot of the history of the subsystem
         if 'parent' in self.__plotDisplayLoc:
@@ -393,9 +403,9 @@ class Erl2SubSystem():
                                    statsLoc=self.__statsDisplayLoc,
                                    #figsize=(3.166,1.345), # sizing doesn't seem to matter if frame is weighted properly
                                    figsize=(2.500,1.000),
-                                   displayParameter=self.__displayParameter,
+                                   displaySpecs=displaySpecs,
+                                   displayData=displayData,
                                    displayDecimals=self.__displayDecimals,
-                                   plotData=plotData,
                                    erl2context=self.erl2context)
 
         # begin monitoring the system
