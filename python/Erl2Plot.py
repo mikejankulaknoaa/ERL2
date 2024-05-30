@@ -227,11 +227,36 @@ class Erl2Plot():
 
                     # Find the gaps larger than the threshold
                     gaps = data.index.to_series().diff() > pd.Timedelta(threshold_ns)
+                    trueGaps = gaps[gaps==True]
 
-                    # Split the data into segments at the gaps (don't convert to list)
-                    #splits = (data[gaps].index.to_series() - pd.Timedelta(threshold_ns)).tolist()
-                    splits = (data[gaps].index.to_series() - pd.Timedelta(threshold_ns))
-                    segments = np.split(data, data.index.searchsorted(splits))
+                    # this next bit is to avoid using np.split() on a DataFrame, which is deprecated (use .iloc instead)
+
+                    ## Split the data into segments at the gaps (don't convert to list)
+                    ##splits = (data[gaps].index.to_series() - pd.Timedelta(threshold_ns)).tolist()
+                    #splits = (data[gaps].index.to_series() - pd.Timedelta(threshold_ns))
+                    #segments = np.split(data, data.index.searchsorted(splits))
+
+                    # loop through split points
+                    lastInd = 0
+                    segments = []
+                    for gInd in range(len(trueGaps)):
+
+                        # what is positional index?
+                        pInd = data.index.get_loc(trueGaps.index[gInd])
+
+                        # grab a slice of the data array
+                        slc = data.iloc[lastInd:pInd]
+
+                        # add to segments if non-empty
+                        if len(slc) > 0:
+                            segments.append(slc)
+
+                        # remember this index for next time through the loop
+                        lastInd = pInd
+
+                    # last slice of the array (if non-empty)
+                    if len(data.iloc[lastInd:]) > 0:
+                        segments.append(data.iloc[lastInd:])
 
                     # special case: if there are fewer line segments now than in the past, delete the earliest ones
                     while len(self.__fig.axes[ind].lines) > 0 and len(self.__fig.axes[ind].lines) > len(segments):
