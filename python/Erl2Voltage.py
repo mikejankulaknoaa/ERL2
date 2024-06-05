@@ -1,12 +1,11 @@
 # ignore any failure to load hardware libraries on windows
 _hwLoaded = True
-#try:
-#    from megaind import get4_20In, get0_10In
-#except:
-#    _hwLoaded = False
+try:
+    from board import SCL, SDA
+except:
+    _hwLoaded = False
 
 from adafruit_ina260 import INA260
-from board import SCL, SDA
 from busio import I2C
 import tkinter as tk
 from tkinter import ttk
