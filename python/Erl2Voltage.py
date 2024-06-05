@@ -91,7 +91,7 @@ class Erl2Voltage(Erl2Sensor):
 
         try:
             self.i2c = I2C(SCL, SDA)
-            self.ina260 = INA260(self.__i2c)
+            self.ina260 = INA260(self.i2c)
         except:
             self.i2c = None
             self.ina260 = None
