@@ -81,14 +81,23 @@ class Erl2Sensor():
         # loop through the list of needed display widgets for this sensor
         for loc in self.__displayLocs:
 
+            # different frame padding depending on if there's a label or not
+            pd = '2 2'
+            if self.__label == '|nolabel|': pd = '0 0'
+
             # create the display widget's base frame as a child of its parent
-            f = ttk.Frame(loc['parent'], padding='2 2', relief='flat', borderwidth=0)
+            f = ttk.Frame(loc['parent'], padding=pd, relief='flat', borderwidth=0)
             f.grid(row=loc['row'], column=loc['column'], padx='2', pady='0', sticky='nesw')
 
             # add a Label widget to show the current sensor value
 
+            # special case: label is |nolabel|
+            if self.__label == '|nolabel|':
+                l = ttk.Label(f, text='--', font='Ariel 14', foreground='#1C4587')
+                l.grid(row=0, column=0, sticky='nw')
+
             # if the sensor draws with a label, show both, in slightly smaller font
-            if self.__label is not None:
+            elif self.__label is not None:
                 l = ttk.Label(f, text='--', font='Arial 19 bold', foreground='#1C4587')
                 l.grid(row=0, column=1, padx='2', sticky='e')
 

@@ -17,6 +17,7 @@ from Erl2SerialTemp import Erl2SerialTemp
 from Erl2State import Erl2State
 from Erl2SubSystem import Erl2SubSystem
 from Erl2VirtualTemp import Erl2VirtualTemp
+from Erl2Voltage import Erl2Voltage
 from Erl2Useful import nextIntervalTime
 
 class Erl2Tank:
@@ -209,6 +210,12 @@ class Erl2Tank:
         ttk.Label(self.__frames['Settings'][0][1], text=self.erl2context['conf']['device']['id'], font=fontright
             #, relief='solid', borderwidth=1
             ).grid(row=r, column=1, sticky='nw')
+
+        r += 1
+        ttk.Label(self.__frames['Settings'][0][1], text='Voltage:  ', font=fontleft, justify='right'
+            #, relief='solid', borderwidth=1
+            ).grid(row=r, column=0, sticky='ne')
+        voltageLocs=[{'parent':self.__frames['Settings'][0][1],'row':r,'column':1}]
 
         r += 1
         ttk.Label(self.__frames['Settings'][0][1], text='Log Directory:  ', font=fontleft, justify='right'
@@ -491,6 +498,14 @@ class Erl2Tank:
             displayLocs=[{'parent':self.__frames['Data'][2][1],'row':4,'column':0},
                          {'parent':self.__frames['DO'][0][1],'row':4,'column':0}],
             entryLoc={'parent':self.__frames['DO'][0][2],'row':1,'column':0},
+            erl2context=self.erl2context)
+
+        # readout displays for the voltage
+        self.sensors['voltage'] = Erl2Voltage(
+            sensorType='voltage',
+            displayLocs=voltageLocs,
+            #statusLocs=voltageStatusLocs,
+            label='|nolabel|',
             erl2context=self.erl2context)
 
         # the logic that implements the overarching temperature subsystem (and its controls)

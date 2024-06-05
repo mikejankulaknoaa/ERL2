@@ -9,10 +9,10 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.56b (2024-05-31)'
+    VERSION = '0.57b (2024-06-05)'
 
     # top-level categories in the erl2.conf file
-    CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']
+    CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2', 'voltage']
 
     # valid baud rates (borrowed from the pyrolib code)
     BAUDS = [ 1200,  2400,   4800,   9600,  14400,  19200,  28800,  38400,  38400,
@@ -64,6 +64,16 @@ class Erl2Config():
                                                             '25.0, 25.1, 25.3, 25.6, 26.0, 26.5, '
                                                             '27.0, 27.5, 28.0, 28.4, 28.7, 28.9, '
                                                             '29.0, 28.9, 28.7, 28.4, 28.0, 27.5]')
+
+        self.__default['voltage']['parameterName'] = 'voltage'
+        self.__default['voltage']['hardwareRange'] = '[0.0, 36.0]'
+        self.__default['voltage']['displayParameter'] = 'voltage'
+        self.__default['voltage']['displayDecimals'] = '5'
+        self.__default['voltage']['sampleFrequency'] = '5'
+        self.__default['voltage']['loggingFrequency'] = '300'
+        self.__default['voltage']['offsetParameter'] = 'None'
+        self.__default['voltage']['offsetDefault'] = '0.0'
+        self.__default['voltage']['validRange'] = '[0.0, 36.0]'
 
         self.__default['pH']['serialPort'] = '/dev/ttyAMA1'
         self.__default['pH']['baudRate'] = '19200'
@@ -346,7 +356,7 @@ class Erl2Config():
                 raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['baudRate'] = [{self.__erl2conf[sensorType]['baudRate']}] is not a valid baud rate.\nValid baud rates are [{self.BAUDS}].")
 
         # temperature, pH, DO and the MFCs share a lot of the same parameter logic
-        for sensorType in ['temperature', 'pH', 'DO', 'mfc.air', 'mfc.co2', 'mfc.n2', 'generic']:
+        for sensorType in ['temperature', 'voltage', 'pH', 'DO', 'mfc.air', 'mfc.co2', 'mfc.n2', 'generic']:
 
             # some sensors have hardwareRange as well as validRange
             if 'hardwareRange' in self.__erl2conf[sensorType]:
