@@ -40,9 +40,9 @@ class Erl2Voltage(Erl2Sensor):
         # trigger an error if this isn't windows and the hardware lib wasn't found
         assert(_hwLoaded or self.erl2context['conf']['system']['platform'] in ['darwin','win32'])
 
-        # set up the sensor to communicate via the Pi's I2C "data" and "clock" pins (GPIO 3 and 5)
-        self.__i2c = I2C(SCL, SDA)
-        self.ina260 = INA260(self.__i2c)
+        # connection details for this sensor
+        self.i2c = None
+        self.ina260 = None
 
         # start up the timing loop to update the display widgets
         # (check first if this object is an Erl2Voltage or a child class)
@@ -57,12 +57,18 @@ class Erl2Voltage(Erl2Sensor):
         # ignore missing hardware libraries on windows
         if _hwLoaded:
 
-            try:
-                self.value['current'] = self.ina260.current
-                self.value['voltage'] = self.ina260.voltage
-                self.value['power'] = self.ina260.power
-            except:
-                pass
+            # if the sensor isn't configured yet, try to do so now
+            if self.ina260 is None:
+                self.setupSensor()
+
+            # assuming the setup worked okay, proceed
+            if self.ina260 is not None:
+                try:
+                    self.value['current'] = self.ina260.current
+                    self.value['voltage'] = self.ina260.voltage
+                    self.value['power'] = self.ina260.power
+                except:
+                    pass
 
         # check if we're still/currently offline
         self.online = not (self.value == {})
@@ -81,6 +87,15 @@ class Erl2Voltage(Erl2Sensor):
 
         # return timestamp, measurement and status
         return t, self.value, self.online
+
+    def setupSensor(self):
+
+        try:
+            self.i2c = I2C(SCL, SDA)
+            self.ina260 = INA260(self.__i2c)
+        except:
+            self.i2c = None
+            self.ina260 = None
 
 def main():
 
