@@ -20,11 +20,6 @@ LBLS={'temperature':['Heater','Chiller'],
 PLOTS={'temperature':['heater','chiller'],
       'pH':['mfc.air','mfc.co2'],
       'DO':['mfc.air','mfc.n2']}
-PLOTSPECS={'heater': {'yLabel':'Heat',   'yLimit':1.,    'yColor':'red'},
-           'chiller':{'yLabel':'Chill',  'yLimit':1.,    'yColor':'blue'},
-           'mfc.air':{'yLabel':'Air',    'yLimit':5000., 'yColor':'deepskyblue'},
-           'mfc.co2':{'yLabel':'$CO_2$', 'yLimit':20.,   'yColor':'grey'},
-           'mfc.n2': {'yLabel':'$N_2$',  'yLimit':5000., 'yColor':'limegreen'}}
 
 class Erl2Readout():
 
@@ -78,7 +73,6 @@ class Erl2Readout():
         self.__onlineWidget = None
         self.__labelWidget = None
         self.__displayWidgets = {}
-        self.__allWidgets = []
 
         # remember which plots have been created in this Readout
         self.__allPlots = []
@@ -105,12 +99,12 @@ class Erl2Readout():
         f2.grid(row=1, column=0, padx='0', pady='0', sticky='nesw')
 
         # at startup, figure out how long it's been since a network update
-        self.__online = 1
+        self.__online = True
         self.checkOnline()
         lastActive = self.__deviceState.get('network','lastActive',None)
         currentTime = dt.now(tz=tz.utc)
         if lastActive is None or currentTime.timestamp() - lastActive.timestamp() > self.__lapseTime:
-            self.__online = 0
+            self.__online = False
 
         # add a widget to indicate online/offline depending on time since last update
         c1 += 1
@@ -119,7 +113,6 @@ class Erl2Readout():
             )
         l.grid(row=0, column=c1, sticky='ew')
         self.__onlineWidget = l
-        self.__allWidgets.append(l)
 
         # device label in first row
         c1 += 1
@@ -128,7 +121,6 @@ class Erl2Readout():
             )
         l.grid(row=0, column=c1, sticky='ew')
         self.__labelWidget = l
-        self.__allWidgets.append(l)
 
         # loop through list of possible subsystems
         self.__subSystemCount = 0
@@ -165,9 +157,11 @@ class Erl2Readout():
                     sensorLabel = u'DO (\u00B5mol L\u207B\u00B9)'
 
                 if sensorLabel is not None:
-                    ttk.Label(sensorF, text=sensorLabel, font='Arial 12 bold'
+                    l = ttk.Label(sensorF, text=sensorLabel, font='Arial 12 bold'
                         #, relief='solid', borderwidth=1
-                        ).grid(row=0, column=0, sticky='nw')
+                        )
+                    l.grid(row=0, column=0, sticky='nw')
+                    self.__displayWidgets[sub]['sens.label'] = l
 
                 # sensor value readout (e.g. as in Erl2Sensor)
                 f = ttk.Frame(sensorF, padding='2 2', relief='flat', borderwidth=0)
@@ -179,7 +173,6 @@ class Erl2Readout():
                 f.rowconfigure(0,weight=1)
                 f.columnconfigure(0,weight=1)
                 self.__displayWidgets[sub]['sensor'] = l
-                self.__allWidgets.append(l)
 
                 # sensor setpoint readout (e.g. as in Erl2SubSystem)
                 f = ttk.Frame(sensorF, padding='0 0', relief='flat', borderwidth=0)
@@ -191,7 +184,6 @@ class Erl2Readout():
                 f.rowconfigure(0,weight=1)
                 f.columnconfigure(0,weight=1)
                 self.__displayWidgets[sub]['setpoint'] = l
-                self.__allWidgets.append(l)
 
                 # sensor mode readout (e.g. as in Erl2SubSystem)
                 f = ttk.Frame(sensorF, padding='0 0', relief='flat', borderwidth=0)
@@ -203,7 +195,6 @@ class Erl2Readout():
                 f.rowconfigure(0,weight=1)
                 f.columnconfigure(0,weight=1)
                 self.__displayWidgets[sub]['mode'] = l
-                self.__allWidgets.append(l)
 
                 # sensor lastValid readout
 
@@ -213,9 +204,11 @@ class Erl2Readout():
                     controlLabel = u'Gas Flow (mL min\u207B\u00B9)'
 
                 if controlLabel is not None:
-                    ttk.Label(controlF, text=controlLabel, font='Arial 12 bold'
+                    l = ttk.Label(controlF, text=controlLabel, font='Arial 12 bold'
                         #, relief='solid', borderwidth=1
-                        ).grid(row=0, column=0, sticky='nw')
+                        )
+                    l.grid(row=0, column=0, sticky='nw')
+                    self.__displayWidgets[sub]['ctrl.label'] = l
 
                 # each subsystem currently has two controls (hardcoded for now)
                 controlList = CTRLS[sub]
@@ -227,22 +220,23 @@ class Erl2Readout():
                     # temperature looks a little different from the others
                     if sub == 'temperature':
 
-                        # control setting readouts and labels (e.g. as in Erl2Toggle)
+                        # control value readouts and labels (e.g. as in Erl2Toggle)
                         f = ttk.Frame(controlF, padding='2 2', relief='flat', borderwidth=0)
                         f.grid(row=ind+1, column=0, padx='2', pady='2', sticky='nesw')
 
-                        # add a Label widget to show the current control value
+                        # add a Label widget to show the current control setting
                         l = ttk.Label(f, image=self.erl2context['img']['button-grey-30.png']
                             #, relief='solid', borderwidth=1
                             )
                         l.grid(row=0, column=1, padx='2 2', sticky='e')
                         self.__displayWidgets[sub][controlList[ind] + '.setting'] = l
-                        self.__allWidgets.append(l)
 
                         # this is the (text) Label shown beside the (image) display widget
-                        ttk.Label(f, text=labelList[ind], font='Arial 16'
+                        l = ttk.Label(f, text=labelList[ind], font='Arial 16'
                             #, relief='solid', borderwidth=1
-                            ).grid(row=0, column=0, padx='2 2', sticky='w')
+                            )
+                        l.grid(row=0, column=0, padx='2 2', sticky='w')
+                        self.__displayWidgets[sub][controlList[ind] + '.set.label'] = l
 
                         f.rowconfigure(0,weight=1)
                         f.columnconfigure(1,weight=1)
@@ -259,12 +253,13 @@ class Erl2Readout():
                         l = ttk.Label(f, text='--', font='Arial 19 bold', foreground='#1C4587')
                         l.grid(row=0, column=1, padx='2', sticky='e')
                         self.__displayWidgets[sub][controlList[ind] + '.value'] = l
-                        self.__allWidgets.append(l)
 
                         # this is the Label shown beside the text display widget
-                        ttk.Label(f, text=labelList[ind], font='Arial 16'
+                        l = ttk.Label(f, text=labelList[ind], font='Arial 16'
                             #, relief='solid', borderwidth=1
-                            ).grid(row=0, column=0, padx='2 2', sticky='w')
+                            )
+                        l.grid(row=0, column=0, padx='2 2', sticky='w')
+                        self.__displayWidgets[sub][controlList[ind] + '.val.label'] = l
 
                         f.rowconfigure(0,weight=1)
                         f.columnconfigure(0,weight=1,minsize=45)
@@ -274,18 +269,19 @@ class Erl2Readout():
                         f = ttk.Frame(controlF, padding='2 2', relief='flat', borderwidth=0)
                         f.grid(row=2*ind+2, column=0, padx='2', pady='0', sticky='nesw')
 
-                        # add a Label widget to show the current MFC flow rate
+                        # add a Label widget to show the current (requested setting) MFC flow rate
                         l = ttk.Label(f, text='--', font='Arial 8', justify='right'
                             #, relief='solid', borderwidth=1
                             )
                         l.grid(row=0, column=1, padx='2', pady='0', sticky='e')
                         self.__displayWidgets[sub][controlList[ind] + '.setting'] = l
-                        self.__allWidgets.append(l)
 
                         # this is the Label shown beside the text display widget
-                        ttk.Label(f, text='Setting', font='Arial 8'
+                        l =ttk.Label(f, text='Setting', font='Arial 8'
                             #, relief='solid', borderwidth=1
-                            ).grid(row=0, column=0, padx='2', pady='0', sticky='w')
+                            )
+                        l.grid(row=0, column=0, padx='2', pady='0', sticky='w')
+                        self.__displayWidgets[sub][controlList[ind] + '.set.label'] = l
 
                         f.rowconfigure(0,weight=1)
                         f.columnconfigure(0,weight=1,minsize=45)
@@ -300,13 +296,13 @@ class Erl2Readout():
                     dSpecs = []
 
                     # first, the specs for the sensor plot
-                    dSpecs.append({'yName':sub, 'yParameter':f"s.{sub}.avg", 'yLabel':None, 'yLimit':None, 'yColor':'black'})
+                    dSpecs.append({'yName':sub, 'yParameter':f"s.{sub}.avg"})
 
                     # then the associated controls
                     for ctrl in PLOTS[sub]:
 
                         # use a dict union (python 3.9 or higher)
-                        dSpecs.append({'yName':ctrl, 'yParameter':f"c.{ctrl}.avg"} | PLOTSPECS[ctrl])
+                        dSpecs.append({'yName':ctrl, 'yParameter':f"c.{ctrl}.avg"})
 
                     # now create the actual plot
                     thisPlot = Erl2Plot(plotLoc={'parent':plotF,'row':0,'column':0},
@@ -327,6 +323,7 @@ class Erl2Readout():
         self.refreshDisplays()
 
         # last step is, start monitoring for inactivity
+        self.__checkInactivityTime = None
         self.checkInactivity()
 
     def refreshDisplays(self):
@@ -429,24 +426,69 @@ class Erl2Readout():
 
     def checkOnline(self):
 
+        oldStatus = self.__online
+
         lastActive = self.__deviceState.get('network','lastActive',None)
         currentTime = dt.now(tz=tz.utc)
         if lastActive is None or currentTime.timestamp() - lastActive.timestamp() > self.__lapseTime:
-            self.__online = 0
+            self.__online = False
         else:
-            self.__online = 1
+            self.__online = True
+
+        # return true if new status was set
+        return oldStatus != self.__online
 
     def checkInactivity(self):
 
-        # first, refresh online status
-        self.checkOnline()
+        # what is the current time?
+        currentTime = dt.now(tz=tz.utc)
 
-        # next, apply correct image to online widget
+        # first, refresh this Readout's online status, and widget color
+        changed = self.checkOnline()
+        wSensorColor = '#1C4587' # blue
+        wOtherColor = '' # I think this will set it to the default text color
+        wState = 'normal'
+        if not self.__online:
+            wSensorColor = wOtherColor = 'grey'
+            wState = 'disabled'
+
+        # always apply correct image to any online widget
         if self.__onlineWidget is not None:
             self.__onlineWidget.configure(image=self.erl2context['img'][self.__onlineImages[self.__online]])
 
-            # call this method again after 5 seconds
-            self.__onlineWidget.after(5000, self.checkInactivity)
+        # status recently changed, or it's been a minute since refreshing?
+        if (changed or self.__checkInactivityTime is None or currentTime.timestamp() - self.__checkInactivityTime.timestamp() > 60):
+
+            self.__checkInactivityTime = currentTime
+
+            # loop through possible subsystems
+            for sub in SUBS:
+
+                # is this subSystem present?
+                if sub in self.__displayWidgets:
+
+                    # loop through all associated widgets
+                    for w in self.__displayWidgets[sub]:
+
+                        # sensor, and control/sensors, are blue or grey
+                        if w == 'sensor' or '.value' in w:
+                            self.__displayWidgets[sub][w].config(foreground=wSensorColor)
+
+                        # control setting, if an image label, gets disabled/normal state
+                        elif '.setting' in w and len(self.__displayWidgets[sub][w].cget('text')) == 0:
+                            #print (f"{self.__class__.__name__}: Debug: checkInactivity({self.__labelText}) [{sub}][{w}] text is [{self.__displayWidgets[sub][w].cget('text')}]")
+                            self.__displayWidgets[sub][w].config(state=wState)
+
+                        # all others -- textual control settings, control values, setpoints, modes -- are dafault (black?) or grey
+                        else:
+                            self.__displayWidgets[sub][w].config(foreground=wOtherColor)
+
+            # also update the plots in this Readout
+            for p in self.__allPlots:
+                p.updatePlot(online=self.__online)
+
+        # call this method again after 5 seconds
+        self.__onlineWidget.after(5000, self.checkInactivity)
 
 def main():
 

@@ -136,16 +136,21 @@ def subthreadScan(stub,
         # was there a reply?
         if idReplyObj is not None:
 
-            # process device's reply and prepare report for scanResultsQ
-            #print (f"Erl2Network|subthreadScan: Debug: sent [ID], received reply: [{idReplyObj}]")
-            val = '\n'.join([idReplyObj.replyString.decode(), host])
+            # there could be decoding problems
+            try:
+                # process device's reply and prepare report for scanResultsQ
+                #print (f"Erl2Network|subthreadScan: Debug: sent [ID], received reply: [{idReplyObj}]")
+                val = '\n'.join([idReplyObj.replyString.decode(), host])
 
-            # grab the replyTime for an initial lastActive value
-            val = '\n'.join([val,idReplyObj.replyTime.astimezone(tz.utc).strftime(DTFMT)])
+                # grab the replyTime for an initial lastActive value
+                val = '\n'.join([val,idReplyObj.replyTime.astimezone(tz.utc).strftime(DTFMT)])
 
-            # add device report to the queue (deviceType, id, mac, ip, lastActive)
-            scanResultsQ.put(val)
-            #print (f"Erl2Network|subthreadScan: Debug: adding [{val}] to scanResultsQ")
+                # add device report to the queue (deviceType, id, mac, ip, lastActive)
+                scanResultsQ.put(val)
+                #print (f"Erl2Network|subthreadScan: Debug: adding [{val}] to scanResultsQ")
+
+            except UnicodeDecodeError as e:
+                print (f"Erl2Network|subthreadScan: Warning: UnicodeDecodeError in reply [{idReplyObj.replyString[:50]}]")
 
         else:
             pass
@@ -448,8 +453,8 @@ class Erl2Network():
             # start up the process keep the child device details up to date
             self.pollChildren()
 
-            # run a subnet scan during initialization
-            self.rescanSubnet(init=True)
+            ## run a subnet scan during initialization
+            #self.rescanSubnet(init=True)
 
         # if tank, listen for connections from controller (only if deviceAddresses were found)
         elif self.__deviceType == 'tank' and len(self.__deviceAddresses) > 0:
@@ -892,11 +897,11 @@ class Erl2Network():
 
     def manageQueues(self):
 
+        # remember what time it is
+        currentTime = dt.now(tz=tz.utc)
+
         # network check for tank-type devices
         if self.__deviceType == 'tank':
-
-            # remember what time it is
-            currentTime = dt.now(tz=tz.utc)
 
             # has it been more than 30s since the last network activity?
             if self.__lastActive is None or currentTime.timestamp() - self.__lastActive.timestamp() > 30:
@@ -962,6 +967,13 @@ class Erl2Network():
                     print (f"{self.__class__.__name__}: manageQueues: Debug: unpacked request [{rq.inb}] from [{rq.addr}] to give timestamp [{ts}]")
                     rq.outb = pickle.dumps(self.__systemLog.exportLog(ts))
 
+                # HANGUP!: terminate listener and let it start up naturally again later
+                elif rq.inb == b"HANGUP!":
+
+                    # kill off the forked process listening for connections
+                    if self.__listenProcess is not None and self.__listenProcess.is_alive():
+                        self.__listenProcess.kill()
+
                 # unrecognized request: answer with error
                 else:
                     rq.outb = ''.encode()
@@ -1012,52 +1024,92 @@ class Erl2Network():
 
                     elif rs.command == b"GETTIME":
 
-                        # unpack reply, which is a pickled datetime instance
-                        deviceT = pickle.loads(rs.replyString)
+                        # there could be unpickling problems
+                        try:
 
-                        # calculate difference in controller/device clocks
-                        self.childrenDict[mac]['latency'] = (deviceT-rs.replyTime).total_seconds()
-                        dictChanged = True
-                        #print (f"{self.__class__.__name__}: manageQueues: Debug: updating latency for [{mac}] to [{self.childrenDict[mac]['latency']}]")
+                            # unpack reply, which is a pickled datetime instance
+                            deviceT = pickle.loads(rs.replyString)
+
+                            # something odd is going on if the reply isn't a datetime
+                            if type(deviceT) is not dt:
+                                print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because type(deviceT) is [{type(deviceT)}], not datetime")
+
+                                # comms are out of sync, so hang up the listing tank and try again later
+                                self.sendCommand(mac, b"HANGUP!")
+
+                            else:
+
+                                # calculate difference in controller/device clocks
+                                self.childrenDict[mac]['latency'] = (deviceT-rs.replyTime).total_seconds()
+                                dictChanged = True
+                                #print (f"{self.__class__.__name__}: manageQueues: Debug: updating latency for [{mac}] to [{self.childrenDict[mac]['latency']}]")
+
+                        except pickle.UnpicklingError as e:
+                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because UnpicklingError in [{rs.command}] reply")
+
+                            # comms are out of sync, so hang up the listing tank and try again later
+                            self.sendCommand(mac, b"HANGUP!")
 
                     elif rs.command == b"GETSTATE":
 
-                        # answered with an Erl2State instance (pickled)
-                        thisState = pickle.loads(rs.replyString)
+                        # there could be unpickling problems
+                        try:
 
-                        # some cursory type checking
-                        if type(thisState) is not Erl2State:
-                           print (f"{self.__class__.__name__}: manageQueues: Error: bad state instance [{type(thisState)}] for [{mac}][{self.childrenDict[mac]['id']}]")
-                        else:
+                            # answered with an Erl2State instance (pickled)
+                            thisState = pickle.loads(rs.replyString)
 
-                            # if the Erl2State instance hasn't been created yet
-                            if mac not in self.childrenStates:
-                                self.childrenStates[mac] = Erl2State(internalID=self.childrenDict[mac]['internalID'],
-                                                                     erl2context=self.erl2context)
+                            # some cursory type checking
+                            if type(thisState) is not Erl2State:
+                                print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because bad state instance [{type(thisState)}] for [{mac}][{self.childrenDict[mac]['id']}]")
 
-                            # now assign the new state values to this child State instance
-                            self.childrenStates[mac].assign(thisState)
+                                # comms are out of sync, so hang up the listing tank and try again later
+                                self.sendCommand(mac, b"HANGUP!")
 
-                            # as a final step, refresh any associated Erl2Readout instances
-                            if mac in self.childrenReadouts:
-                                self.childrenReadouts[mac].refreshDisplays()
+                            else:
+
+                                # if the Erl2State instance hasn't been created yet
+                                if mac not in self.childrenStates:
+                                    self.childrenStates[mac] = Erl2State(internalID=self.childrenDict[mac]['internalID'],
+                                                                         erl2context=self.erl2context)
+
+                                # now assign the new state values to this child State instance
+                                self.childrenStates[mac].assign(thisState)
+
+                                # as a final step, refresh any associated Erl2Readout instances
+                                if mac in self.childrenReadouts:
+                                    self.childrenReadouts[mac].refreshDisplays()
+
+                        except pickle.UnpicklingError as e:
+                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because UnpicklingError in [{rs.command}] reply")
+
+                            # comms are out of sync, so hang up the listing tank and try again later
+                            self.sendCommand(mac, b"HANGUP!")
 
                     elif re.match(b'^GETLOG|', rs.command):
 
-                        # answered with an export from an Erl2Log instance (pickled)
-                        thisLog = pickle.loads(rs.replyString)
-                        if type(thisLog) is not list:
-                            print (f"{self.__class__.__name__}: manageQueues: Error: bad log instance [{type(thisLog)}] for [{mac}][{self.childrenDict[mac]['id']}]")
-                        else:
+                        # there could be unpickling problems
+                        try:
 
-                            # if the Erl2Log instance hasn't been created yet
-                            if mac not in self.childrenLogs:
-                                self.childrenLogs[mac] = Erl2Log(logType='device',
-                                                                 logName=self.childrenDict[mac]['internalID'],
-                                                                 erl2context=self.erl2context)
+                            # answered with an export from an Erl2Log instance (pickled)
+                            thisLog = pickle.loads(rs.replyString)
+                            if type(thisLog) is not list:
+                                print (f"{self.__class__.__name__}: manageQueues: Error: bad log instance [{type(thisLog)}] for [{mac}][{self.childrenDict[mac]['id']}]")
+                            else:
 
-                            # now import the new log values to this child Erl2Log instance
-                            self.childrenLogs[mac].importLog(thisLog)
+                                # if the Erl2Log instance hasn't been created yet
+                                if mac not in self.childrenLogs:
+                                    self.childrenLogs[mac] = Erl2Log(logType='device',
+                                                                     logName=self.childrenDict[mac]['internalID'],
+                                                                     erl2context=self.erl2context)
+
+                                # now import the new log values to this child Erl2Log instance
+                                self.childrenLogs[mac].importLog(thisLog)
+
+                        except pickle.UnpicklingError as e:
+                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because UnpicklingError in [{rs.command}] reply")
+
+                            # comms are out of sync, so hang up the listing tank and try again later
+                            self.sendCommand(mac, b"HANGUP!")
 
                     # unrecognized request: answer with error
                     else:
@@ -1088,51 +1140,30 @@ class Erl2Network():
         # remember what time it is
         currentTime = dt.now(tz=tz.utc)
 
-        # what updates are we doing?
-        nowTIME = nowSTATE = nowLOG = False
-        if self.__lastTIME is None or (currentTime - self.__lastTIME).seconds >= 30: # thirty seconds
-            self.__lastTIME = currentTime
-            nowTIME = True
-        if self.__lastSTATE is None or (currentTime - self.__lastSTATE).seconds >= 5: # five seconds
-            self.__lastSTATE = currentTime
-            nowSTATE = True
-        if self.__lastLOG is None or (currentTime - self.__lastLOG).seconds >= 5*60: # five minutes
-            self.__lastLOG = currentTime
-            nowLOG = True
-
         # skip processing if we're scanning the network for new devices
         if not self.scanning():
 
             # loop through child devices
             for thisMac in self.sortedMacs:
 
-                # Note: doesn't make much sense to log this request because this isn't the part
-                # of the program that knows anything about whether any response was received
-                #### log the attempt to poll this child device
-                ###self.__networkLog.writeMessage(f"Polling Device ID [{self.childrenDict[thisMac]['id']}], " +
-                ###                                   f"Type [{self.childrenDict[thisMac]['deviceType']}], " +
-                ###                                   f"MAC address [{thisMac}], IP address [{self.childrenDict[thisMac]['ip']}]")
-
-                # Note: doesn't make much sense to request ID here because, outside of subnet scans,
-                # the code doesn't do anything with the response (at least it doesn't right now)
-                #### check id
-                ###self.sendCommand(thisMac, b"GETID")
-
-                # update latency (get time)
-                if nowTIME:
-                    self.sendCommand(thisMac, b"GETTIME")
-
-                # get state
-                if nowSTATE:
-                    self.sendCommand(thisMac, b"GETSTATE")
-
                 # get log (include info about timestamps already received)
-                if nowLOG:
+                if 'logTime' not in self.childrenDict[thisMac] or currentTime.timestamp() - self.childrenDict[thisMac]['logTime'].timestamp() > 5.*60.: # five minutes
                     if thisMac in self.childrenLogs and self.childrenLogs[thisMac].latestTS is not None:
                         lastLog = self.childrenLogs[thisMac].latestTS.astimezone(tz.utc).strftime(DTFMT)
                     else:
                         lastLog = 'None'
                     self.sendCommand(thisMac, b"GETLOG" + b"|" + lastLog.encode())
+                    self.childrenDict[thisMac]['logTime'] = currentTime
+
+                # update latency (get time)
+                elif 'timeTime' not in self.childrenDict[thisMac] or currentTime.timestamp() - self.childrenDict[thisMac]['timeTime'].timestamp() > 30.: # thirty seconds
+                    self.sendCommand(thisMac, b"GETTIME")
+                    self.childrenDict[thisMac]['timeTime'] = currentTime
+
+                # get state
+                elif 'stateTime' not in self.childrenDict[thisMac] or currentTime.timestamp() - self.childrenDict[thisMac]['stateTime'].timestamp() > 5.: # five seconds
+                    self.sendCommand(thisMac, b"GETSTATE")
+                    self.childrenDict[thisMac]['stateTime'] = currentTime
 
         # call this method again after waiting 5s
         if self.__afterPollChildren is None:
@@ -1144,6 +1175,8 @@ class Erl2Network():
         return self.__scanProcess is not None and self.__scanProcess.is_alive()
 
     def sendCommand(self, mac, command):
+
+        #print (f"{self.__class__.__name__}: Debug: sendCommand([{mac}], [{command}]")
 
         # send command and give it a queue for its reply
         self.wrapperSendCommand(mac, command, self.__commandResultsQueue)

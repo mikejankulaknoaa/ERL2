@@ -13,6 +13,15 @@ from Erl2Config import Erl2Config
 
 #matplotlib.use('TkAgg')
 
+# for consistency of coloring/labeling
+PLOTSPECS={'heater':   {'yLabel':'Heat',   'yLimit':1.,    'yColor':'red'},
+           'to.raise': {'yLabel':'Heat',   'yLimit':1.,    'yColor':'red'},
+           'chiller':  {'yLabel':'Chill',  'yLimit':1.,    'yColor':'blue'},
+           'to.lower': {'yLabel':'Chill',  'yLimit':1.,    'yColor':'blue'},
+           'mfc.air':  {'yLabel':'Air',    'yLimit':5000., 'yColor':'deepskyblue'},
+           'mfc.co2':  {'yLabel':'$CO_2$', 'yLimit':20.,   'yColor':'grey'},
+           'mfc.n2':   {'yLabel':'$N_2$',  'yLimit':5000., 'yColor':'limegreen'}}
+
 class Erl2Plot():
 
     def __init__(self,
@@ -36,6 +45,9 @@ class Erl2Plot():
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
+
+        # whether or not this plot is to be drawn as 'online'
+        self.__online = True
 
         # associated statistics displays
         self.__meanDisplay = None
@@ -122,8 +134,12 @@ class Erl2Plot():
         # loop through subplots again
         for ind in range(len(self.__displaySpecs)):
 
-            # determine line specs
-            specs = self.__displaySpecs[ind]
+            # figure out plotLine specs
+            yLabel, yLimit, yColor = self.getSpecs(self.__displaySpecs[ind]['yName'])
+
+            # but colors are all grey if offline
+            if not self.__online:
+                yColor = 'grey'
 
             # format the axes?
             self.__fig.axes[ind].xaxis.set_major_formatter(mdates.DateFormatter('%H'))
@@ -146,8 +162,8 @@ class Erl2Plot():
             if ind > 0:
 
                 # don't allow the controls' Y axis range to vary
-                if 'yLimit' in self.__displaySpecs[ind] and self.__displaySpecs[ind]['yLimit'] is not None:
-                    self.__fig.axes[ind].set_ylim(0, self.__displaySpecs[ind]['yLimit'])
+                if yLimit is not None:
+                    self.__fig.axes[ind].set_ylim(0, yLimit)
 
                 # disable tickmarks and labelling
                 self.__fig.axes[ind].tick_params(axis='y',          # changes apply to the y-axis
@@ -160,9 +176,8 @@ class Erl2Plot():
                 self.__fig.axes[ind].grid(visible=False, which='both', axis='y')
 
             # axes labels
-            #print (f"{__class__.__name__}: Debug: name {self.__displaySpecs[ind]}")
-            if 'yLabel' in self.__displaySpecs[ind] and self.__displaySpecs[ind]['yLabel'] is not None:
-                self.__fig.axes[ind].set_ylabel(self.__displaySpecs[ind]['yLabel'], rotation=0, labelpad=15, y=0.0)
+            if yLabel is not None:
+                self.__fig.axes[ind].set_ylabel(yLabel, rotation=0, labelpad=15, y=0.0)
 
             # eliminate excessive whitespace around plots
             #plt.subplots_adjust(left=0.12, right=0.99, top=0.98, bottom=0.12)
@@ -185,8 +200,19 @@ class Erl2Plot():
         # loop through subplots
         for ind in range(len(self.__displaySpecs)):
 
-            # determine line specs
-            specs = self.__displaySpecs[ind]
+            # figure out plotLine specs
+            yLabel, yLimit, yColor = self.getSpecs(self.__displaySpecs[ind]['yName'])
+            axesColor = 'black'
+
+            # but colors are all grey if offline
+            if not self.__online:
+                yColor = axesColor = 'grey'
+
+            # color of axis labels may need to change
+            self.__fig.axes[ind].xaxis.label.set_color(axesColor)
+            self.__fig.axes[ind].yaxis.label.set_color(axesColor)
+            self.__fig.axes[ind].tick_params(axis='x', colors=axesColor)
+            self.__fig.axes[ind].tick_params(axis='y', colors=axesColor)
 
             # assume we're using the first and only displayData object for all plotLines
             dataInd = 0
@@ -198,13 +224,13 @@ class Erl2Plot():
             # convert log history into a pandas dataframe
             data = pd.DataFrame(self.__displayData[dataInd].history)
 
-            #print (f"{__class__.__name__}: Debug: updatePlotLines() [{self.__displaySpecs[ind]['yName']}][{self.__displaySpecs[ind]['yParameter]}] length [{len(data)}]")
-
             # verify that the parameter we're trying to draw actually exists in the log file
             if 'yParameter' in self.__displaySpecs[ind] and self.__displaySpecs[ind]['yParameter'] in data:
 
                 # save some typing
                 yParameter = self.__displaySpecs[ind]['yParameter']
+
+                #print (f"{__class__.__name__}: Debug: updatePlotLines() [{self.__displaySpecs[ind]['yName']}][{yParameter}] length [{len(data)}]")
 
                 # convert x and y axis columns into datetime and numeric types, respectively
                 data['Timestamp.Local'] = pd.to_datetime(data['Timestamp.Local'])
@@ -267,13 +293,14 @@ class Erl2Plot():
                     line = 0
                     for segment in segments:
 
-                        # if this line segment exists, update its data
+                        # if this line segment exists, update its data (and color)
                         if len(self.__fig.axes[ind].lines) >= line+1:
                             self.__fig.axes[ind].lines[line].set_data(segment.index, segment[yParameter])
+                            self.__fig.axes[ind].lines[line].set(color=yColor)
 
                         # otherwise, this is a new line segment to be added
                         else:
-                            self.__fig.axes[ind].plot(segment.index, segment[yParameter], color=self.__displaySpecs[ind]['yColor'])
+                            self.__fig.axes[ind].plot(segment.index, segment[yParameter], color=yColor)
 
                         # increment line for next loop
                         line += 1
@@ -298,7 +325,10 @@ class Erl2Plot():
             self.__meanDisplay.config(text='--')
             self.__stdDisplay.config(text='--')
 
-    def updatePlot(self):
+    def updatePlot(self, online=True):
+
+        # allow calling object to set this plot offline
+        self.__online = online
 
         # x axis limits
         currentTime = dt.now()
@@ -319,42 +349,20 @@ class Erl2Plot():
         self.canvas.draw()
         plt.draw()
 
-    def getSpecs(self, name='generic'):
+    def getSpecs(self, yName):
 
-        # hardcode the appearance of certain parameters
-        if name == 'to.raise':
-            return {'yName':'Average Setting',
-                    'yLabel':'Heat',
-                    'yLimit':1.,
-                    'color':'red'}
-        if name == 'to.lower':
-            return {'yName':'Average Setting',
-                    'yLabel':'Chill',
-                    'yLimit':1.,
-                    'color':'blue'}
-        if name == 'mfc.air':
-            return {'yName':'Average Setting',
-                    'yLabel':'Air',
-                    'yLimit':5000.,
-                    'color':'deepskyblue'}
-        if name == 'mfc.co2':
-            return {'yName':'Average Setting',
-                    #'yLabel':u'CO\u2082',
-                    'yLabel':'$CO_2$',
-                    'yLimit':20.,
-                    'color':'grey'}
-        if name == 'mfc.n2':
-            return {'yName':'Average Setting',
-                    #'yLabel':u'N\u2082',
-                    'yLabel':'$N_2$',
-                    'yLimit':5000.,
-                    'color':'limegreen'}
+        # default line specs
+        yLabel = yLimit = None
+        yColor = 'black'
+
+        # but some lines have hardcoded/consistent specs
+        if yName in PLOTSPECS:
+            yLabel = PLOTSPECS[yName]['yLabel']
+            yLimit = PLOTSPECS[yName]['yLimit']
+            yColor = PLOTSPECS[yName]['yColor']
 
         # default appearance
-        return {'yName':None,
-                'yLabel':None,
-                'yLimit':None,
-                'color':'black'}
+        return yLabel, yLimit, yColor
 
 def main():
 
