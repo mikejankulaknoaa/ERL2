@@ -363,6 +363,7 @@ def main():
     root.columnconfigure(0,weight=1)
 
     startup = Erl2Startup({'root':root})
+    root.wait_visibility()
     startup.setFullscreen()
 
     # set things up for graceful termination

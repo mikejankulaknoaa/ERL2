@@ -67,22 +67,24 @@ class Erl2Input(Erl2Sensor):
         # initialize the measurement result
         self.value = {}
 
+        # default to NaN
+        measuredVal = float('nan')
+
         # ignore missing hardware libraries on windows
         if _hwLoaded:
 
-            if self.__channelType == 'volts':
-                # read volts from the input channel
-                measuredVal = get0_10In(self.__stackLevel, self.__inputChannel)
+            # ignore failure (fall back to NaN default)
+            try:
+                if self.__channelType == 'volts':
+                    # read volts from the input channel
+                    measuredVal = get0_10In(self.__stackLevel, self.__inputChannel)
 
-            elif self.__channelType == 'milliAmps':
-                # read milliAmps from the input channel
-                measuredVal = get4_20In(self.__stackLevel, self.__inputChannel)
+                elif self.__channelType == 'milliAmps':
+                    # read milliAmps from the input channel
+                    measuredVal = get4_20In(self.__stackLevel, self.__inputChannel)
 
-            else:
-                measuredVal = float('nan')
-
-        else:
-            measuredVal = float('nan')
+            except:
+                pass
 
         # check result: by definition this should be within 0-10V or 4-20mA
         # (however: allow values slightly outside this range because when

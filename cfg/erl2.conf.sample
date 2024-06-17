@@ -66,7 +66,7 @@
 # serialPort and baudRate parameters. if using a 4-20mA or 0-10V sensor,
 # specify channelType, stackLevel, inputChannel, hardwareRange. System
 # defaults to serial type unless serialPort is set to None
-# serialPort = /dev/ttyAMA3
+# serialPort = /dev/ttyAMA5
 
 # baud rate for communicating with a serial temperature sensor
 # baudRate = 9600
@@ -120,7 +120,7 @@
 
 # path to the Raspberry Pi serial port to be used for pH communications
 # (use None if no serial port is available for this function)
-# serialPort = /dev/ttyAMA1
+# serialPort = /dev/ttyAMA2
 
 # baud rate for communicating with the pH sensor
 # baudRate = 19200
@@ -170,7 +170,7 @@
 
 # path to the Raspberry Pi serial port to be used for O2 communications
 # (use None if no serial port is available for this function)
-# serialPort = /dev/ttyAMA2
+# serialPort = /dev/ttyAMA4
 
 # baud rate for communicating with the pH sensor
 # baudRate = 19200

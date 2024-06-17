@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.60b (2024-06-05d)'
+    VERSION = '0.61b (2024-06-18)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2', 'voltage']
@@ -42,7 +42,7 @@ class Erl2Config():
 
         self.__default['virtualtemp']['enabled'] = 'False'
 
-        self.__default['temperature']['serialPort'] = '/dev/ttyAMA3'
+        self.__default['temperature']['serialPort'] = '/dev/ttyAMA5'
         self.__default['temperature']['baudRate'] = '9600'
         self.__default['temperature']['stackLevel'] = '0'
         self.__default['temperature']['inputChannel'] = '1'
@@ -75,7 +75,7 @@ class Erl2Config():
         self.__default['voltage']['offsetDefault'] = '0.0'
         self.__default['voltage']['validRange'] = '[0.0, 36.0]'
 
-        self.__default['pH']['serialPort'] = '/dev/ttyAMA1'
+        self.__default['pH']['serialPort'] = '/dev/ttyAMA2'
         self.__default['pH']['baudRate'] = '19200'
 
         self.__default['pH']['displayParameter'] = 'pH'
@@ -99,7 +99,7 @@ class Erl2Config():
         self.__default['pH']['mfc.co2.Ki'] = '-4.0'
         self.__default['pH']['mfc.co2.Kd'] = '0.0'
 
-        self.__default['DO']['serialPort'] = '/dev/ttyAMA2'
+        self.__default['DO']['serialPort'] = '/dev/ttyAMA4'
         self.__default['DO']['baudRate'] = '19200'
 
         self.__default['DO']['displayParameter'] = 'uM'

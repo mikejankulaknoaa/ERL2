@@ -974,6 +974,9 @@ class Erl2Network():
                     if self.__listenProcess is not None and self.__listenProcess.is_alive():
                         self.__listenProcess.kill()
 
+                    # send acknowledgment
+                    rq.outb = 'OKAY!'.encode()
+
                 # unrecognized request: answer with error
                 else:
                     rq.outb = ''.encode()
@@ -1044,8 +1047,8 @@ class Erl2Network():
                                 dictChanged = True
                                 #print (f"{self.__class__.__name__}: manageQueues: Debug: updating latency for [{mac}] to [{self.childrenDict[mac]['latency']}]")
 
-                        except pickle.UnpicklingError as e:
-                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because UnpicklingError in [{rs.command}] reply")
+                        except (pickle.UnpicklingError, EOFError) as e:
+                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
 
                             # comms are out of sync, so hang up the listing tank and try again later
                             self.sendCommand(mac, b"HANGUP!")
@@ -1079,8 +1082,8 @@ class Erl2Network():
                                 if mac in self.childrenReadouts:
                                     self.childrenReadouts[mac].refreshDisplays()
 
-                        except pickle.UnpicklingError as e:
-                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because UnpicklingError in [{rs.command}] reply")
+                        except (pickle.UnpicklingError, EOFError) as e:
+                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
 
                             # comms are out of sync, so hang up the listing tank and try again later
                             self.sendCommand(mac, b"HANGUP!")
@@ -1105,11 +1108,16 @@ class Erl2Network():
                                 # now import the new log values to this child Erl2Log instance
                                 self.childrenLogs[mac].importLog(thisLog)
 
-                        except pickle.UnpicklingError as e:
-                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because UnpicklingError in [{rs.command}] reply")
+                        except (pickle.UnpicklingError, EOFError) as e:
+                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
 
                             # comms are out of sync, so hang up the listing tank and try again later
                             self.sendCommand(mac, b"HANGUP!")
+
+                    elif rs.command == b"HANGUP!":
+
+                        # no action needed
+                        pass
 
                     # unrecognized request: answer with error
                     else:
