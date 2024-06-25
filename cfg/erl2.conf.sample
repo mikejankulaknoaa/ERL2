@@ -299,7 +299,7 @@
 # outputChannel = 1
 
 # the minimum and maximum flow rates in mL/min for setting output voltages
-# on this MFC (should be the same as the hardwareRange)
+# on this MFC
 # flowRateRange = [0., 5000.]
 
 
@@ -342,7 +342,7 @@
 # outputChannel = 2
 
 # the minimum and maximum flow rates in mL/min for setting output voltages
-# on this MFC (should be the same as the hardwareRange)
+# on this MFC
 # flowRateRange = [0.0, 20.0]
 
 
@@ -358,7 +358,7 @@
 # how to convert volts or milliAmps to the sensor value -- what to call it,
 # what 0 V (or 4 mA) should map to, and what 10 V (or 20 mA) should map to
 # parameterName = flow.mLperMin
-# hardwareRange = [0., 10000.]
+# hardwareRange = [0., 2000.]
 
 # which parameter to display in GUI, and with how many decimal places
 # displayParameter = flow.mLperMin
@@ -379,12 +379,12 @@
 # offsetDefault = 0.
 
 # valid range: values outside of this range will be considered errors
-# validRange = [0., 5000.]
+# validRange = [0., 1000.]
 
 # sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
 # outputChannel = 3
 
 # the minimum and maximum flow rates in mL/min for setting output voltages
-# on this MFC (should be the same as the hardwareRange)
-# flowRateRange = [0., 5000.]
+# on this MFC
+# flowRateRange = [0., 1000.]
 

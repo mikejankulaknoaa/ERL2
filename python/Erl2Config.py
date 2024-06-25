@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.61b (2024-06-18)'
+    VERSION = '0.62b (2024-06-25)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2', 'voltage']
@@ -183,16 +183,16 @@ class Erl2Config():
         self.__default['mfc.n2']['inputChannel'] = '4'
         self.__default['mfc.n2']['channelType'] = 'volts'
         self.__default['mfc.n2']['parameterName'] = 'flow.mLperMin'
-        self.__default['mfc.n2']['hardwareRange'] = '[0., 10000.]'
+        self.__default['mfc.n2']['hardwareRange'] = '[0., 2000.]'
         self.__default['mfc.n2']['displayParameter'] = 'flow.mLperMin'
         self.__default['mfc.n2']['displayDecimals'] = '0'
         self.__default['mfc.n2']['sampleFrequency'] = '5'
         self.__default['mfc.n2']['loggingFrequency'] = '300'
         self.__default['mfc.n2']['offsetParameter'] = 'flow.mLperMin'
         self.__default['mfc.n2']['offsetDefault'] = '0.'
-        self.__default['mfc.n2']['validRange'] = '[0., 5000.]'
+        self.__default['mfc.n2']['validRange'] = '[0., 1000.]'
         self.__default['mfc.n2']['outputChannel'] = '3'
-        self.__default['mfc.n2']['flowRateRange'] = '[0., 5000.]'
+        self.__default['mfc.n2']['flowRateRange'] = '[0., 1000.]'
 
     def __init__(self):
 
