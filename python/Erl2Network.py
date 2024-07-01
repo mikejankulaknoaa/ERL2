@@ -363,8 +363,8 @@ class Erl2Network():
         # system's memory of what unique IDs have been used locally for filenames
         self.allInternalIDs = self.erl2context['state'].get('network','allInternalIDs',[])
 
-        #print (f"{self.__class__.__name__}: __init: Debug: self.childrenDict type:[{type(self.childrenDict)}] is {self.childrenDict}")
-        #print (f"{self.__class__.__name__}: __init: Debug: self.allInternalIDs type:[{type(self.allInternalIDs)}] is {self.allInternalIDs}")
+        #print (f"{self.__class__.__name__}: __init: Debug: self.childrenDict type:[{type(self.childrenDict).__name__}] is {self.childrenDict}")
+        #print (f"{self.__class__.__name__}: __init: Debug: self.allInternalIDs type:[{type(self.allInternalIDs).__name__}] is {self.allInternalIDs}")
 
         # helpful data structures used to reference entries in childrenDict
         self.sortedMacs = self.createSortedMacs()
@@ -1035,7 +1035,7 @@ class Erl2Network():
 
                             # something odd is going on if the reply isn't a datetime
                             if type(deviceT) is not dt:
-                                print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because type(deviceT) is [{type(deviceT)}], not datetime")
+                                print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because type(deviceT) is [{type(deviceT).__name__}], not datetime")
 
                                 # comms are out of sync, so hang up the listing tank and try again later
                                 self.sendCommand(mac, b"HANGUP!")
@@ -1063,7 +1063,7 @@ class Erl2Network():
 
                             # some cursory type checking
                             if type(thisState) is not Erl2State:
-                                print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because bad state instance [{type(thisState)}] for [{mac}][{self.childrenDict[mac]['id']}]")
+                                print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because bad state instance [{type(thisState).__name__}] for [{mac}][{self.childrenDict[mac]['id']}]")
 
                                 # comms are out of sync, so hang up the listing tank and try again later
                                 self.sendCommand(mac, b"HANGUP!")
@@ -1096,7 +1096,7 @@ class Erl2Network():
                             # answered with an export from an Erl2Log instance (pickled)
                             thisLog = pickle.loads(rs.replyString)
                             if type(thisLog) is not list:
-                                print (f"{self.__class__.__name__}: manageQueues: Error: bad log instance [{type(thisLog)}] for [{mac}][{self.childrenDict[mac]['id']}]")
+                                print (f"{self.__class__.__name__}: manageQueues: Error: bad log instance [{type(thisLog).__name__}] for [{mac}][{self.childrenDict[mac]['id']}]")
                             else:
 
                                 # if the Erl2Log instance hasn't been created yet

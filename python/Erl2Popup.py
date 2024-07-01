@@ -2,7 +2,21 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox as mb
 from Erl2Config import Erl2Config
+from Erl2Entry import Erl2Entry
 from Erl2Image import Erl2Image
+
+# mode constants
+MANUAL=0
+AUTO_STATIC=1
+AUTO_DYNAMIC=2
+
+# a list of choices for the mode radio buttons
+MODEDICT = {MANUAL:'Manual',
+            AUTO_STATIC:'Auto Static',
+            AUTO_DYNAMIC:'Auto Dynamic'}
+
+# hardcoded list of subSystems
+SUBSYSTEMS = ['temperature', 'pH', 'DO']
 
 class Erl2Popup(tk.Toplevel):
 
@@ -35,7 +49,16 @@ class Erl2Popup(tk.Toplevel):
             self.erl2context['img'] = Erl2Image(erl2context=self.erl2context)
 
         # load some images that will be useful later on
-        self.erl2context['img'].addImage('exit','x-25.png')
+        for img in ['no-25.png', 'yes-25.png',
+                    'radio-off-30.png', 'radio-on-30.png',
+                    'radio-off-red-30.png', 'radio-on-red-30.png',
+                    'radio-off-blue-30.png', 'radio-on-blue-30.png',
+                    'copy-25.png', 'load-25.png', 'save-25.png']:
+            self.erl2context['img'].addImage(img, img)
+
+        # the 'Edit Tank Settings' popup needs some extra attributes
+        self.__modeVar = {}
+        self.__modeWidgets = {}
 
         # track whether a modal window is open on top of this one or not
         self.modalOpen = False
@@ -212,6 +235,268 @@ class Erl2Popup(tk.Toplevel):
                 # add network widgets to popup
                 self.erl2context['network'].addWidgets(childrenLocs=childrenLocs)
 
+        # the 'Edit Tank Settings' popup...
+        elif Erl2Popup.popupType == 'Edit Tank Settings':
+
+            r += 1
+            editFrame = ttk.Frame(displayContent, padding='0', relief='flat', borderwidth=0)
+            editFrame.grid(row=r, column=0, sticky='ne')
+
+            # subframe for tanks
+            tanksFrame = ttk.Frame(editFrame, padding='2', relief='solid', borderwidth=1)
+            tanksFrame.grid(row=0, column=0, rowspan=3, padx='2', pady='2', sticky='nesw')
+            ttk.Label(tanksFrame, text='Apply to Tanks:', font='Arial 12 bold'
+                #, relief='solid', borderwidth=1
+                ).grid(row=0, column=0, sticky='nw')
+
+            # if this controller knows of any child tanks through a network connection
+            if 'network' in self.erl2context and self.erl2context['network'] is not None:
+
+                # loop through child tanks and build up a list of ids
+                tankList = []
+                for mac in self.erl2context['network'].sortedMacs:
+                    tankList.append(self.erl2context['network'].childrenDict[mac]['id'])
+
+                var = tk.StringVar()
+                var.set(tankList)
+                lbox = tk.Listbox(tanksFrame, listvariable=var, selectmode=tk.MULTIPLE, font='Arial 12')
+                lbox.grid(row=1,column=0,sticky='nesw')
+
+            # the three subSystems frames are essentially identical
+            sysR = -1
+            for sys in SUBSYSTEMS:
+                sysR += 1
+                sysF = ttk.Frame(editFrame, padding='2', relief='solid', borderwidth=1)
+                sysF.grid(row=sysR, column=1, padx='2', pady='2', sticky='nesw')
+
+                # keep track of widgets created
+                self.__modeWidgets[sys] = {}
+
+                # how many decimal places to display?
+                dispDec = self.erl2context['conf'][sys]['displayDecimals']
+                validRg = self.erl2context['conf'][sys]['validRange']
+
+                # subSystem frame label
+                lbl = sys
+                if sys == 'temperature':
+                    lbl = 'Temperature'
+                ttk.Label(sysF, text=lbl + ':', font='Arial 12 bold'
+                    #, relief='solid', borderwidth=1
+                    ).grid(row=0, column=0, sticky='nw')
+
+                # mode frame
+                modF = ttk.Frame(sysF, padding='2', relief='solid', borderwidth=1)
+                modF.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')
+                ttk.Label(modF, text='Mode', font='Arial 12 bold'
+                    #, relief='solid', borderwidth=1
+                    ).grid(row=0, column=0, sticky='nw')
+
+                # the radiobuttons themselves
+                self.__modeVar[sys] = tk.IntVar()
+                self.__modeWidgets[sys]['radio'] = []
+                for value , text in MODEDICT.items():
+                    rb = tk.Radiobutton(modF,
+                                        indicatoron=0,
+                                        image=self.erl2context['img']['radio-off-30.png'],
+                                        selectimage=self.erl2context['img']['radio-on-30.png'],
+                                        compound='left',
+                                        font='Arial 16',
+                                        bd=0,
+                                        highlightthickness=0,
+                                        activebackground='#DBDBDB',
+                                        highlightcolor='#DBDBDB',
+                                        highlightbackground='#DBDBDB',
+                                        #bg='#DBDBDB',
+                                        selectcolor='#DBDBDB',
+                                        variable=self.__modeVar[sys],
+                                        value=value,
+                                        text=' '+text,
+                                        command=lambda x=sys: self.enableWidgets(x)
+                                        )
+                    rb.grid(row=value+1,column=0,ipadx=2,ipady=2,sticky='w')
+
+                    # keep a reference to all radiobutton widgets
+                    self.__modeWidgets[sys]['radio'].append(rb)
+
+                # manual controls
+                manF = ttk.Frame(sysF, padding='2', relief='solid', borderwidth=1)
+                manF.grid(row=1, column=1, padx='2', pady='2', sticky='nesw')
+                ttk.Label(manF, text='Manual Controls', font='Arial 12 bold'
+                    #, relief='solid', borderwidth=1
+                    ).grid(row=0, column=0, columnspan=2, sticky='nw')
+
+                # manual controls look different in different subsystems
+                if sys == 'temperature':
+
+                    # temperature subSystem has toggle controls
+                    self.__modeWidgets[sys]['toggle'] = []
+                    self.__modeWidgets[sys]['toggle.label'] = []
+                    self.__modeWidgets[sys]['toggle.value'] = []
+
+                    # add a button widget for Heater
+                    b = tk.Button(manF, 
+                                  image=self.erl2context['img']['radio-off-red-30.png'],
+                                  height=40,
+                                  width=40,
+                                  bd=0,
+                                  highlightthickness=0,
+                                  activebackground='#DBDBDB',
+                                  #borderwidth=1,
+                                  command=lambda x='temperature', y=0: self.setToggle(sys=x,ind=y))
+                    b.grid(row=1, column=0, padx='2 2', sticky='w')
+        
+                    # this is the (text) Label shown beside the (image) button widget
+                    l = ttk.Label(manF, text='Heater', font='Arial 16'
+                        #, relief='solid', borderwidth=1
+                        )
+                    l.grid(row=1, column=1, padx='2 2', sticky='w')
+                    l.bind('<Button-1>', lambda event, x='temperature', y=0: self.setToggle(sys=x,ind=y))
+        
+                    # keep track of control + label widgets for this control
+                    self.__modeWidgets[sys]['toggle'].append(b)
+                    self.__modeWidgets[sys]['toggle.label'].append(l)
+
+                    # current setting of Heater defaults to off
+                    self.__modeWidgets[sys]['toggle.value'].append(0.)
+
+                    # add a button widget for Chiller
+                    b = tk.Button(manF, 
+                                  image=self.erl2context['img']['radio-off-blue-30.png'],
+                                  height=40,
+                                  width=40,
+                                  bd=0,
+                                  highlightthickness=0,
+                                  activebackground='#DBDBDB',
+                                  #borderwidth=1,
+                                  command=lambda x='temperature', y=1: self.setToggle(sys=x,ind=y))
+                    b.grid(row=2, column=0, padx='2 2', sticky='w')
+        
+                    # this is the (text) Label shown beside the (image) button widget
+                    l = ttk.Label(manF, text='Chiller', font='Arial 16'
+                        #, relief='solid', borderwidth=1
+                        )
+                    l.grid(row=2, column=1, padx='2 2', sticky='w')
+                    l.bind('<Button-1>', lambda event, x='temperature', y=1: self.setToggle(sys=x,ind=y))
+        
+                    # keep track of control + label widgets for this control
+                    self.__modeWidgets[sys]['toggle'].append(b)
+                    self.__modeWidgets[sys]['toggle.label'].append(l)
+
+                    # current setting of Chiller defaults to off
+                    self.__modeWidgets[sys]['toggle.value'].append(0.)
+
+                #elif sys == 'pH':
+
+                #    # pH and DO subSystems have MFC (Erl2Entry) controls
+                #    self.__modeWidgets[sys]['manual'] = []
+
+                #elif sys == 'DO':
+
+                #    # pH and DO subSystems have MFC (Erl2Entry) controls
+                #    self.__modeWidgets[sys]['manual'] = []
+
+                #    # add an entry widget to change the current setting of the control
+                #    e = Erl2Entry(entryLoc={'parent':manF,'row':1,'column':1},
+                #                  labelLoc={'parent':manF,'row':1,'column':0},
+                #                  label='Air',
+                #                  width=5,
+                #                  labelFont='Arial 16',
+                #                  displayDecimals=dispDec,
+                #                  validRange=validRg,
+                #                  initValue=0.0,
+                #                  #onChange=self.applySetting,
+                #                  erl2context=self.erl2context)
+
+                #    # keep track of the control widget for this control
+                #    self.__controlWidget = e
+
+                # auto controls
+                autF = ttk.Frame(sysF, padding='2', relief='solid', borderwidth=1)
+                autF.grid(row=1, column=2, padx='2', pady='2', sticky='nesw')
+                ttk.Label(autF, text='Auto Controls', font='Arial 12 bold'
+                    #, relief='solid', borderwidth=1
+                    ).grid(row=0, column=0, sticky='nw')
+
+                # create the entry field for the static setpoint
+                e = Erl2Entry(entryLoc={'parent':autF,'row':1,'column':1},
+                                        labelLoc={'parent':autF,'row':1,'column':0},
+                                        label='Static\nSetpoint',
+                                        width=4,
+                                        displayDecimals=dispDec,
+                                        validRange=validRg,
+                                        initValue=0.0,
+                                        #onChange=self.changeStaticSetpoint,
+                                        erl2context=self.erl2context)
+
+                # keep a reference to this static setpoint widget
+                self.__modeWidgets[sys]['static'] = e
+
+                # create the entry field for hysteresis (temperature only)
+                if sys == 'temperature':
+                    e = Erl2Entry(entryLoc={'parent':autF,'row':2,'column':1},
+                                            labelLoc={'parent':autF,'row':2,'column':0},
+                                            label='Hysteresis',
+                                            width=4,
+                                            displayDecimals=dispDec,
+                                            validRange=[0.,None],
+                                            initValue=0.0,
+                                            #onChange=self.changeStaticSetpoint,
+                                            erl2context=self.erl2context)
+
+                    # keep a reference to this hysteresis widget
+                    self.__modeWidgets[sys]['hysteresis'] = e
+
+                # auto dynamic setpoints
+                dynF = ttk.Frame(sysF, padding='2', relief='solid', borderwidth=1)
+                dynF.grid(row=1, column=3, padx='2', pady='2', sticky='nesw')
+                ttk.Label(dynF, text='Auto Dynamic Setpoints (by hour of day)', font='Arial 12 bold'
+                    #, relief='solid', borderwidth=1
+                    ).grid(row=0, column=0, columnspan=24, sticky='nw')
+
+
+                # add dynamic setpoint entry fields
+                hourNum = 0
+                self.__modeWidgets[sys]['dynamic'] = []
+                for hourVal in [0.0] * 24:
+
+                    # lay them out in two rows, 12 boxes each
+                    if hourNum < 12:
+                        hourRow = 1
+                        hourCol = hourNum
+                        valRow = 2
+                        valCol = hourNum
+                        hourPady = '0 0'
+                    else:
+                        hourRow = 3
+                        hourCol = hourNum-12
+                        valRow = 4
+                        valCol = hourNum-12
+                        hourPady = '4 0'
+
+                    # hour label for dynamic setpoints
+                    ttk.Label(dynF, text=str(hourNum), font='Arial 12 bold'
+                        #, relief='solid', borderwidth=1
+                        ).grid(row=hourRow, column=hourCol, pady=hourPady, sticky='s')
+
+                    # create the entry field for each dynamic setpoint
+                    e = Erl2Entry(entryLoc={'parent':dynF,'row':valRow,'column':valCol},
+                                  width=5,
+                                  font='Arial 16',
+                                  displayDecimals=dispDec,
+                                  validRange=validRg,
+                                  initValue=hourVal,
+                                  #onChange=self.changeDynamicSetpoint,
+                                  #onChangeArg=hourNum,
+                                  erl2context=self.erl2context)
+
+                    # keep a reference to all dynamic setpoint widgets
+                    self.__modeWidgets[sys]['dynamic'].append(e)
+
+                    hourNum += 1
+
+                # start off with widgets enabled/disabled appropriately
+                self.enableWidgets(sys)
+
         for row in range(r-1):
             displayContent.rowconfigure(row,weight=0)
         displayContent.rowconfigure(r,weight=1)
@@ -232,12 +517,86 @@ class Erl2Popup(tk.Toplevel):
             self.erl2context['network'].addWidgets(buttonLocs=[{'parent':displayButtons, 'padding':'2 2', 'relief':'solid', 'borderwidth':1,
                                                                 'row':0, 'column':c, 'padx':'0 4', 'pady':'0', 'sticky':'ew'}])
 
+        # these three buttons are only for the edit settings popup
+        if Erl2Popup.popupType == 'Edit Tank Settings':
+
+            # button: copy from tank
+            c += 1
+            copyFrame = ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1)
+            copyFrame.grid(row=0, column=c, padx='0 4', pady=0, sticky='ew')
+            copyButton = tk.Button(copyFrame,
+                                   image=self.erl2context['img']['copy-25.png'],
+                                   height=40,
+                                   width=40,
+                                   bd=0,
+                                   highlightthickness=0,
+                                   activebackground='#DBDBDB',
+                                   command=self.ok)
+            copyButton.grid(row=0, column=0, padx='2 2', sticky='w')
+            l = ttk.Label(copyFrame, text='Copy from Tank', font='Arial 16'
+                #, relief='solid', borderwidth=1
+                )
+            l.grid(row=0, column=1, padx='2 2', sticky='w')
+            l.bind('<Button-1>', self.ok)
+
+            copyFrame.rowconfigure(0,weight=1)
+            copyFrame.columnconfigure(0,weight=0)
+            copyFrame.columnconfigure(1,weight=1)
+
+            # button: load from file
+            c += 1
+            loadFrame = ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1)
+            loadFrame.grid(row=0, column=c, padx='0 4', pady=0, sticky='ew')
+            loadButton = tk.Button(loadFrame,
+                                   image=self.erl2context['img']['load-25.png'],
+                                   height=40,
+                                   width=40,
+                                   bd=0,
+                                   highlightthickness=0,
+                                   activebackground='#DBDBDB',
+                                   command=self.ok)
+            loadButton.grid(row=0, column=0, padx='2 2', sticky='w')
+            l = ttk.Label(loadFrame, text='Load from File', font='Arial 16'
+                #, relief='solid', borderwidth=1
+                )
+            l.grid(row=0, column=1, padx='2 2', sticky='w')
+            l.bind('<Button-1>', self.ok)
+
+            loadFrame.rowconfigure(0,weight=1)
+            loadFrame.columnconfigure(0,weight=0)
+            loadFrame.columnconfigure(1,weight=1)
+
+            # button: save to file
+            c += 1
+            saveFrame = ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1)
+            saveFrame.grid(row=0, column=c, padx='0 4', pady=0, sticky='ew')
+            saveButton = tk.Button(saveFrame,
+                                   image=self.erl2context['img']['save-25.png'],
+                                   height=40,
+                                   width=40,
+                                   bd=0,
+                                   highlightthickness=0,
+                                   activebackground='#DBDBDB',
+                                   command=self.ok)
+            saveButton.grid(row=0, column=0, padx='2 2', sticky='w')
+            l = ttk.Label(saveFrame, text='Save to File', font='Arial 16'
+                #, relief='solid', borderwidth=1
+                )
+            l.grid(row=0, column=1, padx='2 2', sticky='w')
+            l.bind('<Button-1>', self.ok)
+
+            saveFrame.rowconfigure(0,weight=1)
+            saveFrame.columnconfigure(0,weight=0)
+            saveFrame.columnconfigure(1,weight=1)
+
         # exit button
         c += 1
+        if Erl2Popup.popupType == 'Edit Tank Settings': lbl = 'Cancel'
+        else:                                           lbl = 'Close Window'
         exitFrame = ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1)
         exitFrame.grid(row=0, column=c, padx='0', pady=0, sticky='ew')
         exitButton = tk.Button(exitFrame,
-                               image=self.erl2context['img']['exit'],
+                               image=self.erl2context['img']['no-25.png'],
                                height=40,
                                width=40,
                                bd=0,
@@ -245,7 +604,7 @@ class Erl2Popup(tk.Toplevel):
                                activebackground='#DBDBDB',
                                command=self.ok)
         exitButton.grid(row=0, column=0, padx='2 2', sticky='w')
-        l = ttk.Label(exitFrame, text='Close Window', font='Arial 16'
+        l = ttk.Label(exitFrame, text=lbl, font='Arial 16'
             #, relief='solid', borderwidth=1
             )
         l.grid(row=0, column=1, padx='2 2', sticky='w')
@@ -254,6 +613,30 @@ class Erl2Popup(tk.Toplevel):
         exitFrame.rowconfigure(0,weight=1)
         exitFrame.columnconfigure(0,weight=0)
         exitFrame.columnconfigure(1,weight=1)
+
+        # apply button (edit settings only)
+        if Erl2Popup.popupType == 'Edit Tank Settings':
+            c += 1
+            applyFrame = ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1)
+            applyFrame.grid(row=0, column=c, padx='4 0', pady=0, sticky='ew')
+            applyButton = tk.Button(applyFrame,
+                                    image=self.erl2context['img']['yes-25.png'],
+                                    height=40,
+                                    width=40,
+                                    bd=0,
+                                    highlightthickness=0,
+                                    activebackground='#DBDBDB',
+                                    command=self.ok)
+            applyButton.grid(row=0, column=0, padx='2 2', sticky='w')
+            l = ttk.Label(applyFrame, text='Apply', font='Arial 16'
+                #, relief='solid', borderwidth=1
+                )
+            l.grid(row=0, column=1, padx='2 2', sticky='w')
+            l.bind('<Button-1>', self.ok)
+
+            applyFrame.rowconfigure(0,weight=1)
+            applyFrame.columnconfigure(0,weight=0)
+            applyFrame.columnconfigure(1,weight=1)
 
         # right padding
         c += 1
@@ -267,7 +650,7 @@ class Erl2Popup(tk.Toplevel):
         displayButtons.columnconfigure(c,weight=1)
 
         # assuming popup is 312x322, screen is 800x480
-        self.geometry("+244+79")
+        #self.geometry("+244+79")
         self.protocol('WM_DELETE_WINDOW', self.ok)
 
         # even if this approach fails on macOS, on the PC it seems to work
@@ -278,6 +661,51 @@ class Erl2Popup(tk.Toplevel):
         # these are ideas that might work on linux but are problematic on mac + PC
         #self.overrideredirect(1)
         #self.bind("<FocusOut>", self.onFocusOut)
+
+    def setToggle(self, sys, ind):
+
+        print (f"setToggle(sys=[{sys}], ind=[{ind}])")
+
+        # change toggle value from 0. to 1. or vice versa
+        self.__modeWidgets[sys]['toggle.value'][ind] = 1. - self.__modeWidgets[sys]['toggle.value'][ind]
+
+        # display an image appropriate to the control's state
+        onoff = ['off','on'][int(self.__modeWidgets[sys]['toggle.value'][ind])]
+        color = ['red','blue'][ind]
+        self.__modeWidgets[sys]['toggle'][ind].config(image=self.erl2context['img'][f"radio-{onoff}-{color}-30.png"])
+
+    def enableWidgets(self, sys):
+
+       # what mode is currently selected?
+       currMode = self.__modeVar[sys].get()
+
+       # enable/disable toggle controls
+       if 'toggle' in self.__modeWidgets[sys]:
+           for ind in range(len(self.__modeWidgets[sys]['toggle'])):
+               if currMode == MANUAL:
+                   self.__modeWidgets[sys]['toggle'][ind].config(state='normal')
+                   self.__modeWidgets[sys]['toggle.label'][ind].bind('<Button-1>', lambda event, x=sys, y=ind: self.setToggle(sys=x,ind=y))
+               else:
+                   self.__modeWidgets[sys]['toggle'][ind].config(state='disabled')
+                   self.__modeWidgets[sys]['toggle.label'][ind].unbind('<Button-1>')
+                   # if selected, deselect
+                   if self.__modeWidgets[sys]['toggle.value'][ind]:
+                       self.setToggle(sys,ind)
+
+       # enable/disable manual controls
+
+       # enable/disable hysteresis (if applicable)
+       if 'hysteresis' in self.__modeWidgets[sys]:
+           self.__modeWidgets[sys]['hysteresis'].setActive(int(currMode in [AUTO_DYNAMIC, AUTO_STATIC]))
+
+       # enable/disable auto static parameters
+       if 'static' in self.__modeWidgets[sys]:
+           self.__modeWidgets[sys]['static'].setActive(int(currMode == AUTO_STATIC))
+
+       # enable/disable auto dynamic parameters
+       if 'dynamic' in self.__modeWidgets[sys]:
+           for w in self.__modeWidgets[sys]['dynamic']:
+               w.setActive(int(currMode == AUTO_DYNAMIC))
 
     def onFocusOut(self, event=None):
 
@@ -299,7 +727,10 @@ class Erl2Popup(tk.Toplevel):
         self.modalOpen = True
         #self.grab_release()
         #self.transient()
-        if mb.askyesno('Debug Confirmation Window',f"Are you sure you want to close the {Erl2Popup.popupType} window?",parent=self):
+
+        # only ask for confirmation for 'Edit Tank Setting' popup
+        if (   Erl2Popup.popupType != 'Edit Tank Settings'
+            or mb.askyesno('Debug Confirmation Window',f"Are you sure you want to close the {Erl2Popup.popupType} window?",parent=self)):
             self.destroy()
 
         self.modalOpen = False

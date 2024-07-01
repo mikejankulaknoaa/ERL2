@@ -40,6 +40,7 @@ class Erl2Controller():
         self.erl2context['img'].addImage('network','network-25.png')
         self.erl2context['img'].addImage('settings','settings-25.png')
         self.erl2context['img'].addImage('about','about-25.png')
+        self.erl2context['img'].addImage('edit','edit-25.png')
 
         # start a system log
         self.__systemLog = Erl2Log(logType='device', logName='Erl2Controller', erl2context=self.erl2context)
@@ -115,6 +116,29 @@ class Erl2Controller():
 
         # buttons frame contents (at bottom)
         c = -1
+
+        # edit settings and push them to child tanks
+        c += 1
+        editFrame = ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1)
+        editFrame.grid(row=0, column=c, padx='0 4', pady=0, sticky='ew')
+        editButton = tk.Button(editFrame,
+                               image=self.erl2context['img']['edit'],
+                               height=40,
+                               width=40,
+                               bd=0,
+                               highlightthickness=0,
+                               activebackground='#DBDBDB',
+                               command=self.editPopup)
+        editButton.grid(row=0, column=0, padx='2 2', sticky='w')
+        l = ttk.Label(editFrame, text='Edit Tank Settings', font='Arial 16'
+            #, relief='solid', borderwidth=1
+            )
+        l.grid(row=0, column=1, padx='2 2', sticky='w')
+        l.bind('<Button-1>', self.editPopup)
+
+        editFrame.rowconfigure(0,weight=1)
+        editFrame.columnconfigure(0,weight=0)
+        editFrame.columnconfigure(1,weight=1)
 
         # network details
         c += 1
@@ -266,6 +290,10 @@ class Erl2Controller():
 
         # set up the next call to this method (wait 30s)
         self.__displayTanks.after(30000, self.updateDisplays)
+
+    def editPopup(self, event=None):
+
+        Erl2Popup.openPopup(popupType='Edit Tank Settings', erl2context=self.erl2context)
 
     def networkPopup(self, event=None):
 

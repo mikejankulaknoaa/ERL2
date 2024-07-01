@@ -170,6 +170,9 @@ class Erl2Log():
                 w = writer(f, dialect='unix')
                 w.writerow(writeList)
 
+                # don't buffer the output stream, in case of irregular app termination
+                f.flush()
+
         except Exception as e:
             print (f'{self.__class__.__name__}: Error: __writeMessage({str(args)}): {str(e)}')
 

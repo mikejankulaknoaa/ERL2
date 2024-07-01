@@ -61,14 +61,20 @@ class Erl2State():
                 r = reader(f, dialect='unix')
 
                 # loop through lines in the file
-                for t, n, val in r:
+                for row in r:
 
-                    # make sure the top-level type dict exists
-                    if t not in self.erl2state:
-                        self.erl2state[t] = {}
+                    # unpacking this row depends on there being three columns
+                    if len(row) == 3:
 
-                    # save the recovered value to state memory
-                    self.erl2state[t][n] = val
+                        # type, name, value
+                        t, n, val = row
+
+                        # make sure the top-level type dict exists
+                        if t not in self.erl2state:
+                            self.erl2state[t] = {}
+
+                        # save the recovered value to state memory
+                        self.erl2state[t][n] = val
 
     def writeToFile(self):
 
@@ -101,6 +107,9 @@ class Erl2State():
 
                     # write the value as a list
                     w.writerow([t,n,val])
+
+                    # don't buffer the output stream, in case of irregular app termination
+                    f.flush()
 
     def get(self, valueType, valueName, defaultValue):
 
