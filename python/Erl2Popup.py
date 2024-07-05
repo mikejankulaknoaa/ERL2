@@ -43,6 +43,12 @@ class Erl2Popup(tk.Toplevel):
         # read these useful parameters from Erl2Config
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
+        self.__mfcAirDec = self.erl2context['conf']['mfc.air']['displayDecimals']
+        self.__mfcCO2Dec = self.erl2context['conf']['mfc.co2']['displayDecimals']
+        self.__mfcN2Dec = self.erl2context['conf']['mfc.n2']['displayDecimals']
+        self.__mfcAirRng = self.erl2context['conf']['mfc.air']['validRange']
+        self.__mfcCO2Rng = self.erl2context['conf']['mfc.co2']['validRange']
+        self.__mfcN2Rng = self.erl2context['conf']['mfc.n2']['validRange']
 
         # if necessary, create an object to hold/remember image objects
         if 'img' not in self.erl2context:
@@ -334,7 +340,7 @@ class Erl2Popup(tk.Toplevel):
                     self.__modeWidgets[sys]['toggle.value'] = []
 
                     # add a button widget for Heater
-                    b = tk.Button(manF, 
+                    b = tk.Button(manF,
                                   image=self.erl2context['img']['radio-off-red-30.png'],
                                   height=40,
                                   width=40,
@@ -344,14 +350,14 @@ class Erl2Popup(tk.Toplevel):
                                   #borderwidth=1,
                                   command=lambda x='temperature', y=0: self.setToggle(sys=x,ind=y))
                     b.grid(row=1, column=0, padx='2 2', sticky='w')
-        
+
                     # this is the (text) Label shown beside the (image) button widget
                     l = ttk.Label(manF, text='Heater', font='Arial 16'
                         #, relief='solid', borderwidth=1
                         )
                     l.grid(row=1, column=1, padx='2 2', sticky='w')
                     l.bind('<Button-1>', lambda event, x='temperature', y=0: self.setToggle(sys=x,ind=y))
-        
+
                     # keep track of control + label widgets for this control
                     self.__modeWidgets[sys]['toggle'].append(b)
                     self.__modeWidgets[sys]['toggle.label'].append(l)
@@ -360,7 +366,7 @@ class Erl2Popup(tk.Toplevel):
                     self.__modeWidgets[sys]['toggle.value'].append(0.)
 
                     # add a button widget for Chiller
-                    b = tk.Button(manF, 
+                    b = tk.Button(manF,
                                   image=self.erl2context['img']['radio-off-blue-30.png'],
                                   height=40,
                                   width=40,
@@ -370,14 +376,14 @@ class Erl2Popup(tk.Toplevel):
                                   #borderwidth=1,
                                   command=lambda x='temperature', y=1: self.setToggle(sys=x,ind=y))
                     b.grid(row=2, column=0, padx='2 2', sticky='w')
-        
+
                     # this is the (text) Label shown beside the (image) button widget
                     l = ttk.Label(manF, text='Chiller', font='Arial 16'
                         #, relief='solid', borderwidth=1
                         )
                     l.grid(row=2, column=1, padx='2 2', sticky='w')
                     l.bind('<Button-1>', lambda event, x='temperature', y=1: self.setToggle(sys=x,ind=y))
-        
+
                     # keep track of control + label widgets for this control
                     self.__modeWidgets[sys]['toggle'].append(b)
                     self.__modeWidgets[sys]['toggle.label'].append(l)
@@ -385,30 +391,57 @@ class Erl2Popup(tk.Toplevel):
                     # current setting of Chiller defaults to off
                     self.__modeWidgets[sys]['toggle.value'].append(0.)
 
-                #elif sys == 'pH':
+                elif sys == 'pH':
 
-                #    # pH and DO subSystems have MFC (Erl2Entry) controls
-                #    self.__modeWidgets[sys]['manual'] = []
+                    # pH and DO subSystems have MFC (Erl2Entry) controls
+                    self.__modeWidgets[sys]['manual'] = []
 
-                #elif sys == 'DO':
+                    # create the entry field for manual control of the Air MFC
+                    e = Erl2Entry(entryLoc={'parent':manF,'row':2,'column':1},
+                                            labelLoc={'parent':manF,'row':2,'column':0},
+                                            label='Air',
+                                            width=5,
+                                            displayDecimals=self.__mfcAirDec,
+                                            validRange=self.__mfcAirRng,
+                                            initValue=0.0,
+                                            #onChange=self.changeStaticSetpoint,
+                                            erl2context=self.erl2context)
 
-                #    # pH and DO subSystems have MFC (Erl2Entry) controls
-                #    self.__modeWidgets[sys]['manual'] = []
+                    # keep a reference to this hysteresis widget
+                    self.__modeWidgets[sys]['manual'].append(e)
 
-                #    # add an entry widget to change the current setting of the control
-                #    e = Erl2Entry(entryLoc={'parent':manF,'row':1,'column':1},
-                #                  labelLoc={'parent':manF,'row':1,'column':0},
-                #                  label='Air',
-                #                  width=5,
-                #                  labelFont='Arial 16',
-                #                  displayDecimals=dispDec,
-                #                  validRange=validRg,
-                #                  initValue=0.0,
-                #                  #onChange=self.applySetting,
-                #                  erl2context=self.erl2context)
+                    # create the entry field for manual control of the CO2 MFC
+                    e = Erl2Entry(entryLoc={'parent':manF,'row':3,'column':1},
+                                            labelLoc={'parent':manF,'row':3,'column':0},
+                                            label=u'CO\u2082',
+                                            width=5,
+                                            displayDecimals=self.__mfcCO2Dec,
+                                            validRange=self.__mfcCO2Rng,
+                                            initValue=0.0,
+                                            #onChange=self.changeStaticSetpoint,
+                                            erl2context=self.erl2context)
 
-                #    # keep track of the control widget for this control
-                #    self.__controlWidget = e
+                    # keep a reference to this hysteresis widget
+                    self.__modeWidgets[sys]['manual'].append(e)
+
+                elif sys == 'DO':
+
+                    # pH and DO subSystems have MFC (Erl2Entry) controls
+                    self.__modeWidgets[sys]['manual'] = []
+
+                    # create the entry field for manual control of the N2 MFC
+                    e = Erl2Entry(entryLoc={'parent':manF,'row':2,'column':1},
+                                            labelLoc={'parent':manF,'row':2,'column':0},
+                                            label=u'N\u2082',
+                                            width=5,
+                                            displayDecimals=self.__mfcN2Dec,
+                                            validRange=self.__mfcN2Rng,
+                                            initValue=0.0,
+                                            #onChange=self.changeStaticSetpoint,
+                                            erl2context=self.erl2context)
+
+                    # keep a reference to this hysteresis widget
+                    self.__modeWidgets[sys]['manual'].append(e)
 
                 # auto controls
                 autF = ttk.Frame(sysF, padding='2', relief='solid', borderwidth=1)
@@ -692,7 +725,15 @@ class Erl2Popup(tk.Toplevel):
                    if self.__modeWidgets[sys]['toggle.value'][ind]:
                        self.setToggle(sys,ind)
 
-       # enable/disable manual controls
+       # enable/disable manual controls (if applicable)
+       if 'manual' in self.__modeWidgets[sys]:
+           for w in self.__modeWidgets[sys]['manual']:
+               w.setActive(int(currMode == MANUAL))
+
+               # reset manual control to zero if disabling
+               if currMode != MANUAL:
+                   w.floatValue = 0.
+                   w.stringVar.set(w.valToString(0.))
 
        # enable/disable hysteresis (if applicable)
        if 'hysteresis' in self.__modeWidgets[sys]:

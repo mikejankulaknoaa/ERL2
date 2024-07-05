@@ -4,7 +4,6 @@ from random import random as random
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
-from Erl2Entry import Erl2Entry
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
 from Erl2Plot import Erl2Plot
@@ -154,7 +153,7 @@ class Erl2Readout():
                 elif sub == 'pH':
                     sensorLabel = 'pH (Total Scale)'
                 elif sub == 'DO':
-                    sensorLabel = u'DO (\u00B5mol L\u207B\u00B9)'
+                    sensorLabel = u'DO (mg L\u207B\u00B9)'
 
                 if sensorLabel is not None:
                     l = ttk.Label(sensorF, text=sensorLabel, font='Arial 12 bold'

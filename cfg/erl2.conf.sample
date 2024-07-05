@@ -176,8 +176,8 @@
 # baudRate = 19200
 
 # which parameter to display in GUI, and with how many decimal places
-# displayParameter = uM
-# displayDecimals = 0
+# displayParameter = mgL
+# displayDecimals = 2
 
 # sampling: frequency (seconds)
 # how often the sensor is sampled; not all values may be saved in memory/files
@@ -187,22 +187,22 @@
 # controls how often measured values are saved in memory and written to log files
 # loggingFrequency = 300
 
-# default corrective offset (umol/L), and the parameter it applies to
+# default corrective offset (mg/L), and the parameter it applies to
 # (i.e. an offset applied when external/redundant DO readings
 # suggest that the O2 sensor is off by a consistent factor);
 # In most cases the offsetParameter and the displayParameter will be the same
-# offsetParameter = uM
+# offsetParameter = mgL
 # offsetDefault = 0.
 
 # valid range: values outside of this range will be considered errors
-# validRange = [100., 700.]
+# validRange = [3.00, 12.00]
 
-# default pH setpoint (total pH)
-# setpointDefault = 300.
+# default DO setpoint (mg/L)
+# setpointDefault = 7.00
 
-# default dynamic program (24 values, umol/L)
-# this is a sine shape running between 275. (6am low point) and 325. (6pm high point)
-# dynamicDefault = [300., 294., 288., 282., 278., 276., 275., 276., 278., 282., 288., 294., 300., 306., 313., 318., 322., 324., 325., 324., 322., 318., 313., 306.]
+# default dynamic program (24 values, mg/L)
+# this is a sine shape running between 6.75 (6am low point) and 7.25 (6pm high point)
+# dynamicDefault = [7.00, 6.94, 6.88, 6.82, 6.78, 6.76, 6.75, 6.76, 6.78, 6.82, 6.88, 6.94, 7.00, 7.06, 7.13, 7.18, 7.22, 7.24, 7.25, 7.24, 7.22, 7.18, 7.13, 7.06]
 
 # PID Tuning Parameters for DO -- right now, ignore that Air is part of both pH and DO subsystems
 # mfc.air.Kp = 10000.0

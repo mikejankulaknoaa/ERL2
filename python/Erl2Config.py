@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.63b (2024-07-01)'
+    VERSION = '0.64b (2024-07-05)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2', 'voltage']
@@ -102,19 +102,19 @@ class Erl2Config():
         self.__default['DO']['serialPort'] = '/dev/ttyAMA4'
         self.__default['DO']['baudRate'] = '19200'
 
-        self.__default['DO']['displayParameter'] = 'uM'
-        self.__default['DO']['displayDecimals'] = '0'
+        self.__default['DO']['displayParameter'] = 'mgL'
+        self.__default['DO']['displayDecimals'] = '2'
         self.__default['DO']['sampleFrequency'] = '60'
         self.__default['DO']['loggingFrequency'] = '300'
-        self.__default['DO']['offsetParameter'] = 'uM'
+        self.__default['DO']['offsetParameter'] = 'mgL'
         self.__default['DO']['offsetDefault'] = '0.'
-        self.__default['DO']['validRange'] = '[100., 700.]'
+        self.__default['DO']['validRange'] = '[3.00, 12.00]'
 
-        self.__default['DO']['setpointDefault'] = '300.'
-        self.__default['DO']['dynamicDefault'] = ('[300., 294., 288., 282., 278., 276., '
-                                                   '275., 276., 278., 282., 288., 294., '
-                                                   '300., 306., 313., 318., 322., 324., '
-                                                   '325., 324., 322., 318., 313., 306.]')
+        self.__default['DO']['setpointDefault'] = '7.00'
+        self.__default['DO']['dynamicDefault'] = ('[7.00, 6.94, 6.88, 6.82, 6.78, 6.76, '
+                                                   '6.75, 6.76, 6.78, 6.82, 6.88, 6.94, '
+                                                   '7.00, 7.06, 7.13, 7.18, 7.22, 7.24, '
+                                                   '7.25, 7.24, 7.22, 7.18, 7.13, 7.06]')
 
         self.__default['DO']['mfc.air.Kp'] = '10000.0'
         self.__default['DO']['mfc.air.Ki'] = '1000.0'

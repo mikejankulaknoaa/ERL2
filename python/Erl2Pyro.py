@@ -168,6 +168,13 @@ class Erl2Pyro(Erl2Sensor):
             # tell the PyroDevice to take a measurement
             m = self.__device.measure()
 
+            # if umol/L is present, add a conversion to mg/L
+            if 'uM' in m[1]:
+                try:
+                    m[1]['mgL'] = m[1]['uM'] * 15.9994 * 2. / 1000.
+                except:
+                    m[1]['mgL'] = float('nan')
+
             # this sensor has only one channel: channel 1
             # (return this value -- a python dict -- via the process queue)
             q.put(m[1])
