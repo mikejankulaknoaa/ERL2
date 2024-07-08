@@ -153,7 +153,9 @@ class Erl2Readout():
                 elif sub == 'pH':
                     sensorLabel = 'pH (Total Scale)'
                 elif sub == 'DO':
-                    sensorLabel = u'DO (mg L\u207B\u00B9)'
+                    sensorLabel = u'DO (\u00B5mol  L\u207B\u00B9)'
+                    if self.erl2context['conf']['DO']['displayParameter'] == 'mgL':
+                        sensorLabel = u'DO (mg L\u207B\u00B9)'
 
                 if sensorLabel is not None:
                     l = ttk.Label(sensorF, text=sensorLabel, font='Arial 12 bold'

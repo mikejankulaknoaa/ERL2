@@ -176,8 +176,8 @@
 # baudRate = 19200
 
 # which parameter to display in GUI, and with how many decimal places
-# displayParameter = mgL
-# displayDecimals = 2
+# displayParameter = uM
+# displayDecimals = 0
 
 # sampling: frequency (seconds)
 # how often the sensor is sampled; not all values may be saved in memory/files
@@ -187,22 +187,22 @@
 # controls how often measured values are saved in memory and written to log files
 # loggingFrequency = 300
 
-# default corrective offset (mg/L), and the parameter it applies to
+# default corrective offset (umol/L), and the parameter it applies to
 # (i.e. an offset applied when external/redundant DO readings
 # suggest that the O2 sensor is off by a consistent factor);
 # In most cases the offsetParameter and the displayParameter will be the same
-# offsetParameter = mgL
+# offsetParameter = uM
 # offsetDefault = 0.
 
 # valid range: values outside of this range will be considered errors
-# validRange = [3.00, 12.00]
+# validRange = [100., 400.]
 
-# default DO setpoint (mg/L)
-# setpointDefault = 7.00
+# default DO setpoint (umol/L)
+# setpointDefault = 220.
 
-# default dynamic program (24 values, mg/L)
+# default dynamic program (24 values, umol/L)
 # this is a sine shape running between 6.75 (6am low point) and 7.25 (6pm high point)
-# dynamicDefault = [7.00, 6.94, 6.88, 6.82, 6.78, 6.76, 6.75, 6.76, 6.78, 6.82, 6.88, 6.94, 7.00, 7.06, 7.13, 7.18, 7.22, 7.24, 7.25, 7.24, 7.22, 7.18, 7.13, 7.06]
+# dynamicDefault = [220., 216., 213., 209., 207., 206., 205., 206., 207., 209., 213., 216., 220., 224., 228., 231., 233., 234., 235., 234., 233., 231., 228., 224.]
 
 # PID Tuning Parameters for DO -- right now, ignore that Air is part of both pH and DO subsystems
 # mfc.air.Kp = 10000.0
@@ -225,7 +225,7 @@
 # stackLevel = 0
 
 # sequent microsystems Open-Drain / PWM output channel number (can be 1 - 4), writes 0-100%
-# outputPwmChannel = 2
+# outputPwmChannel = 3
 
 # Raspberry Pi GPIO channel number (can be 1 - 27), writes 0 or 1, GPIO.LOW or GPIO.HIGH, True or False;
 # ERL2's early implementations used GPIO 23 (pin 16), by default, to avoid conflicts with other Raspberry
@@ -249,7 +249,7 @@
 # stackLevel = 0
 
 # sequent microsystems Open-Drain / PWM output channel number (can be 1 - 4), writes 0-100%
-# outputPwmChannel = 1
+# outputPwmChannel = 4
 
 # Raspberry Pi GPIO channel number (can be 1 - 27), writes 0 or 1, GPIO.LOW or GPIO.HIGH, True or False;
 # ERL2 designs have never used a GPIO chiller/solenoid connection but it is included here for flexibility

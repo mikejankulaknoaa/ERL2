@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.65b (2024-07-05b)'
+    VERSION = '0.66b (2024-07-08)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2', 'voltage']
@@ -102,19 +102,19 @@ class Erl2Config():
         self.__default['DO']['serialPort'] = '/dev/ttyAMA4'
         self.__default['DO']['baudRate'] = '19200'
 
-        self.__default['DO']['displayParameter'] = 'mgL'
-        self.__default['DO']['displayDecimals'] = '2'
+        self.__default['DO']['displayParameter'] = 'uM'
+        self.__default['DO']['displayDecimals'] = '0'
         self.__default['DO']['sampleFrequency'] = '60'
         self.__default['DO']['loggingFrequency'] = '300'
-        self.__default['DO']['offsetParameter'] = 'mgL'
+        self.__default['DO']['offsetParameter'] = 'uM'
         self.__default['DO']['offsetDefault'] = '0.'
-        self.__default['DO']['validRange'] = '[3.00, 12.00]'
+        self.__default['DO']['validRange'] = '[100., 400.]'
 
-        self.__default['DO']['setpointDefault'] = '7.00'
-        self.__default['DO']['dynamicDefault'] = ('[7.00, 6.94, 6.88, 6.82, 6.78, 6.76, '
-                                                   '6.75, 6.76, 6.78, 6.82, 6.88, 6.94, '
-                                                   '7.00, 7.06, 7.13, 7.18, 7.22, 7.24, '
-                                                   '7.25, 7.24, 7.22, 7.18, 7.13, 7.06]')
+        self.__default['DO']['setpointDefault'] = '220.'
+        self.__default['DO']['dynamicDefault'] = ('[220., 216., 213., 209., 207., 206., '
+                                                   '205., 206., 207., 209., 213., 216., '
+                                                   '220., 224., 228., 231., 233., 234., '
+                                                   '235., 234., 233., 231., 228., 224.]')
 
         self.__default['DO']['mfc.air.Kp'] = '10000.0'
         self.__default['DO']['mfc.air.Ki'] = '1000.0'
@@ -139,13 +139,13 @@ class Erl2Config():
 
         self.__default['heater']['channelType'] = 'pwm'
         self.__default['heater']['stackLevel'] = '0'
-        self.__default['heater']['outputPwmChannel'] = '2'
+        self.__default['heater']['outputPwmChannel'] = '3'
         self.__default['heater']['gpioChannel'] = '23'
         self.__default['heater']['loggingFrequency'] = '300'
 
         self.__default['chiller']['channelType'] = 'pwm'
         self.__default['chiller']['stackLevel'] = '0'
-        self.__default['chiller']['outputPwmChannel'] = '1'
+        self.__default['chiller']['outputPwmChannel'] = '4'
         self.__default['chiller']['gpioChannel'] = 'None'
         self.__default['chiller']['loggingFrequency'] = '300'
 
@@ -393,6 +393,12 @@ class Erl2Config():
                     # only some combinations are valid
                     if ((gas == 'air') or (gas == 'co2' and sys == 'pH') or (gas == 'n2' and sys == 'DO')):
                         self.validate(float, sys, f"mfc.{gas}.{param}")
+
+        # slight kludge: if 'DO' uses mgL instead of uM (default), rescale parameters and ranges
+        if self.__erl2conf['DO']['displayParameter'] == 'mgL':
+            self.__erl2conf['DO']['validRange'] = [ x * 15.9994 * 2. / 1000. for x in self.__erl2conf['DO']['validRange'] ]
+            self.__erl2conf['DO']['setpointDefault'] = self.__erl2conf['DO']['setpointDefault'] * 15.9994 * 2. / 1000.
+            self.__erl2conf['DO']['dynamicDefault'] = [ x * 15.9994 * 2. / 1000. for x in self.__erl2conf['DO']['dynamicDefault'] ]
 
         # the virtual temperature sensor might be required even if not explicitly enabled
         self.__erl2conf['virtualtemp'] = {**self.__erl2conf['virtualtemp'], **self.__erl2conf['temperature']}

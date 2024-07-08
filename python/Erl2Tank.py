@@ -635,8 +635,11 @@ class Erl2Tank:
                 ).grid(row=0, column=0, sticky='nw')
 
         # DO labels
+        doLabel = u'DO (\u00B5mol  L\u207B\u00B9)'
+        if self.erl2context['conf']['DO']['displayParameter'] == 'mgL':
+            doLabel = u'DO (mg L\u207B\u00B9)'
         for f in [self.__frames['Data'][2][0], self.__frames['DO'][0][0]]:
-            ttk.Label(f, text=u'DO (mg L\u207B\u00B9)', font='Arial 12 bold'
+            ttk.Label(f, text=doLabel, font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
                 ).grid(row=0, column=0, sticky='nw')
         for f in [self.__frames['Data'][2][1], self.__frames['DO'][0][1]]:
