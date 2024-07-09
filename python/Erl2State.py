@@ -9,7 +9,11 @@ from Erl2Log import Erl2Log
 
 class Erl2State():
 
-    def __init__(self, internalID='state', erl2context={}):
+    def __init__(self,
+                 internalID='state',
+                 fullPath=None,
+                 readExisting=True,
+                 erl2context={}):
 
         # do not save erl2context as an attribute, it is only needed in __init__
         #self.erl2context = erl2context
@@ -27,20 +31,27 @@ class Erl2State():
         self.__dtFormat = erl2context['conf']['system']['dtFormat']
         self.__dtRegexp = erl2context['conf']['system']['dtRegexp']
 
-        # state file is based on the location of the main logging directory
-        try:
-            # if there's no system-level log, reroute to a debug directory
-            if 'system' not in Erl2Log.logTypes:
-                self.__dirName = erl2context['conf']['system']['logDir'] + '/zDebug/state'
-            else:
-                self.__dirName = erl2context['conf']['system']['logDir'] + '/state'
+        # fullPath parameter is allowed to override the default file name and location
+        if fullPath is not None:
+            self.__dirName = path.dirname(fullPath)
+            self.__fileName = fullPath
 
-            # name the file according to the internal ID (default: 'state.dat')
-            self.__fileName = self.__dirName + '/' + internalID + '.dat'
+        # otherwise use the default file name/location logic
+        else:
+            # state file is based on the location of the main logging directory
+            try:
+                # if there's no system-level log, reroute to a debug directory
+                if 'system' not in Erl2Log.logTypes:
+                    self.__dirName = erl2context['conf']['system']['logDir'] + '/zDebug/state'
+                else:
+                    self.__dirName = erl2context['conf']['system']['logDir'] + '/state'
 
-        except Exception as e:
-            print (f"{self.__class__.__name__}: Error: Could not determine location of main logging directory: {e}")
-            raise
+                # name the file according to the internal ID (default: 'state.dat')
+                self.__fileName = self.__dirName + '/' + internalID + '.dat'
+
+            except Exception as e:
+                print (f"{self.__class__.__name__}: Error: Could not determine location of main logging directory: {e}")
+                raise
 
         # initial directories
         if not path.isdir(erl2context['conf']['system']['logDir']):
@@ -48,8 +59,9 @@ class Erl2State():
         if not path.isdir(self.__dirName):
             makedirs(self.__dirName)
 
-        # if file exists, reload saved state from file
-        self.readFromFile()
+        # if file exists, reload saved state from file (unless asked not to)
+        if readExisting:
+            self.readFromFile()
 
     def readFromFile(self):
 

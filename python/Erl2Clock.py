@@ -64,10 +64,10 @@ class Erl2Clock():
         clock = dt.now()
 
         # I am zero-padding the hour, minute and day-of-month, but not the month
-        if self.erl2context['conf']['system']['clockWithSeconds']:
-            clockTime = clock.strftime('%H:%M:%S')
-        else:
+        if self.erl2context['conf']['system']['hideClockSeconds']:
             clockTime = clock.strftime('%H:%M')
+        else:
+            clockTime = clock.strftime('%H:%M:%S')
         clockDate = clock.strftime('%m.%d.%y').lstrip('0')
         self.__clockTime.config(text=clockTime)
         self.__clockDate.config(text=clockDate)

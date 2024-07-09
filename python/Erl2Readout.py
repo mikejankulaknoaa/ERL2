@@ -149,7 +149,7 @@ class Erl2Readout():
                 if sub == 'temperature':
                     sensorLabel = u'Temperature (\u00B0C)'
                     if self.__virtualTemp:
-                        tempLabel = u'Virtual Temp (\u00B0C)'
+                        sensorLabel = u'Virtual Temp (\u00B0C)'
                 elif sub == 'pH':
                     sensorLabel = 'pH (Total Scale)'
                 elif sub == 'DO':

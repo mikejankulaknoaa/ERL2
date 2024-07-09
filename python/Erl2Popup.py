@@ -1,9 +1,13 @@
+from os import makedirs,path
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog as fd
 from tkinter import messagebox as mb
 from Erl2Config import Erl2Config
 from Erl2Entry import Erl2Entry
 from Erl2Image import Erl2Image
+from Erl2Log import Erl2Log
+from Erl2State import Erl2State
 
 # mode constants
 MANUAL=0
@@ -68,6 +72,27 @@ class Erl2Popup(tk.Toplevel):
 
         # track whether a modal window is open on top of this one or not
         self.modalOpen = False
+
+        # need a tanksettings folder in the main logging directory
+        try:
+            # if there's no system-level log, reroute to a debug directory
+            if 'system' not in Erl2Log.logTypes:
+                self.__dirName = erl2context['conf']['system']['logDir'] + '/zDebug/tanksettings'
+            else:
+                self.__dirName = erl2context['conf']['system']['logDir'] + '/tanksettings'
+
+        except Exception as e:
+            print (f"{self.__class__.__name__}: Error: Could not determine location of main logging directory: {e}")
+            raise
+
+        # initial directories
+        if not path.isdir(erl2context['conf']['system']['logDir']):
+            makedirs(erl2context['conf']['system']['logDir'])
+        if not path.isdir(self.__dirName):
+            makedirs(self.__dirName)
+
+        # remember most recent filename
+        self.__fileName = None
 
         # create a Frame to hold everything
         self.__f = ttk.Frame(self, padding='2 2', relief='flat', borderwidth=0)
@@ -404,7 +429,6 @@ class Erl2Popup(tk.Toplevel):
                                             displayDecimals=self.__mfcAirDec,
                                             validRange=self.__mfcAirRng,
                                             initValue=0.0,
-                                            #onChange=self.changeStaticSetpoint,
                                             erl2context=self.erl2context)
 
                     # keep a reference to this hysteresis widget
@@ -418,7 +442,6 @@ class Erl2Popup(tk.Toplevel):
                                             displayDecimals=self.__mfcCO2Dec,
                                             validRange=self.__mfcCO2Rng,
                                             initValue=0.0,
-                                            #onChange=self.changeStaticSetpoint,
                                             erl2context=self.erl2context)
 
                     # keep a reference to this hysteresis widget
@@ -437,7 +460,6 @@ class Erl2Popup(tk.Toplevel):
                                             displayDecimals=self.__mfcN2Dec,
                                             validRange=self.__mfcN2Rng,
                                             initValue=0.0,
-                                            #onChange=self.changeStaticSetpoint,
                                             erl2context=self.erl2context)
 
                     # keep a reference to this hysteresis widget
@@ -457,8 +479,7 @@ class Erl2Popup(tk.Toplevel):
                                         width=4,
                                         displayDecimals=dispDec,
                                         validRange=validRg,
-                                        initValue=0.0,
-                                        #onChange=self.changeStaticSetpoint,
+                                        initValue=self.erl2context['conf'][sys]['setpointDefault'],
                                         erl2context=self.erl2context)
 
                 # keep a reference to this static setpoint widget
@@ -472,8 +493,7 @@ class Erl2Popup(tk.Toplevel):
                                             width=4,
                                             displayDecimals=dispDec,
                                             validRange=[0.,None],
-                                            initValue=0.0,
-                                            #onChange=self.changeStaticSetpoint,
+                                            initValue=self.erl2context['conf'][sys]['hysteresisDefault'],
                                             erl2context=self.erl2context)
 
                     # keep a reference to this hysteresis widget
@@ -490,7 +510,8 @@ class Erl2Popup(tk.Toplevel):
                 # add dynamic setpoint entry fields
                 hourNum = 0
                 self.__modeWidgets[sys]['dynamic'] = []
-                for hourVal in [0.0] * 24:
+                #for hourVal in [0.0] * 24:
+                for hourVal in self.erl2context['conf'][sys]['dynamicDefault']:
 
                     # lay them out in two rows, 12 boxes each
                     if hourNum < 12:
@@ -518,8 +539,6 @@ class Erl2Popup(tk.Toplevel):
                                   displayDecimals=dispDec,
                                   validRange=validRg,
                                   initValue=hourVal,
-                                  #onChange=self.changeDynamicSetpoint,
-                                  #onChangeArg=hourNum,
                                   erl2context=self.erl2context)
 
                     # keep a reference to all dynamic setpoint widgets
@@ -610,13 +629,13 @@ class Erl2Popup(tk.Toplevel):
                                    bd=0,
                                    highlightthickness=0,
                                    activebackground='#DBDBDB',
-                                   command=self.ok)
+                                   command=self.saveToFile)
             saveButton.grid(row=0, column=0, padx='2 2', sticky='w')
             l = ttk.Label(saveFrame, text='Save to File', font='Arial 16'
                 #, relief='solid', borderwidth=1
                 )
             l.grid(row=0, column=1, padx='2 2', sticky='w')
-            l.bind('<Button-1>', self.ok)
+            l.bind('<Button-1>', self.saveToFile)
 
             saveFrame.rowconfigure(0,weight=1)
             saveFrame.columnconfigure(0,weight=0)
@@ -693,7 +712,6 @@ class Erl2Popup(tk.Toplevel):
 
         # these are ideas that might work on linux but are problematic on mac + PC
         #self.overrideredirect(1)
-        #self.bind("<FocusOut>", self.onFocusOut)
 
     def setToggle(self, sys, ind):
 
@@ -709,52 +727,88 @@ class Erl2Popup(tk.Toplevel):
 
     def enableWidgets(self, sys):
 
-       # what mode is currently selected?
-       currMode = self.__modeVar[sys].get()
+        # what mode is currently selected?
+        currMode = self.__modeVar[sys].get()
 
-       # enable/disable toggle controls
-       if 'toggle' in self.__modeWidgets[sys]:
-           for ind in range(len(self.__modeWidgets[sys]['toggle'])):
-               if currMode == MANUAL:
-                   self.__modeWidgets[sys]['toggle'][ind].config(state='normal')
-                   self.__modeWidgets[sys]['toggle.label'][ind].bind('<Button-1>', lambda event, x=sys, y=ind: self.setToggle(sys=x,ind=y))
-               else:
-                   self.__modeWidgets[sys]['toggle'][ind].config(state='disabled')
-                   self.__modeWidgets[sys]['toggle.label'][ind].unbind('<Button-1>')
-                   # if selected, deselect
-                   if self.__modeWidgets[sys]['toggle.value'][ind]:
-                       self.setToggle(sys,ind)
+        # enable/disable toggle controls
+        if 'toggle' in self.__modeWidgets[sys]:
+            for ind in range(len(self.__modeWidgets[sys]['toggle'])):
+                if currMode == MANUAL:
+                    self.__modeWidgets[sys]['toggle'][ind].config(state='normal')
+                    self.__modeWidgets[sys]['toggle.label'][ind].bind('<Button-1>', lambda event, x=sys, y=ind: self.setToggle(sys=x,ind=y))
+                else:
+                    self.__modeWidgets[sys]['toggle'][ind].config(state='disabled')
+                    self.__modeWidgets[sys]['toggle.label'][ind].unbind('<Button-1>')
+                    # if selected, deselect
+                    if self.__modeWidgets[sys]['toggle.value'][ind]:
+                        self.setToggle(sys,ind)
 
-       # enable/disable manual controls (if applicable)
-       if 'manual' in self.__modeWidgets[sys]:
-           for w in self.__modeWidgets[sys]['manual']:
-               w.setActive(int(currMode == MANUAL))
+        # enable/disable manual controls (if applicable)
+        if 'manual' in self.__modeWidgets[sys]:
+            for w in self.__modeWidgets[sys]['manual']:
+                w.setActive(int(currMode == MANUAL))
 
-               # reset manual control to zero if disabling
-               if currMode != MANUAL:
-                   w.floatValue = 0.
-                   w.stringVar.set(w.valToString(0.))
+                # reset manual control to zero if disabling
+                if currMode != MANUAL:
+                    w.floatValue = 0.
+                    w.stringVar.set(w.valToString(0.))
 
-       # enable/disable hysteresis (if applicable)
-       if 'hysteresis' in self.__modeWidgets[sys]:
-           self.__modeWidgets[sys]['hysteresis'].setActive(int(currMode in [AUTO_DYNAMIC, AUTO_STATIC]))
+        # enable/disable hysteresis (if applicable)
+        if 'hysteresis' in self.__modeWidgets[sys]:
+            self.__modeWidgets[sys]['hysteresis'].setActive(int(currMode in [AUTO_DYNAMIC, AUTO_STATIC]))
 
-       # enable/disable auto static parameters
-       if 'static' in self.__modeWidgets[sys]:
-           self.__modeWidgets[sys]['static'].setActive(int(currMode == AUTO_STATIC))
+        # enable/disable auto static parameters
+        if 'static' in self.__modeWidgets[sys]:
+            self.__modeWidgets[sys]['static'].setActive(int(currMode == AUTO_STATIC))
 
-       # enable/disable auto dynamic parameters
-       if 'dynamic' in self.__modeWidgets[sys]:
-           for w in self.__modeWidgets[sys]['dynamic']:
-               w.setActive(int(currMode == AUTO_DYNAMIC))
+        # enable/disable auto dynamic parameters
+        if 'dynamic' in self.__modeWidgets[sys]:
+            for w in self.__modeWidgets[sys]['dynamic']:
+                w.setActive(int(currMode == AUTO_DYNAMIC))
 
-    def onFocusOut(self, event=None):
+    def saveToFile(self, event=None):
 
-        print (f"{__name__}: Debug: onFocusOut() called while self.modalOpen is {self.modalOpen}")
+        # ignore this call if the modal is already open
+        if self.modalOpen:
+            return
 
-        if not self.modalOpen:
-            print (f"{__name__}: Debug: trying to lift() -- {type(self)} and {type(self).__bases__}")
-            self.__f.after(100,self.lift)
+        self.modalOpen = True
+        #self.grab_release()
+        #self.transient()
+
+        # open a modal window to choose a file to save to
+        self.__fileName = fd.asksaveasfilename(parent=self,
+                                               title='Save Tank Settings to File...',
+                                               initialdir=self.__dirName,
+                                               defaultextension='.dat',
+                                               )
+
+        # output from asksaveasfilename can be a little weird
+        if type(self.__fileName) is tuple:
+            if len(self.__fileName) == 0:
+                self.__fileName = None
+            else:
+                self.__fileName = self.__fileName[0]
+        elif len(self.__fileName) == 0:
+            self.__fileName = None
+
+        # fileName will be None if the user canceled
+        if self.__fileName is not None:
+            print (f"{__name__}: Debug: saveToFile() returns [{self.__fileName}]")
+
+            # briefly create an Erl2State instance to write out a file of values
+            erl2State = Erl2State(fullPath=self.__fileName,
+                                  readExisting=False,
+                                  erl2context=self.erl2context)
+            erl2State.set(valueList = self.getSettings())
+            del erl2State
+
+        else:
+            print (f"{__name__}: Debug: saveToFile() returns None (canceled)")
+
+        self.modalOpen = False
+        #self.grab_set()
+        #self.transient(self.erl2context['root'])
 
     def ok(self, event=None):
 
@@ -778,6 +832,39 @@ class Erl2Popup(tk.Toplevel):
         #self.grab_set()
         #self.transient(self.erl2context['root'])
         #self.onFocusOut()
+
+    def getSettings(self):
+
+        # build a list of tuples for passing to Erl2State
+        retVal = []
+
+        # loop through subsystems
+        for sys in SUBSYSTEMS:
+
+            # what mode is currently selected?
+            retVal.append((sys, 'mode', self.__modeVar[sys].get()))
+
+            # some subsystems may have hysteresis parameter
+            if 'hysteresis' in self.__modeWidgets[sys]:
+                retVal.append((sys, 'hysteresis', float(self.__modeWidgets[sys]['hysteresis'].stringVar.get())))
+
+            # auto static setpoints
+            if 'static' in self.__modeWidgets[sys]:
+                retVal.append((sys, 'staticSetpoint', float(self.__modeWidgets[sys]['static'].stringVar.get())))
+
+            # enable/disable auto dynamic parameters
+            if 'dynamic' in self.__modeWidgets[sys]:
+
+                # first build the whole list of float values (24 vals expected)
+                dynList = []
+                for w in self.__modeWidgets[sys]['dynamic']:
+                    dynList.append(float(w.stringVar.get()))
+
+                # then assign it into the list of tuples
+                retVal.append((sys, 'dynamicSetpoints', dynList))
+
+        # return the list of tuples when done
+        return retVal
 
     # rather than instantiate a new Erl2Popup instance, and risk opening multiple
     # popups at once, provide this classmethod that reads a class attribute and

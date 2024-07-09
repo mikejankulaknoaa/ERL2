@@ -964,7 +964,7 @@ class Erl2Network():
                         # convert ts to a datetime
                         ts = dt.strptime(ts.decode(), DTFMT).replace(tzinfo=tz.utc)
 
-                    print (f"{self.__class__.__name__}: manageQueues: Debug: unpacked request [{rq.inb}] from [{rq.addr}] to give timestamp [{ts}]")
+                    #print (f"{self.__class__.__name__}: manageQueues: Debug: unpacked request [{rq.inb}] from [{rq.addr}] to give timestamp [{ts}]")
                     rq.outb = pickle.dumps(self.__systemLog.exportLog(ts))
 
                 # HANGUP!: terminate listener and let it start up naturally again later
@@ -984,10 +984,10 @@ class Erl2Network():
                     # log an error message
                     self.__networkLog.writeMessage(f"Error: Received request [{rq.inb}] from [{rq.addr}], not recognized")
 
-                print (f"{self.__class__.__name__}: manageQueues: Debug: Received request [{rq.inb}] from [{rq.addr}], answered with [{getsizeof(rq.outb)}] bytes")
+                #print (f"{self.__class__.__name__}: manageQueues: Debug: Received request [{rq.inb}] from [{rq.addr}], answered with [{getsizeof(rq.outb)}] bytes")
 
                 # log the request and reply
-                self.__networkLog.writeMessage(f"Received request [{rq.inb}] from [{rq.addr}], answered with [{getsizeof(rq.outb)}] bytes")
+                #self.__networkLog.writeMessage(f"Received request [{rq.inb}] from [{rq.addr}], answered with [{getsizeof(rq.outb)}] bytes")
 
                 # add reply to the outgoing queue
                 self.__outgoingQueue.put(rq)
@@ -1012,8 +1012,8 @@ class Erl2Network():
                 if rs is not None and hasattr(rs, "addr"):
                     mac = self.lookupByIP[rs.addr]
 
-                    print (f"{self.__class__.__name__}: manageQueues: Received reply to command " +
-                           f"[{rs.command}] from [{rs.addr}], [{getsizeof(rs.replyString)}] bytes")
+                    #print (f"{self.__class__.__name__}: manageQueues: Debug: Received reply to command " +
+                    #       f"[{rs.command}] from [{rs.addr}], [{getsizeof(rs.replyString)}] bytes")
 
                     # no matter what type of comms, update the lastActive timestamp
                     self.childrenDict[mac]['lastActive'] = rs.replyTime
@@ -1127,7 +1127,7 @@ class Erl2Network():
                         self.__networkLog.writeMessage(f"Error: Received reply to command [{rs.command}] from [{rs.addr}], not recognized")
 
                     # log the reply
-                    self.__networkLog.writeMessage(f"Received reply to command [{rs.command}] from [{rs.addr}], [{getsizeof(rs.replyString)}] bytes")
+                    #self.__networkLog.writeMessage(f"Received reply to command [{rs.command}] from [{rs.addr}], [{getsizeof(rs.replyString)}] bytes")
 
                     # update time of last device comms
                     self.__lastActive = dt.now(tz=tz.utc)

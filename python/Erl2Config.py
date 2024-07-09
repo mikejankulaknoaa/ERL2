@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.66b (2024-07-08)'
+    VERSION = '0.67b (2024-07-09)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2', 'voltage']
@@ -24,7 +24,7 @@ class Erl2Config():
         for c in self.CATEGORIES:
             self.__default[c] = {}
 
-        self.__default['system']['clockWithSeconds'] = 'False'
+        self.__default['system']['hideClockSeconds'] = 'False'
         self.__default['system']['clockTwoLines'] = 'False'
         self.__default['system']['loggingFrequency'] = '300'
         self.__default['system']['memoryRetention'] = '86400'
@@ -268,7 +268,7 @@ class Erl2Config():
         self.__erl2conf['system']['dtFormat'] = '%Y-%m-%d %H:%M:%S'
         self.__erl2conf['system']['dtRegexp'] = r'^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$'
 
-        # special logic for setting the main ERL2 directories
+        # special logic for setting up the main ERL2 directories
         for d in ['img','lock','log']:
             dname = d + 'Dir'
             if dname not in self.in_conf['system']:
@@ -292,7 +292,7 @@ class Erl2Config():
         self.__setDefaults()
 
         # system
-        self.validate(bool, 'system', 'clockWithSeconds')
+        self.validate(bool, 'system', 'hideClockSeconds')
         self.validate(bool, 'system', 'clockTwoLines')
         self.validate(int,  'system', 'loggingFrequency', min=1)
         self.validate(int,  'system', 'memoryRetention',  min=300)
@@ -347,9 +347,15 @@ class Erl2Config():
             self.validate(str, sensorType, 'serialPort')
             self.validate(int, sensorType, 'baudRate')
 
-            if (self.__erl2conf[sensorType]['serialPort'] is not None
-                and not path.exists(self.__erl2conf[sensorType]['serialPort'])):
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['serialPort'] = [{self.__erl2conf[sensorType]['serialPort']}] does not exist on this system")
+            # if a serialPort is specified but doesn't exist on the system
+            if self.__erl2conf[sensorType]['serialPort'] is not None:
+                if not path.exists(self.__erl2conf[sensorType]['serialPort']):
+
+                    # special logic for controllers: reset any missing serialPort to None
+                    if self.__erl2conf['device']['type'] == 'controller':
+                        self.__erl2conf[sensorType]['serialPort'] = None
+                    else:
+                        raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['serialPort'] = [{self.__erl2conf[sensorType]['serialPort']}] does not exist on this system")
 
             if (self.__erl2conf[sensorType]['baudRate'] is not None
                 and self.__erl2conf[sensorType]['baudRate'] not in self.BAUDS):

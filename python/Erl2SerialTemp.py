@@ -12,7 +12,6 @@ from time import sleep
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
-from Erl2Input import Erl2Input
 from Erl2Sensor import Erl2Sensor
 
 # atlasScientific temperature sensor

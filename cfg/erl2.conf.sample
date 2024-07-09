@@ -4,7 +4,7 @@
 # disableFileLogging = False
 
 # configure the system's clock display
-# clockWithSeconds = False
+# hideClockSeconds = False
 # clockTwoLines = False
 
 # logging: frequency (seconds)
@@ -201,7 +201,7 @@
 # setpointDefault = 220.
 
 # default dynamic program (24 values, umol/L)
-# this is a sine shape running between 6.75 (6am low point) and 7.25 (6pm high point)
+# this is a sine shape running between 205. (6am low point) and 235. (6pm high point)
 # dynamicDefault = [220., 216., 213., 209., 207., 206., 205., 206., 207., 209., 213., 216., 220., 224., 228., 231., 233., 234., 235., 234., 233., 231., 228., 224.]
 
 # PID Tuning Parameters for DO -- right now, ignore that Air is part of both pH and DO subsystems
