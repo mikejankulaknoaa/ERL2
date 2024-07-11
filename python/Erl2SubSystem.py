@@ -10,7 +10,7 @@ from Erl2Entry import Erl2Entry
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
 from Erl2Plot import Erl2Plot
-from Erl2PwmOutput import Erl2PwmOutput
+from Erl2MegaindOutput import Erl2MegaindOutput
 from Erl2State import Erl2State
 from Erl2VirtualTemp import Erl2VirtualTemp
 
@@ -689,6 +689,12 @@ class Erl2SubSystem():
                         # remember the last time we updated the PID
                         self.__pidLastUpdated[mfc] = currTime
 
+        # enable/disable controller radio button depending on whether a parent program is available
+        if self.hasParentProgram():
+            self.__ctrlRadioWidgets[CONTROLLER].config(state='normal')
+        else:
+            self.__ctrlRadioWidgets[CONTROLLER].config(state='disabled')
+
         # if this is controller mode, then all mode buttons should be disabled
         if ctrlVar==CONTROLLER:
             self.__modeRadioWidgets[MANUAL].config(state='disabled')
@@ -845,6 +851,18 @@ class Erl2SubSystem():
                 # send the control's update to the subsystem log
                 self.log.writeMessage(message)
 
+    def hasParentProgram(self):
+
+        # assess whether this subsystem has enough details to revert parent programming
+        return ('parentState' in self.erl2context
+            and self.erl2context['parentState'].isType(self.subSystemType)
+            and self.erl2context['parentState'].isName(self.subSystemType, 'mode')
+            and (self.__logic != 'hysteresis'
+                 or self.erl2context['parentState'].isName(self.subSystemType, 'hysteresis'))
+            and self.erl2context['parentState'].isName(self.subSystemType, 'staticSetpoint')
+            and self.erl2context['parentState'].isName(self.subSystemType, 'dynamicSetpoints')
+            )
+
 def main():
 
     root = tk.Tk()
@@ -879,14 +897,14 @@ def main():
                                   statusLocs=[{'parent':statusFrame,'row':0,'column':1}],
                                   correctionLoc={'parent':subSysFrame,'row':0,'column':0})
 
-    heater = Erl2PwmOutput(controlType='heater',
-                           controlColor='red',
-                           displayLocs=[{'parent':controlFrame,'row':0,'column':0}],
-                           buttonLoc={'parent':controlFrame,'row':2,'column':0})
-    chiller = Erl2PwmOutput(controlType='chiller',
-                            controlColor='blue',
-                            displayLocs=[{'parent':controlFrame,'row':1,'column':0}],
-                            buttonLoc={'parent':controlFrame,'row':3,'column':0})
+    heater = Erl2MegaindOutput(controlType='heater',
+                               controlColor='red',
+                               displayLocs=[{'parent':controlFrame,'row':0,'column':0}],
+                               buttonLoc={'parent':controlFrame,'row':2,'column':0})
+    chiller = Erl2MegaindOutput(controlType='chiller',
+                                controlColor='blue',
+                                displayLocs=[{'parent':controlFrame,'row':1,'column':0}],
+                                buttonLoc={'parent':controlFrame,'row':3,'column':0})
 
     subsystem = Erl2SubSystem(subSystemType='temperature',
                               logic='hysteresis',

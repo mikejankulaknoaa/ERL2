@@ -314,6 +314,10 @@ class Erl2State():
 
         return type(self.erl2state) is dict and valueType in self.erl2state
 
+    def isName(self,valueType, valueName):
+
+        return type(self.erl2state) is dict and valueType in self.erl2state and valueName in self.erl2state[valueType]
+
 def main():
 
     state = Erl2State()

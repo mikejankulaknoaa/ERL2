@@ -63,12 +63,15 @@ class Erl2Popup(tk.Toplevel):
                     'radio-off-30.png', 'radio-on-30.png',
                     'radio-off-red-30.png', 'radio-on-red-30.png',
                     'radio-off-blue-30.png', 'radio-on-blue-30.png',
+                    'checkbox-off-25.png', 'checkbox-on-25.png',
                     'copy-25.png', 'load-25.png', 'save-25.png']:
             self.erl2context['img'].addImage(img, img)
 
         # the 'Edit Tank Settings' popup needs some extra attributes
         self.__modeVar = {}
         self.__modeWidgets = {}
+        self.__listbox = None
+        self.__macList = []
 
         # track whether a modal window is open on top of this one or not
         self.modalOpen = False
@@ -283,15 +286,17 @@ class Erl2Popup(tk.Toplevel):
             # if this controller knows of any child tanks through a network connection
             if 'network' in self.erl2context and self.erl2context['network'] is not None:
 
-                # loop through child tanks and build up a list of ids
+                # loop through child tanks and build up a list of ids and macs
                 tankList = []
+                self.__macList = []
                 for mac in self.erl2context['network'].sortedMacs:
                     tankList.append(self.erl2context['network'].childrenDict[mac]['id'])
+                    self.__macList.append(mac)
 
                 var = tk.StringVar()
                 var.set(tankList)
-                lbox = tk.Listbox(tanksFrame, listvariable=var, selectmode=tk.MULTIPLE, font='Arial 12')
-                lbox.grid(row=1,column=0,sticky='nesw')
+                self.__listbox = tk.Listbox(tanksFrame, listvariable=var, selectmode=tk.MULTIPLE, font='Arial 12')
+                self.__listbox.grid(row=1,column=0,sticky='nesw')
 
             # the three subSystems frames are essentially identical
             sysR = -1
@@ -302,25 +307,51 @@ class Erl2Popup(tk.Toplevel):
 
                 # keep track of widgets created
                 self.__modeWidgets[sys] = {}
+                self.__modeWidgets[sys]['header'] = {}
 
                 # how many decimal places to display?
                 dispDec = self.erl2context['conf'][sys]['displayDecimals']
                 validRg = self.erl2context['conf'][sys]['validRange']
 
-                # subSystem frame label
+                # subSystem header frame
+                headerF = ttk.Frame(sysF, padding='0', relief='solid', borderwidth=0)
+                headerF.grid(row=0, column=0, padx=0, pady=0, sticky='nw')
+
+                # subsystem checkbox!
+                b = tk.Button(headerF,
+                              image=self.erl2context['img']['checkbox-on-25.png'],
+                              height=30,
+                              width=30,
+                              bd=0,
+                              highlightthickness=0,
+                              activebackground='#DBDBDB',
+                              #borderwidth=1,
+                              command=lambda x=sys: self.toggleSubSystem(sys=x))
+                b.grid(row=0, column=0, padx='0 2', sticky='w')
+
+                # this is the (text) Label shown beside the (image) button widget
                 lbl = sys
                 if sys == 'temperature':
                     lbl = 'Temperature'
-                ttk.Label(sysF, text=lbl + ':', font='Arial 12 bold'
+                l = ttk.Label(headerF, text=lbl + ':', font='Arial 12 bold'
                     #, relief='solid', borderwidth=1
-                    ).grid(row=0, column=0, sticky='nw')
+                    )
+                l.grid(row=0, column=1, padx='2 0', sticky='w')
+                l.bind('<Button-1>', lambda event, x=sys: self.toggleSubSystem(sys=x))
+
+                # keep track of control + label widgets for this checkbox
+                self.__modeWidgets[sys]['checkbox'] = b
+                self.__modeWidgets[sys]['checkbox.label'] = l
+                self.__modeWidgets[sys]['checkbox.value'] = 1.
 
                 # mode frame
                 modF = ttk.Frame(sysF, padding='2', relief='solid', borderwidth=1)
                 modF.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')
-                ttk.Label(modF, text='Mode', font='Arial 12 bold'
+                l = ttk.Label(modF, text='Mode', font='Arial 12 bold'
                     #, relief='solid', borderwidth=1
-                    ).grid(row=0, column=0, sticky='nw')
+                    )
+                l.grid(row=0, column=0, sticky='nw')
+                self.__modeWidgets[sys]['header']['mode'] = l
 
                 # the radiobuttons themselves
                 self.__modeVar[sys] = tk.IntVar()
@@ -352,9 +383,11 @@ class Erl2Popup(tk.Toplevel):
                 # manual controls
                 manF = ttk.Frame(sysF, padding='2', relief='solid', borderwidth=1)
                 manF.grid(row=1, column=1, padx='2', pady='2', sticky='nesw')
-                ttk.Label(manF, text='Manual Controls', font='Arial 12 bold'
+                l = ttk.Label(manF, text='Manual Controls', font='Arial 12 bold'
                     #, relief='solid', borderwidth=1
-                    ).grid(row=0, column=0, columnspan=2, sticky='nw')
+                    )
+                l.grid(row=0, column=0, columnspan=2, sticky='nw')
+                self.__modeWidgets[sys]['header']['manual'] = l
 
                 # manual controls look different in different subsystems
                 if sys == 'temperature':
@@ -373,7 +406,7 @@ class Erl2Popup(tk.Toplevel):
                                   highlightthickness=0,
                                   activebackground='#DBDBDB',
                                   #borderwidth=1,
-                                  command=lambda x='temperature', y=0: self.setToggle(sys=x,ind=y))
+                                  command=lambda x='temperature', y=0: self.toggleHeaterChiller(sys=x,ind=y))
                     b.grid(row=1, column=0, padx='2 2', sticky='w')
 
                     # this is the (text) Label shown beside the (image) button widget
@@ -381,7 +414,7 @@ class Erl2Popup(tk.Toplevel):
                         #, relief='solid', borderwidth=1
                         )
                     l.grid(row=1, column=1, padx='2 2', sticky='w')
-                    l.bind('<Button-1>', lambda event, x='temperature', y=0: self.setToggle(sys=x,ind=y))
+                    l.bind('<Button-1>', lambda event, x='temperature', y=0: self.toggleHeaterChiller(sys=x,ind=y))
 
                     # keep track of control + label widgets for this control
                     self.__modeWidgets[sys]['toggle'].append(b)
@@ -399,7 +432,7 @@ class Erl2Popup(tk.Toplevel):
                                   highlightthickness=0,
                                   activebackground='#DBDBDB',
                                   #borderwidth=1,
-                                  command=lambda x='temperature', y=1: self.setToggle(sys=x,ind=y))
+                                  command=lambda x='temperature', y=1: self.toggleHeaterChiller(sys=x,ind=y))
                     b.grid(row=2, column=0, padx='2 2', sticky='w')
 
                     # this is the (text) Label shown beside the (image) button widget
@@ -407,7 +440,7 @@ class Erl2Popup(tk.Toplevel):
                         #, relief='solid', borderwidth=1
                         )
                     l.grid(row=2, column=1, padx='2 2', sticky='w')
-                    l.bind('<Button-1>', lambda event, x='temperature', y=1: self.setToggle(sys=x,ind=y))
+                    l.bind('<Button-1>', lambda event, x='temperature', y=1: self.toggleHeaterChiller(sys=x,ind=y))
 
                     # keep track of control + label widgets for this control
                     self.__modeWidgets[sys]['toggle'].append(b)
@@ -468,9 +501,11 @@ class Erl2Popup(tk.Toplevel):
                 # auto controls
                 autF = ttk.Frame(sysF, padding='2', relief='solid', borderwidth=1)
                 autF.grid(row=1, column=2, padx='2', pady='2', sticky='nesw')
-                ttk.Label(autF, text='Auto Controls', font='Arial 12 bold'
+                l = ttk.Label(autF, text='Auto Controls', font='Arial 12 bold'
                     #, relief='solid', borderwidth=1
-                    ).grid(row=0, column=0, sticky='nw')
+                    )
+                l.grid(row=0, column=0, sticky='nw')
+                self.__modeWidgets[sys]['header']['auto'] = l
 
                 # create the entry field for the static setpoint
                 e = Erl2Entry(entryLoc={'parent':autF,'row':1,'column':1},
@@ -483,7 +518,7 @@ class Erl2Popup(tk.Toplevel):
                                         erl2context=self.erl2context)
 
                 # keep a reference to this static setpoint widget
-                self.__modeWidgets[sys]['static'] = e
+                self.__modeWidgets[sys]['staticSetpoint'] = e
 
                 # create the entry field for hysteresis (temperature only)
                 if sys == 'temperature':
@@ -502,14 +537,17 @@ class Erl2Popup(tk.Toplevel):
                 # auto dynamic setpoints
                 dynF = ttk.Frame(sysF, padding='2', relief='solid', borderwidth=1)
                 dynF.grid(row=1, column=3, padx='2', pady='2', sticky='nesw')
-                ttk.Label(dynF, text='Auto Dynamic Setpoints (by hour of day)', font='Arial 12 bold'
+                l = ttk.Label(dynF, text='Auto Dynamic Setpoints (by hour of day)', font='Arial 12 bold'
                     #, relief='solid', borderwidth=1
-                    ).grid(row=0, column=0, columnspan=24, sticky='nw')
+                    )
+                l.grid(row=0, column=0, columnspan=24, sticky='nw')
+                self.__modeWidgets[sys]['header']['dynamicSetpoints'] = l
 
 
                 # add dynamic setpoint entry fields
                 hourNum = 0
-                self.__modeWidgets[sys]['dynamic'] = []
+                self.__modeWidgets[sys]['dynamicSetpoints'] = []
+                self.__modeWidgets[sys]['dynamicSetpoints.labels'] = []
                 #for hourVal in [0.0] * 24:
                 for hourVal in self.erl2context['conf'][sys]['dynamicDefault']:
 
@@ -528,9 +566,10 @@ class Erl2Popup(tk.Toplevel):
                         hourPady = '4 0'
 
                     # hour label for dynamic setpoints
-                    ttk.Label(dynF, text=str(hourNum), font='Arial 12 bold'
+                    l = ttk.Label(dynF, text=str(hourNum), font='Arial 12 bold'
                         #, relief='solid', borderwidth=1
-                        ).grid(row=hourRow, column=hourCol, pady=hourPady, sticky='s')
+                        )
+                    l.grid(row=hourRow, column=hourCol, pady=hourPady, sticky='s')
 
                     # create the entry field for each dynamic setpoint
                     e = Erl2Entry(entryLoc={'parent':dynF,'row':valRow,'column':valCol},
@@ -542,7 +581,8 @@ class Erl2Popup(tk.Toplevel):
                                   erl2context=self.erl2context)
 
                     # keep a reference to all dynamic setpoint widgets
-                    self.__modeWidgets[sys]['dynamic'].append(e)
+                    self.__modeWidgets[sys]['dynamicSetpoints'].append(e)
+                    self.__modeWidgets[sys]['dynamicSetpoints.labels'].append(l)
 
                     hourNum += 1
 
@@ -573,9 +613,8 @@ class Erl2Popup(tk.Toplevel):
         if Erl2Popup.popupType == 'Edit Tank Settings':
 
             # button: copy from tank
-            c += 1
-            copyFrame = ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1)
-            copyFrame.grid(row=0, column=c, padx='0 4', pady=0, sticky='ew')
+            copyFrame = ttk.Frame(tanksFrame, padding='2 2', relief='solid', borderwidth=1)
+            copyFrame.grid(row=2, column=0, padx=2, pady=2, sticky='esw')
             copyButton = tk.Button(copyFrame,
                                    image=self.erl2context['img']['copy-25.png'],
                                    height=40,
@@ -583,13 +622,13 @@ class Erl2Popup(tk.Toplevel):
                                    bd=0,
                                    highlightthickness=0,
                                    activebackground='#DBDBDB',
-                                   command=self.ok)
+                                   command=self.copyFromTank)
             copyButton.grid(row=0, column=0, padx='2 2', sticky='w')
-            l = ttk.Label(copyFrame, text='Copy from Tank', font='Arial 16'
+            l = ttk.Label(copyFrame, text='Copy from Tank', font='Arial 12'
                 #, relief='solid', borderwidth=1
                 )
             l.grid(row=0, column=1, padx='2 2', sticky='w')
-            l.bind('<Button-1>', self.ok)
+            l.bind('<Button-1>', self.copyFromTank)
 
             copyFrame.rowconfigure(0,weight=1)
             copyFrame.columnconfigure(0,weight=0)
@@ -606,13 +645,13 @@ class Erl2Popup(tk.Toplevel):
                                    bd=0,
                                    highlightthickness=0,
                                    activebackground='#DBDBDB',
-                                   command=self.ok)
+                                   command=self.loadFromFile)
             loadButton.grid(row=0, column=0, padx='2 2', sticky='w')
             l = ttk.Label(loadFrame, text='Load from File', font='Arial 16'
                 #, relief='solid', borderwidth=1
                 )
             l.grid(row=0, column=1, padx='2 2', sticky='w')
-            l.bind('<Button-1>', self.ok)
+            l.bind('<Button-1>', self.loadFromFile)
 
             loadFrame.rowconfigure(0,weight=1)
             loadFrame.columnconfigure(0,weight=0)
@@ -654,13 +693,13 @@ class Erl2Popup(tk.Toplevel):
                                bd=0,
                                highlightthickness=0,
                                activebackground='#DBDBDB',
-                               command=self.ok)
+                               command=self.closeWindow)
         exitButton.grid(row=0, column=0, padx='2 2', sticky='w')
         l = ttk.Label(exitFrame, text=lbl, font='Arial 16'
             #, relief='solid', borderwidth=1
             )
         l.grid(row=0, column=1, padx='2 2', sticky='w')
-        l.bind('<Button-1>', self.ok)
+        l.bind('<Button-1>', self.closeWindow)
 
         exitFrame.rowconfigure(0,weight=1)
         exitFrame.columnconfigure(0,weight=0)
@@ -678,13 +717,13 @@ class Erl2Popup(tk.Toplevel):
                                     bd=0,
                                     highlightthickness=0,
                                     activebackground='#DBDBDB',
-                                    command=self.ok)
+                                    command=self.applyToTanks)
             applyButton.grid(row=0, column=0, padx='2 2', sticky='w')
             l = ttk.Label(applyFrame, text='Apply', font='Arial 16'
                 #, relief='solid', borderwidth=1
                 )
             l.grid(row=0, column=1, padx='2 2', sticky='w')
-            l.bind('<Button-1>', self.ok)
+            l.bind('<Button-1>', self.applyToTanks)
 
             applyFrame.rowconfigure(0,weight=1)
             applyFrame.columnconfigure(0,weight=0)
@@ -703,7 +742,7 @@ class Erl2Popup(tk.Toplevel):
 
         # assuming popup is 312x322, screen is 800x480
         #self.geometry("+244+79")
-        self.protocol('WM_DELETE_WINDOW', self.ok)
+        self.protocol('WM_DELETE_WINDOW', self.closeWindow)
 
         # even if this approach fails on macOS, on the PC it seems to work
         self.wait_visibility()
@@ -713,9 +752,9 @@ class Erl2Popup(tk.Toplevel):
         # these are ideas that might work on linux but are problematic on mac + PC
         #self.overrideredirect(1)
 
-    def setToggle(self, sys, ind):
+    def toggleHeaterChiller(self, sys, ind):
 
-        print (f"setToggle(sys=[{sys}], ind=[{ind}])")
+        #print (f"toggleHeaterChiller(sys=[{sys}], ind=[{ind}])")
 
         # change toggle value from 0. to 1. or vice versa
         self.__modeWidgets[sys]['toggle.value'][ind] = 1. - self.__modeWidgets[sys]['toggle.value'][ind]
@@ -725,46 +764,97 @@ class Erl2Popup(tk.Toplevel):
         color = ['red','blue'][ind]
         self.__modeWidgets[sys]['toggle'][ind].config(image=self.erl2context['img'][f"radio-{onoff}-{color}-30.png"])
 
+    def toggleSubSystem(self, sys, redrawWidgets=True):
+
+        #print (f"toggleSubSystem(sys=[{sys}]")
+
+        # change checkbox value from 0. to 1. or vice versa
+        self.__modeWidgets[sys]['checkbox.value'] = 1. - self.__modeWidgets[sys]['checkbox.value']
+
+        # display an image appropriate to the control's state
+        onoff = ['off','on'][int(self.__modeWidgets[sys]['checkbox.value'])]
+        self.__modeWidgets[sys]['checkbox'].config(image=self.erl2context['img'][f"checkbox-{onoff}-25.png"])
+
+        # after this we'll want to redraw this subSystem's widgets
+        if redrawWidgets:
+            self.enableWidgets(sys)
+
     def enableWidgets(self, sys):
+
+        # is this subSystem enabled at all??
+        sysEnabled = bool(self.__modeWidgets[sys]['checkbox.value'])
 
         # what mode is currently selected?
         currMode = self.__modeVar[sys].get()
 
+        # enable/disable radio buttons
+        if 'radio' in self.__modeWidgets[sys]:
+            for w in self.__modeWidgets[sys]['radio']:
+                if sysEnabled:
+                    w.config(state='normal')
+                else:
+                    w.config(state='disabled')
+
         # enable/disable toggle controls
         if 'toggle' in self.__modeWidgets[sys]:
+
+            # assuming that toggle, toggle.label and toggle.value go hand-in-hand
+            assert('toggle.label' in self.__modeWidgets[sys] and len(self.__modeWidgets[sys]['toggle']) == len(self.__modeWidgets[sys]['toggle.label']))
+            assert('toggle.value' in self.__modeWidgets[sys] and len(self.__modeWidgets[sys]['toggle']) == len(self.__modeWidgets[sys]['toggle.value']))
+
+            # loop through all three arrays at once
             for ind in range(len(self.__modeWidgets[sys]['toggle'])):
-                if currMode == MANUAL:
+                if currMode == MANUAL and sysEnabled:
                     self.__modeWidgets[sys]['toggle'][ind].config(state='normal')
-                    self.__modeWidgets[sys]['toggle.label'][ind].bind('<Button-1>', lambda event, x=sys, y=ind: self.setToggle(sys=x,ind=y))
+                    self.__modeWidgets[sys]['toggle.label'][ind].bind('<Button-1>', lambda event, x=sys, y=ind: self.toggleHeaterChiller(sys=x,ind=y))
+                    self.__modeWidgets[sys]['toggle.label'][ind].config(foreground='')
                 else:
                     self.__modeWidgets[sys]['toggle'][ind].config(state='disabled')
                     self.__modeWidgets[sys]['toggle.label'][ind].unbind('<Button-1>')
+                    self.__modeWidgets[sys]['toggle.label'][ind].config(foreground='grey')
                     # if selected, deselect
                     if self.__modeWidgets[sys]['toggle.value'][ind]:
-                        self.setToggle(sys,ind)
+                        self.toggleHeaterChiller(sys,ind)
 
         # enable/disable manual controls (if applicable)
         if 'manual' in self.__modeWidgets[sys]:
             for w in self.__modeWidgets[sys]['manual']:
-                w.setActive(int(currMode == MANUAL))
-
-                # reset manual control to zero if disabling
-                if currMode != MANUAL:
+                if currMode == MANUAL and sysEnabled:
+                    w.setActive(1)
+                else:
+                    w.setActive(0)
                     w.floatValue = 0.
                     w.stringVar.set(w.valToString(0.))
 
         # enable/disable hysteresis (if applicable)
         if 'hysteresis' in self.__modeWidgets[sys]:
-            self.__modeWidgets[sys]['hysteresis'].setActive(int(currMode in [AUTO_DYNAMIC, AUTO_STATIC]))
+            self.__modeWidgets[sys]['hysteresis'].setActive(int(currMode in [AUTO_DYNAMIC, AUTO_STATIC] and sysEnabled))
 
         # enable/disable auto static parameters
-        if 'static' in self.__modeWidgets[sys]:
-            self.__modeWidgets[sys]['static'].setActive(int(currMode == AUTO_STATIC))
+        if 'staticSetpoint' in self.__modeWidgets[sys]:
+            self.__modeWidgets[sys]['staticSetpoint'].setActive(int(currMode == AUTO_STATIC and sysEnabled))
 
         # enable/disable auto dynamic parameters
-        if 'dynamic' in self.__modeWidgets[sys]:
-            for w in self.__modeWidgets[sys]['dynamic']:
-                w.setActive(int(currMode == AUTO_DYNAMIC))
+        if 'dynamicSetpoints' in self.__modeWidgets[sys]:
+            for w in self.__modeWidgets[sys]['dynamicSetpoints']:
+                w.setActive(int(currMode == AUTO_DYNAMIC and sysEnabled))
+
+        # enable/disable auto dynamic labels
+        if 'dynamicSetpoints.labels' in self.__modeWidgets[sys]:
+            # label color
+            clr = '' # default text color
+            if not (currMode == AUTO_DYNAMIC and sysEnabled):
+                clr = 'grey'
+            for l in self.__modeWidgets[sys]['dynamicSetpoints.labels']:
+                l.config(foreground=clr)
+
+        # enable/disable headers (based only on whether subSystem is active)
+        if 'header' in self.__modeWidgets[sys]:
+            clr = ''
+            if not sysEnabled:
+                clr = 'grey'
+            for hdr in self.__modeWidgets[sys]['header'].keys():
+                self.__modeWidgets[sys]['header'][hdr].config(foreground=clr)
 
     def saveToFile(self, event=None):
 
@@ -776,14 +866,70 @@ class Erl2Popup(tk.Toplevel):
         #self.grab_release()
         #self.transient()
 
-        # open a modal window to choose a file to save to
-        self.__fileName = fd.asksaveasfilename(parent=self,
-                                               title='Save Tank Settings to File...',
-                                               initialdir=self.__dirName,
-                                               defaultextension='.dat',
-                                               )
+        # how many subSystems?
+        sysCount = 0
+        for sys in SUBSYSTEMS:
+            if 'checkbox.value' in self.__modeWidgets[sys]:
+                sysCount += self.__modeWidgets[sys]['checkbox.value']
 
-        # output from asksaveasfilename can be a little weird
+        # popup message if no subSystems are selected to save
+        if sysCount == 0:
+            mb.showinfo('No SubSystems Selected', 'Please use SubSystems checkboxes to indicate which settings you wish to save to a file.', parent=self)
+
+        else:
+
+            # open a modal window to choose a file to save to
+            self.__fileName = fd.asksaveasfilename(parent=self,
+                                                   title='Save Tank Settings to File...',
+                                                   initialdir=self.__dirName,
+                                                   defaultextension='.dat',
+                                                   )
+
+            # output from asksaveasfilename can be a little weird
+            if type(self.__fileName) is tuple:
+                if len(self.__fileName) == 0:
+                    self.__fileName = None
+                else:
+                    self.__fileName = self.__fileName[0]
+            elif len(self.__fileName) == 0:
+                self.__fileName = None
+
+            # fileName will be None if the user canceled
+            if self.__fileName is not None:
+                #print (f"{__name__}: Debug: saveToFile() returns [{self.__fileName}]")
+
+                # briefly create an Erl2State instance to write out a file of values
+                erl2State = Erl2State(fullPath=self.__fileName,
+                                      readExisting=False,
+                                      erl2context=self.erl2context)
+                erl2State.set(valueList = self.getSettings())
+                del erl2State
+
+            #else:
+            #    print (f"{__name__}: Debug: saveToFile() returns None (canceled)")
+
+        self.modalOpen = False
+        #self.grab_set()
+        #self.transient(self.erl2context['root'])
+
+    def loadFromFile(self, event=None):
+
+        # ignore this call if the modal is already open
+        if self.modalOpen:
+            return
+
+        self.modalOpen = True
+        #self.grab_release()
+        #self.transient()
+
+        # open a modal window to choose a file to load from
+        self.__fileName = fd.askopenfilename(parent=self,
+                                             title='Load Tank Settings from File...',
+                                             initialdir=self.__dirName,
+                                             defaultextension='.dat',
+                                             )
+
+        # output from askopenfilename can be a little weird
         if type(self.__fileName) is tuple:
             if len(self.__fileName) == 0:
                 self.__fileName = None
@@ -794,23 +940,111 @@ class Erl2Popup(tk.Toplevel):
 
         # fileName will be None if the user canceled
         if self.__fileName is not None:
-            print (f"{__name__}: Debug: saveToFile() returns [{self.__fileName}]")
+            #print (f"{__name__}: Debug: saveToFile() returns [{self.__fileName}]")
 
-            # briefly create an Erl2State instance to write out a file of values
-            erl2State = Erl2State(fullPath=self.__fileName,
-                                  readExisting=False,
-                                  erl2context=self.erl2context)
-            erl2State.set(valueList = self.getSettings())
-            del erl2State
+            # lots of things could go wrong here
+            retVal = None
+            try:
+                # briefly create an Erl2State instance to read in a file of values
+                erl2State = Erl2State(fullPath=self.__fileName,
+                                      readExisting=True,
+                                      erl2context=self.erl2context)
+                retVal = self.setSettings(erl2State)
+                del erl2State
 
-        else:
-            print (f"{__name__}: Debug: saveToFile() returns None (canceled)")
+            except:
+                retVal = 'cannot read the selected file.'
+
+            # report any errors
+            if retVal is not None:
+                mb.showerror('File Error', 'Error while Reading Settings from File: ' + retVal, parent=self)
+
+        #else:
+        #    print (f"{__name__}: Debug: saveToFile() returns None (canceled)")
 
         self.modalOpen = False
         #self.grab_set()
         #self.transient(self.erl2context['root'])
 
-    def ok(self, event=None):
+    def copyFromTank(self, event=None):
+
+        # ignore this call if the modal is already open
+        if self.modalOpen:
+            return
+
+        self.modalOpen = True
+        #self.grab_release()
+        #self.transient()
+
+        # read the listbox to see what if anything is selected
+        selection = self.__listbox.curselection()
+
+        print (f"{__name__}: Debug: copyFromTank() result is type [{type(selection).__name__}], length [{len(selection)}]")
+        for ind in selection:
+            mac = self.__macList[ind]
+            print (f"{__name__}: Debug: copyFromTank() [{ind}][{mac}][{self.__listbox.get(ind)}][{self.erl2context['network'].childrenStates[mac]}]")
+
+        # popup message if nothing is selected to copy from
+        if len(selection) == 0:
+            mb.showinfo('No Tank Selected', 'Please select which tank you wish to copy settings from.', parent=self)
+
+        else:
+            # just use the first-selected tank if there are multiple tanks selected
+            ind = selection[0]
+            mac = self.__macList[ind]
+
+            # ask for confirmation before copying values
+            if mb.askyesno('Confirm Copy from Tank', f"Are you sure you wish to overwrite this window's values "
+                                                     f"with settings from {self.__listbox.get(ind)}?", parent=self):
+
+                # set this window's values from the chosen tank's state
+                retVal = self.setSettings(self.erl2context['network'].childrenStates[mac])
+
+                # report any errors (unlikely, when copying from in-memory settings)
+                if retVal is not None:
+                    mb.showerror('Tank Error', 'Error while Copying Tank Settings: ' + retVal, parent=self)
+
+        self.modalOpen = False
+        #self.grab_set()
+        #self.transient(self.erl2context['root'])
+
+    def applyToTanks(self, event=None):
+
+        # ignore this call if the modal is already open
+        if self.modalOpen:
+            return
+
+        self.modalOpen = True
+        #self.grab_release()
+        #self.transient()
+
+        # read the listbox to see what if anything is selected
+        selection = self.__listbox.curselection()
+
+        print (f"{__name__}: Debug: applyToTanks() result is type [{type(selection).__name__}], length [{len(selection)}]")
+        ids = []
+        for ind in selection:
+            mac = self.__macList[ind]
+            print (f"{__name__}: Debug: applyToTanks() [{ind}][{mac}][{self.__listbox.get(ind)}][{self.erl2context['network'].childrenStates[mac]}]")
+            ids.append(self.__listbox.get(ind))
+
+        # popup message if nothing is selected to copy from
+        if len(selection) == 0:
+            mb.showinfo('No Tank Selected', 'Please select which tank(s) to which you wish to apply these settings.', parent=self)
+
+        else:
+            # ask for confirmation before applying new programming to tanks
+            if mb.askyesno('Confirm Apply to Tanks',
+                           'Are you sure you wish to overwrite the programming in the following ' +
+                           'tank(s) with settings from this window?\n\n    ' + '\n    '.join(ids),
+                           parent=self):
+                pass
+
+        self.modalOpen = False
+        #self.grab_set()
+        #self.transient(self.erl2context['root'])
+
+    def closeWindow(self, event=None):
 
         #print (f"{__name__}: Debug: screen width [{self.winfo_screenwidth()}], height [{self.winfo_screenheight()}]")
         #print (f"{__name__}: Debug: popup width [{self.winfo_width()}], height [{self.winfo_height()}]")
@@ -825,7 +1059,7 @@ class Erl2Popup(tk.Toplevel):
 
         # only ask for confirmation for 'Edit Tank Setting' popup
         if (   Erl2Popup.popupType != 'Edit Tank Settings'
-            or mb.askyesno('Debug Confirmation Window',f"Are you sure you want to close the {Erl2Popup.popupType} window?",parent=self)):
+            or mb.askyesno('Confirm Cancelation',f"Are you sure you want to cancel this {Erl2Popup.popupType} operation?",parent=self)):
             self.destroy()
 
         self.modalOpen = False
@@ -841,30 +1075,135 @@ class Erl2Popup(tk.Toplevel):
         # loop through subsystems
         for sys in SUBSYSTEMS:
 
-            # what mode is currently selected?
-            retVal.append((sys, 'mode', self.__modeVar[sys].get()))
+            # make sure the subSystem is enabled
+            if 'checkbox.value' in self.__modeWidgets[sys] and  self.__modeWidgets[sys]['checkbox.value'] > 0:
 
-            # some subsystems may have hysteresis parameter
-            if 'hysteresis' in self.__modeWidgets[sys]:
-                retVal.append((sys, 'hysteresis', float(self.__modeWidgets[sys]['hysteresis'].stringVar.get())))
+                # what mode is currently selected?
+                retVal.append((sys, 'mode', self.__modeVar[sys].get()))
 
-            # auto static setpoints
-            if 'static' in self.__modeWidgets[sys]:
-                retVal.append((sys, 'staticSetpoint', float(self.__modeWidgets[sys]['static'].stringVar.get())))
+                # some subsystems may have hysteresis parameter
+                if 'hysteresis' in self.__modeWidgets[sys]:
+                    retVal.append((sys, 'hysteresis', float(self.__modeWidgets[sys]['hysteresis'].stringVar.get())))
 
-            # enable/disable auto dynamic parameters
-            if 'dynamic' in self.__modeWidgets[sys]:
+                # auto static setpoints
+                if 'staticSetpoint' in self.__modeWidgets[sys]:
+                    retVal.append((sys, 'staticSetpoint', float(self.__modeWidgets[sys]['staticSetpoint'].stringVar.get())))
 
-                # first build the whole list of float values (24 vals expected)
-                dynList = []
-                for w in self.__modeWidgets[sys]['dynamic']:
-                    dynList.append(float(w.stringVar.get()))
+                # enable/disable auto dynamic parameters
+                if 'dynamicSetpoints' in self.__modeWidgets[sys]:
 
-                # then assign it into the list of tuples
-                retVal.append((sys, 'dynamicSetpoints', dynList))
+                    # first build the whole list of float values (24 vals expected)
+                    dynList = []
+                    for w in self.__modeWidgets[sys]['dynamicSetpoints']:
+                        dynList.append(float(w.stringVar.get()))
+
+                    # then assign it into the list of tuples
+                    retVal.append((sys, 'dynamicSetpoints', dynList))
 
         # return the list of tuples when done
         return retVal
+
+    def setSettings(self,fromState):
+
+        # something is very wrong if this argument is the wrong type
+        assert type(fromState) is Erl2State
+
+        # before beginning, take a moment to verify that state file is consistent
+        for sys in SUBSYSTEMS:
+
+            # is this subsystem in the source set?
+            if fromState.isType(sys):
+
+                # mode
+                if not fromState.isName(sys,'mode'):
+                    return f"missing {sys}/mode value."
+                tp = type(fromState.get(sys,'mode',None))
+                if tp is not int:
+                    return f"corrupt {sys}/mode value: expected int, got {tp.__name__}."
+
+                # staticSetpoint
+                if not fromState.isName(sys,'staticSetpoint'):
+                    return f"missing {sys}/staticSetpoint value."
+                tp = type(fromState.get(sys,'staticSetpoint',None))
+                if tp is not float:
+                    return f"corrupt {sys}/staticSetpoint value: expected float, got {tp.__name__}."
+
+                # dynamicSetpoints
+                if not fromState.isName(sys,'dynamicSetpoints'):
+                    return f"missing {sys}/dynamicSetpoints value."
+                array = fromState.get(sys,'dynamicSetpoints',None)
+                arrayTp = type(array)
+                if arrayTp is not list:
+                    return f"corrupt {sys}/dynamicSetpoints value: expected list, got {arrayTp.__name__}."
+                if len(array) != 24:
+                    return f"corrupt {sys}/dynamicSetpoints value: expected 24 elements, got {len(array)}."
+                for ind in range(len(array)):
+                    elementTp = type(array[ind])
+                    if elementTp is not float:
+                        return f"corrupt {sys}/dynamicSetpoints[{ind}] value: expected float, got {elementTp.__name__}."
+
+                # hysteresis (if applicable)
+                if 'hysteresis' in self.__modeWidgets[sys]:
+                    if not fromState.isName(sys,'hysteresis'):
+                        return f"missing {sys}/hysteresis value."
+                    tp = type(fromState.get(sys,'hysteresis',None))
+                    if tp is not float:
+                        return f"corrupt {sys}/hysteresis value: expected float, got {tp.__name__}."
+
+        # loop through subsystems
+        for sys in SUBSYSTEMS:
+
+            # is this subsystem in the source set?
+            if fromState.isType(sys):
+
+                # make sure this subSystem's checkbox is checked
+                if 'checkbox.value' in self.__modeWidgets[sys] and self.__modeWidgets[sys]['checkbox.value'] == 0:
+
+                    # don't enable/disable widgets now b/c we're doing it further down
+                    self.toggleSubSystem(sys, redrawWidgets=False)
+
+                # logic for reading mode
+                val = fromState.get(valueType=sys, valueName='mode', defaultValue=None)
+                if val is not None and sys in self.__modeVar:
+                    #print (f"{__name__}: Debug: setSettings({sys}) mode = [{val}]")
+                    self.__modeVar[sys].set(int(val))
+
+                # logic for reading hysteresis and staticSetpoint
+                for param in ['hysteresis', 'staticSetpoint']:
+
+                    # does this subsystem have this type of widget?
+                    if param in self.__modeWidgets[sys]:
+                        w = self.__modeWidgets[sys][param]
+
+                        # is this parameter in the source set?
+                        val = fromState.get(valueType=sys, valueName=param, defaultValue=None)
+                        if val is not None:
+                            #print (f"{__name__}: Debug: setSettings({sys}) {param} = [{val}]")
+                            w.floatValue = val
+                            w.stringVar.set(w.valToString(val))
+
+                # logic for reading dynamicSetpoints
+                if 'dynamicSetpoints' in self.__modeWidgets[sys]:
+
+                    # list of the hourly widgets to populate
+                    wList = self.__modeWidgets[sys]['dynamicSetpoints']
+
+                    # list of the hourly values to assign
+                    valList = fromState.get(valueType=sys, valueName='dynamicSetpoints', defaultValue=None)
+
+                    #print (f"{__name__}: Debug: setSettings({sys}) dynamicSetpoints widgets[{len(wList)}], values [{len(valList)}]")
+
+                    # loop through as many as we can
+                    for ind in range(min(len(wList), len(valList))):
+                        #print (f"{__name__}: Debug: setSettings({sys}) dynamicSetpoints[{ind}]= [{valList[ind]}]")
+                        wList[ind].floatValue = valList[ind]
+                        wList[ind].stringVar.set(wList[ind].valToString(valList[ind]))
+
+                # enable/disable widgets if needed for mode changes
+                self.enableWidgets(sys)
+
+        # no errors to report
+        return None
 
     # rather than instantiate a new Erl2Popup instance, and risk opening multiple
     # popups at once, provide this classmethod that reads a class attribute and

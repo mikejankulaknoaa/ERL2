@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.67b (2024-07-09)'
+    VERSION = '0.68b (2024-07-11)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2', 'voltage']
@@ -137,15 +137,15 @@ class Erl2Config():
                                                         '0.500, 0.629, 0.750, 0.854, 0.933, 0.983, '
                                                         '1.000, 0.983, 0.933, 0.854, 0.750, 0.629]')
 
-        self.__default['heater']['channelType'] = 'pwm'
+        self.__default['heater']['channelType'] = '10v'
         self.__default['heater']['stackLevel'] = '0'
-        self.__default['heater']['outputPwmChannel'] = '3'
+        self.__default['heater']['outputChannel'] = '4'
         self.__default['heater']['gpioChannel'] = '23'
         self.__default['heater']['loggingFrequency'] = '300'
 
         self.__default['chiller']['channelType'] = 'pwm'
         self.__default['chiller']['stackLevel'] = '0'
-        self.__default['chiller']['outputPwmChannel'] = '4'
+        self.__default['chiller']['outputChannel'] = '4'
         self.__default['chiller']['gpioChannel'] = 'None'
         self.__default['chiller']['loggingFrequency'] = '300'
 
@@ -412,14 +412,14 @@ class Erl2Config():
         # heater/chiller parameters
         for controlType in ['heater', 'chiller']:
 
-            # what type of output channel does the control use? pwm or gpio
+            # what type of output channel does the control use? pwm, 10v or gpio
             self.validate(str, controlType, 'channelType')
-            if self.__erl2conf[controlType]['channelType'] not in ['pwm', 'gpio']:
-                raise TypeError(f"{self.__class__.__name__}: [controlType]['channelType'] = [{self.__erl2conf[controlType]['channelType']}] must be 'pwm' or 'gpio'")
+            if self.__erl2conf[controlType]['channelType'] not in ['pwm', '10v', 'gpio']:
+                raise TypeError(f"{self.__class__.__name__}: [controlType]['channelType'] = [{self.__erl2conf[controlType]['channelType']}] must be 'pwm', '10v' or 'gpio'")
 
-            self.validate(int, controlType, 'stackLevel',       min=0, max=7)
-            self.validate(int, controlType, 'outputPwmChannel', min=1, max=4)
-            self.validate(int, controlType, 'gpioChannel',      min=1, max=27)
+            self.validate(int, controlType, 'stackLevel',    min=0, max=7)
+            self.validate(int, controlType, 'outputChannel', min=1, max=4)
+            self.validate(int, controlType, 'gpioChannel',   min=1, max=27)
 
         # controls (heater, chiller, mfc.air, mfc.co2, mfc.n2) share some parameter logic
         for controlType in ['heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']:

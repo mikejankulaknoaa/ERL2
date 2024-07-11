@@ -11,7 +11,7 @@ from Erl2Input import Erl2Input
 from Erl2Log import Erl2Log
 from Erl2Mfc import Erl2Mfc
 from Erl2Network import Erl2Network
-from Erl2PwmOutput import Erl2PwmOutput
+from Erl2MegaindOutput import Erl2MegaindOutput
 from Erl2Pyro import Erl2Pyro
 from Erl2SerialTemp import Erl2SerialTemp
 from Erl2State import Erl2State
@@ -44,6 +44,10 @@ class Erl2Tank:
         # load any saved info about the application state
         if 'state' not in self.erl2context:
             self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
+
+        # there is also potentially a parent state
+        if 'parentState' not in self.erl2context:
+            self.erl2context['parentState'] = Erl2State(internalID='parent', erl2context=self.erl2context)
 
         # read these useful parameters from Erl2Config
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
@@ -439,8 +443,8 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # readout and control widgets for the Heater relay
-        if self.__heaterType == 'pwm':
-            self.controls['heater'] = Erl2PwmOutput(
+        if self.__heaterType in ['pwm', '10v']:
+            self.controls['heater'] = Erl2MegaindOutput(
                 controlType='heater',
                 controlColor='red',
                 displayLocs=[{'parent':self.__frames['Data'][0][1],'row':0,'column':0},
@@ -457,15 +461,15 @@ class Erl2Tank:
                 erl2context=self.erl2context)
 
         # readout and control widgets for the Chiller solenoid
-        if self.__chillerType == 'pwm':
-            self.controls['chiller'] = Erl2PwmOutput(
+        if self.__chillerType in ['pwm', '10v']:
+            self.controls['chiller'] = Erl2MegaindOutput(
                 controlType='chiller',
                 controlColor='blue',
                 displayLocs=[{'parent':self.__frames['Data'][0][1],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][1],'row':1,'column':0}],
                 buttonLoc={'parent':self.__frames['Temp'][0][2],'row':2,'column':0},
                 erl2context=self.erl2context)
-        elif self.__chillerType == 'pwm':
+        elif self.__chillerType == 'gpio':
             self.controls['chiller'] = Erl2GpioOutput(
                 controlType='chiller',
                 controlColor='blue',

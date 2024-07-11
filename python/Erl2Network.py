@@ -614,7 +614,8 @@ class Erl2Network():
                         dupMacsAndIPs.append(f"[{thisMac}][{newChildrenDict[thisMac]['ip']}]")
 
                     # create an alert about duplicate IDs
-                    mb.showerror(f"Error: more than one active child device has the ID [{id}]; " +
+                    mb.showerror(None,
+                                 f"Error: more than one active child device has the ID [{id}]; " +
                                  f"keeping [{chosenMac}][{newChildrenDict[chosenMac]['ip']}] and " +
                                  f"ignoring the one{plur} at {', '.join(dupMacsAndIPs)}. " +
                                  f"Please shut down the conflicting device{plur} " +
@@ -653,7 +654,8 @@ class Erl2Network():
                     if self.childrenDict[thisMac]['deviceType'] != newChildrenDict[thisMac]['deviceType']:
                         oldType = self.childrenDict[thisMac]['deviceType']
                         newType = newChildrenDict[thisMac]['deviceType']
-                        mb.showwarning(f"Warning: Device ID [{thisID}] used to be online with " +
+                        mb.showwarning(None,
+                                       f"Warning: Device ID [{thisID}] used to be online with " +
                                        f"device type [{oldType}] but now has device type [{newType}]. " +
                                        f"Previous settings and data will be retained.",
                                        parent=self.erl2context['root'])
@@ -668,7 +670,8 @@ class Erl2Network():
                     if self.childrenDict[thisMac]['ip'] != newChildrenDict[thisMac]['ip']:
                         oldIP = self.childrenDict[thisMac]['ip']
                         newIP = newChildrenDict[thisMac]['ip']
-                        mb.showwarning(f"Warning: Device ID [{thisID}] used to be online with " +
+                        mb.showwarning(None,
+                                       f"Warning: Device ID [{thisID}] used to be online with " +
                                        f"IP address [{oldIP}] but now has IP address [{newIP}]. " +
                                        f"Previous settings and data will be retained.",
                                        parent=self.erl2context['root'])
@@ -690,7 +693,8 @@ class Erl2Network():
 
                     oldID = self.childrenDict[thisMac]['id']
                     newID = newChildrenDict[thisMac]['id']
-                    mb.showwarning(f"Warning: MAC address [{thisMac}] used to be online with " +
+                    mb.showwarning(None,
+                                   f"Warning: MAC address [{thisMac}] used to be online with " +
                                    f"Device ID [{oldID}] but now has Device ID [{newID}]. " +
                                    f"Previous settings and data will be discarded and everything " +
                                    f"loaded anew from the device.",
@@ -709,7 +713,8 @@ class Erl2Network():
 
                     thisID = newChildrenDict[thisMac]['id']
                     oldMac = self.lookupByID[thisID]
-                    mb.showwarning(f"Warning: Device ID [{thisID}] used to be online with " +
+                    mb.showwarning(None,
+                                   f"Warning: Device ID [{thisID}] used to be online with " +
                                    f"MAC address [{oldMac}] but now has MAC address [{thisMac}]. " +
                                    f"Previous settings and data will be discarded and everything " +
                                    f"loaded anew from the device.",
@@ -899,6 +904,7 @@ class Erl2Network():
 
         # remember what time it is
         currentTime = dt.now(tz=tz.utc)
+        localTimeStr = currentTime.astimezone(self.__timezone).strftime(self.__dtFormat)
 
         # network check for tank-type devices
         if self.__deviceType == 'tank':
@@ -954,7 +960,7 @@ class Erl2Network():
                     # unpack second parameter (most recent timestamp already sent)
                     mat = re.search(b'^GETLOG\|(.*)$', rq.inb)
                     if not mat:
-                        raise RuntimeError('Erl2Network|manageQueues: error: badly formatted request')
+                        raise RuntimeError(f"Erl2Network|manageQueues: Error: [{localTimeStr}]: badly formatted request")
 
                     # the mat.groups() list should just be one item, the timestamp parameter
                     ts = mat.groups()[0]
@@ -1035,7 +1041,7 @@ class Erl2Network():
 
                             # something odd is going on if the reply isn't a datetime
                             if type(deviceT) is not dt:
-                                print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because type(deviceT) is [{type(deviceT).__name__}], not datetime")
+                                print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: HANGUP! because type(deviceT) is [{type(deviceT).__name__}], not datetime")
 
                                 # comms are out of sync, so hang up the listing tank and try again later
                                 self.sendCommand(mac, b"HANGUP!")
@@ -1048,7 +1054,7 @@ class Erl2Network():
                                 #print (f"{self.__class__.__name__}: manageQueues: Debug: updating latency for [{mac}] to [{self.childrenDict[mac]['latency']}]")
 
                         except (pickle.UnpicklingError, EOFError) as e:
-                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
+                            print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
 
                             # comms are out of sync, so hang up the listing tank and try again later
                             self.sendCommand(mac, b"HANGUP!")
@@ -1063,7 +1069,7 @@ class Erl2Network():
 
                             # some cursory type checking
                             if type(thisState) is not Erl2State:
-                                print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because bad state instance [{type(thisState).__name__}] for [{mac}][{self.childrenDict[mac]['id']}]")
+                                print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: HANGUP! because bad state instance [{type(thisState).__name__}] for [{mac}][{self.childrenDict[mac]['id']}]")
 
                                 # comms are out of sync, so hang up the listing tank and try again later
                                 self.sendCommand(mac, b"HANGUP!")
@@ -1083,7 +1089,7 @@ class Erl2Network():
                                     self.childrenReadouts[mac].refreshDisplays()
 
                         except (pickle.UnpicklingError, EOFError) as e:
-                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
+                            print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
 
                             # comms are out of sync, so hang up the listing tank and try again later
                             self.sendCommand(mac, b"HANGUP!")
@@ -1096,7 +1102,7 @@ class Erl2Network():
                             # answered with an export from an Erl2Log instance (pickled)
                             thisLog = pickle.loads(rs.replyString)
                             if type(thisLog) is not list:
-                                print (f"{self.__class__.__name__}: manageQueues: Error: bad log instance [{type(thisLog).__name__}] for [{mac}][{self.childrenDict[mac]['id']}]")
+                                print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: bad log instance [{type(thisLog).__name__}] for [{mac}][{self.childrenDict[mac]['id']}]")
                             else:
 
                                 # if the Erl2Log instance hasn't been created yet
@@ -1109,7 +1115,7 @@ class Erl2Network():
                                 self.childrenLogs[mac].importLog(thisLog)
 
                         except (pickle.UnpicklingError, EOFError) as e:
-                            print (f"{self.__class__.__name__}: manageQueues: Error: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
+                            print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
 
                             # comms are out of sync, so hang up the listing tank and try again later
                             self.sendCommand(mac, b"HANGUP!")

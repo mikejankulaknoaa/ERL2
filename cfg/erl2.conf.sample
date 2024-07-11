@@ -215,17 +215,19 @@
 
 [heater]
 
-# Output type can be pwm or gpio. PWM (pulse-width modulation) refers to the 0-10V outputs
-# on the sequent microsystems board and require the stackLevel and outputPwmChannel parameters.
-# GPIO (general purpose IO) are the Pi's own pins accessible via the sequent board and
-# require the gpioChannel parameter.
-# channelType = pwm
+# Output type can be pwm, 10v or gpio. PWM is the Open-drain, Pulse-Width Modulation 0-10V outputs
+# on the sequent HAT; 10V refers to the 0-10V outputs (also configurable as -10V to 10V) on the
+# sequent HAT. Either PWM or 10V require the stackLevel and outputChannel parameters. GPIO (General
+# Purpose I/O) are the Pi's own pins accessible via the Sequent HAT and require the gpioChannel
+# parameter.
+# channelType = 10v
 
 # sequent microsystems stack level (usually 0, can be up to 7)
 # stackLevel = 0
 
-# sequent microsystems Open-Drain / PWM output channel number (can be 1 - 4), writes 0-100%
-# outputPwmChannel = 3
+# sequent microsystems channel number (can be 1 - 4); for Open-drain PWM channels it writes
+# 0% - 100%, and for 10v channels it writes 0V - 10V
+# outputChannel = 4
 
 # Raspberry Pi GPIO channel number (can be 1 - 27), writes 0 or 1, GPIO.LOW or GPIO.HIGH, True or False;
 # ERL2's early implementations used GPIO 23 (pin 16), by default, to avoid conflicts with other Raspberry
@@ -239,17 +241,17 @@
 
 [chiller]
 
-# Output type can be pwm or gpio. PWM (pulse-width modulation) refers to the 0-10V outputs
-# on the sequent microsystems board and require the stackLevel and outputPwmChannel parameters.
-# GPIO (general purpose IO) are the Pi's own pins accessible via the sequent board and
-# require the gpioChannel parameter.
-# channelType = pwm
+# Output type can be pwm, 10v or gpio. PWM is the Open-drain, Pulse-Width Modulation 0-10V outputs
+# on the sequent HAT; 10V refers to the 0-10V outputs (also configurable as -10V to 10V) on the
+# sequent HAT. Either PWM or 10V require the stackLevel and outputChannel parameters. GPIO (General
+# Purpose I/O) are the Pi's own pins accessible via the Sequent HAT and require the gpioChannel
+# parameter.
 
 # sequent microsystems stack level (usually 0, can be up to 7)
 # stackLevel = 0
 
 # sequent microsystems Open-Drain / PWM output channel number (can be 1 - 4), writes 0-100%
-# outputPwmChannel = 4
+# outputChannel = 4
 
 # Raspberry Pi GPIO channel number (can be 1 - 27), writes 0 or 1, GPIO.LOW or GPIO.HIGH, True or False;
 # ERL2 designs have never used a GPIO chiller/solenoid connection but it is included here for flexibility

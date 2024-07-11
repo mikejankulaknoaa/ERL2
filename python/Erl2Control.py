@@ -323,6 +323,13 @@ class Erl2Control():
                 else:
                     self.__controlWidget.setActive(0)
 
+        # grey out the control widget's label if disabled
+        if self.__controlLabelWidget is not None:
+            clr = '' # default text color
+            if not self.enabled:
+                clr = 'grey'
+            self.__controlLabelWidget.config(foreground=clr)
+
         # if we are enabling this control, then make sure that the current
         # hardware setting matches what the control currently shows
         if self.enabled:

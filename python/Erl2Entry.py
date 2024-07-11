@@ -52,30 +52,38 @@ class Erl2Entry():
         # and whether the entry field is active or not
         self.enabled = 1
 
-        # a reference to the ttk.Entry widget
+        # a reference to the ttk.Entry widget (and its label)
         self.widget = None
+        self.labelWidget = None
 
         # for validation
         vcmd = self.__entryLoc['parent'].register(self.validateEntry)
 
         # create the entry field
-        self.widget = ttk.Entry(self.__entryLoc['parent'],
-                                textvariable=self.stringVar,
-                                validate='focusout',
-                                validatecommand=(vcmd,'%P'),
-                                width=self.__width,
-                                font=self.__font,
-                                justify='right')
-        self.widget.grid(row=self.__entryLoc['row'],column=self.__entryLoc['column'], sticky='e')
-        self.widget.bind('<Button-1>', self.numPadPopup)
-        #self.widget.bind('<Tab>', self.tabHandler)
-        self.widget.selection_clear()
+        e = ttk.Entry(self.__entryLoc['parent'],
+                      textvariable=self.stringVar,
+                      validate='focusout',
+                      validatecommand=(vcmd,'%P'),
+                      width=self.__width,
+                      font=self.__font,
+                      justify='right')
+        e.grid(row=self.__entryLoc['row'],column=self.__entryLoc['column'], sticky='e')
+        e.bind('<Button-1>', self.numPadPopup)
+        #e.bind('<Tab>', self.tabHandler)
+        e.selection_clear()
+
+        # remember the entry widget
+        self.widget = e
 
         # this is the Label shown beside the entry widget
         if 'parent' in self.__labelLoc and label is not None:
-            ttk.Label(self.__labelLoc['parent'], text=self.__label, font=self.__labelFont
+            l = ttk.Label(self.__labelLoc['parent'], text=self.__label, font=self.__labelFont
                 #, relief='solid', borderwidth=1
-                ).grid(row=self.__labelLoc['row'], column=self.__labelLoc['column'], padx='2 2', sticky='w')
+                )
+            l.grid(row=self.__labelLoc['row'], column=self.__labelLoc['column'], padx='2 2', sticky='w')
+
+            # remember the entry widget's label
+            self.labelWidget = l
 
     def valToString(self, val):
 
@@ -164,6 +172,13 @@ class Erl2Entry():
             self.widget.config(state='normal')
         else:
             self.widget.config(state='disabled')
+
+        # grey out the entry widget's label if disabled
+        if self.labelWidget is not None:
+            clr = '' # default text color
+            if not enabled:
+                clr = 'grey'
+            self.labelWidget.config(foreground=clr)
 
         self.enabled = enabled
 
