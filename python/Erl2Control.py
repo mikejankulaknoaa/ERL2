@@ -403,7 +403,7 @@ class Erl2Control():
 
     def setControl(self, newSetting=0., force=False):
 
-        print (f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}], force [{force}], while range is {self.validRange}")
+        #print (f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}], force [{force}], while range is {self.validRange}")
 
         # allow changes to be 'forced' even if setting looks the same, but don't log it
         logThis = True
