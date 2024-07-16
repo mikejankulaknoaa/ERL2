@@ -661,8 +661,8 @@ class Erl2SubSystem():
                                                self.__pidParams[mfc]['Kd'])
 
                         # tell it what the output limits of this MFC are
-                        #print (f"{__class__.__name__}: Debug: setting PID limits for [{mfc}] to [{self.__MFCs[mfc].controlRange}]")
-                        self.__PIDs[mfc].output_limits = self.__MFCs[mfc].controlRange
+                        #print (f"{__class__.__name__}: Debug: setting PID limits for [{mfc}] to [{self.__MFCs[mfc].validRange}]")
+                        self.__PIDs[mfc].output_limits = self.__MFCs[mfc].validRange
 
                     # ensure that the PID is enabled
                     if not self.__PIDs[mfc].auto_mode:

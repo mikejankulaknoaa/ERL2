@@ -62,7 +62,7 @@ class Erl2Mfc(Erl2Control):
     def changeHardwareSetting(self):
 
         # calculate the Vdc that corresponds to the current setting
-        volts = (self.setting - self.controlRange[0]) / (self.controlRange[1] - self.controlRange[0]) * 5.
+        volts = (self.setting - self.validRange[0]) / (self.validRange[1] - self.validRange[0]) * 5.
 
         # don't exceed the range of 0 - 5 V
         if volts > 5.:

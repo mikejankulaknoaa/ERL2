@@ -80,9 +80,9 @@ class Erl2Control():
             self.__displayDecimals = self.erl2context['conf'][self.controlType]['displayDecimals']
 
         # are there hardware-driven upper+lower limits to this control's value?
-        self.controlRange = [0.,1.]
-        if 'flowRateRange' in self.erl2context['conf'][self.controlType]:
-            self.controlRange = self.erl2context['conf'][self.controlType]['flowRateRange']
+        self.validRange = [0.,1.]
+        if 'validRange' in self.erl2context['conf'][self.controlType]:
+            self.validRange = self.erl2context['conf'][self.controlType]['validRange']
 
         # if necessary, create an object to hold/remember button image objects
         if self.__widgetType == 'button':
@@ -192,7 +192,7 @@ class Erl2Control():
                           width=5,
                           labelFont='Arial 16',
                           displayDecimals=self.__displayDecimals,
-                          validRange=self.controlRange,
+                          validRange=self.validRange,
                           initValue=self.setting,
                           onChange=self.applySetting,
                           erl2context=self.erl2context)
@@ -403,7 +403,7 @@ class Erl2Control():
 
     def setControl(self, newSetting=0., force=False):
 
-        #print (f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}], force [{force}]")
+        print (f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}], force [{force}], while range is {self.validRange}")
 
         # allow changes to be 'forced' even if setting looks the same, but don't log it
         logThis = True
@@ -414,7 +414,7 @@ class Erl2Control():
                 logThis = False
 
         # it's an error to try to set an MFC to a value outside its range
-        assert self.controlRange[0] <= float(newSetting) <= self.controlRange[1]
+        assert self.validRange[0] <= float(newSetting) <= self.validRange[1]
 
         # tally up how many times the setting is changing
         self.numChanges += 1
