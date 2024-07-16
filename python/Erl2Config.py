@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.68b (2024-07-11)'
+    VERSION = '0.69b (2024-07-16)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2', 'voltage']
@@ -32,10 +32,10 @@ class Erl2Config():
         self.__default['device']['type'] = 'tank'
         self.__default['device']['id'] = 'Tank 0'
 
-        self.__default['network']['controllerIP'] = 'None'
         self.__default['network']['enabled'] = 'False'
-        self.__default['network']['ipNetworkStub'] = '192.168.2.'
-        self.__default['network']['ipRange'] = '[2, 63]'
+        self.__default['network']['controllerIP'] = 'None'
+        self.__default['network']['ipNetworkStub'] = 'None'
+        self.__default['network']['ipRange'] = '[2, 254]'
         self.__default['network']['hardcoding'] = 'None'
         self.__default['network']['updateFrequency'] = '5'
         self.__default['network']['lapseTime'] = '60'
@@ -142,12 +142,14 @@ class Erl2Config():
         self.__default['heater']['outputChannel'] = '4'
         self.__default['heater']['gpioChannel'] = '23'
         self.__default['heater']['loggingFrequency'] = '300'
+        self.__default['heater']['valueWhenReset'] = '0.'
 
         self.__default['chiller']['channelType'] = 'pwm'
         self.__default['chiller']['stackLevel'] = '0'
         self.__default['chiller']['outputChannel'] = '4'
         self.__default['chiller']['gpioChannel'] = 'None'
         self.__default['chiller']['loggingFrequency'] = '300'
+        self.__default['chiller']['valueWhenReset'] = '0.'
 
         self.__default['mfc.air']['stackLevel'] = '0'
         self.__default['mfc.air']['inputChannel'] = '2'
@@ -162,7 +164,7 @@ class Erl2Config():
         self.__default['mfc.air']['offsetDefault'] = '0.'
         self.__default['mfc.air']['validRange'] = '[0., 5000.]'
         self.__default['mfc.air']['outputChannel'] = '1'
-        self.__default['mfc.air']['flowRateRange'] = '[0., 5000.]'
+        self.__default['mfc.air']['valueWhenReset'] = '500.'
 
         self.__default['mfc.co2']['stackLevel'] = '0'
         self.__default['mfc.co2']['inputChannel'] = '3'
@@ -177,7 +179,7 @@ class Erl2Config():
         self.__default['mfc.co2']['offsetDefault'] = '0.0'
         self.__default['mfc.co2']['validRange'] = '[0.0, 20.0]'
         self.__default['mfc.co2']['outputChannel'] = '2'
-        self.__default['mfc.co2']['flowRateRange'] = '[0.0, 20.0]'
+        self.__default['mfc.co2']['valueWhenReset'] = '0.'
 
         self.__default['mfc.n2']['stackLevel'] = '0'
         self.__default['mfc.n2']['inputChannel'] = '4'
@@ -192,7 +194,7 @@ class Erl2Config():
         self.__default['mfc.n2']['offsetDefault'] = '0.'
         self.__default['mfc.n2']['validRange'] = '[0., 1000.]'
         self.__default['mfc.n2']['outputChannel'] = '3'
-        self.__default['mfc.n2']['flowRateRange'] = '[0., 1000.]'
+        self.__default['mfc.n2']['valueWhenReset'] = '0.'
 
     def __init__(self):
 
@@ -304,8 +306,8 @@ class Erl2Config():
         self.validate(str, 'device', 'id')
 
         # network
-        self.validate(str,  'network', 'controllerIP')
         self.validate(bool, 'network', 'enabled')
+        self.validate(str,  'network', 'controllerIP')
         self.validate(str,  'network', 'ipNetworkStub')
 
         self.validateList(str, 'network', 'hardcoding')
@@ -421,6 +423,11 @@ class Erl2Config():
             self.validate(int, controlType, 'outputChannel', min=1, max=4)
             self.validate(int, controlType, 'gpioChannel',   min=1, max=27)
 
+            # heater and chiller have 0. or 1. as valid reset values
+            self.validate(float, controlType, 'valueWhenReset')
+            if self.__erl2conf[controlType]['valueWhenReset'] not in [0., 1.]:
+                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['valueWhenReset'] = {self.__erl2conf[controlType]['valueWhenReset']} must be 0. or 1.")
+
         # controls (heater, chiller, mfc.air, mfc.co2, mfc.n2) share some parameter logic
         for controlType in ['heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']:
             self.validate(int, controlType, 'loggingFrequency', min=1)
@@ -428,13 +435,10 @@ class Erl2Config():
         # MFCs (mfc.air, mfc.co2, mfc.n2) share some parameter logic
         for controlType in ['mfc.air', 'mfc.co2', 'mfc.n2']:
 
-            # flowRateRange has some extra logic (non-decreasing order)
-            self.validateList(float, controlType, 'flowRateRange', 2, min=self.__erl2conf[controlType]['hardwareRange'][0], max=self.__erl2conf[controlType]['hardwareRange'][1])
-            if (self.__erl2conf[controlType]['flowRateRange'] is not None
-                and self.__erl2conf[controlType]['flowRateRange'][0] > self.__erl2conf[controlType]['flowRateRange'][1]):
-                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['flowRateRange'] = {self.__erl2conf[controlType]['flowRateRange']} must specified in increasing order")
-
             self.validate(int, controlType, 'outputChannel', min=1, max=4)
+
+            # the MFCs must merely have a reset value that falls within their validRange
+            self.validate(float, controlType, 'valueWhenReset', min=self.__erl2conf[controlType]['validRange'][0], max=self.__erl2conf[controlType]['validRange'][1])
 
     def validate(self, cl, cat, param, min=None, max=None):
 

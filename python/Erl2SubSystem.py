@@ -455,9 +455,9 @@ class Erl2SubSystem():
             #print (f"{__class__.__name__}: Debug: applyMode({self.subSystemType}) calling setActive({int(crtlVar==LOCAL and modeVar==MANUAL)}) for [{c.controlType}]")
             c.setActive(int(ctrlVar==LOCAL and modeVar==MANUAL))
 
-        # special case: if we are leaving Manual mode, reset all MFCs to zero
+        # special case: if we are leaving Manual mode, reset all MFCs
         for m in self.__MFCs.values():
-            m.setControl(newSetting=0.)
+            m.resetControl()
 
         # enable/disable the static setpoint entry field as appropriate
         if self.staticSetpointEntry is not None:
@@ -483,7 +483,7 @@ class Erl2SubSystem():
         # if in Manual mode (either local or controller), reset all hardware controls to off
         if modeVar==MANUAL:
             for c in self.__controls.values():
-                c.setControl(0)
+                c.resetControl()
 
         # disable "Controller" mode for now
         #self.__ctrlRadioWidgets[CONTROLLER].config(state='disabled')
@@ -612,19 +612,19 @@ class Erl2SubSystem():
                 # determine the correct course of action
                 if currVal < self.__activeSetpoint-hysteresis:
                     if 'to.raise' in self.__toggles:
-                        self.__toggles['to.raise'].setControl(1)
+                        self.__toggles['to.raise'].setControl(1.)
                     if 'to.lower' in self.__toggles:
-                        self.__toggles['to.lower'].setControl(0)
+                        self.__toggles['to.lower'].setControl(0.)
                 elif currVal > self.__activeSetpoint+hysteresis:
                     if 'to.raise' in self.__toggles:
-                        self.__toggles['to.raise'].setControl(0)
+                        self.__toggles['to.raise'].setControl(0.)
                     if 'to.lower' in self.__toggles:
-                        self.__toggles['to.lower'].setControl(1)
+                        self.__toggles['to.lower'].setControl(1.)
                 else:
                     if 'to.raise' in self.__toggles:
-                        self.__toggles['to.raise'].setControl(0)
+                        self.__toggles['to.raise'].setControl(0.)
                     if 'to.lower' in self.__toggles:
-                        self.__toggles['to.lower'].setControl(0)
+                        self.__toggles['to.lower'].setControl(0.)
 
         # unrecognized mode
         else:

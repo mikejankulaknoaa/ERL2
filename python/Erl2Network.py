@@ -438,7 +438,7 @@ class Erl2Network():
             self.__stub = self.__networkStubs[0]['STUB']
 
             # ...however, try to match ipNetworkStub if multiple subnet candidates were found
-            if len(self.__deviceAddresses) > 1:
+            if self.__ipNetworkStub is not None and len(self.__deviceAddresses) > 1:
                 for ind in range(0, len(self.__deviceAddresses)):
                     if self.__ipNetworkStub in self.__deviceAddresses[ind]:
                         self.__interface = self.__networkStubs[ind]['IF']
@@ -446,6 +446,10 @@ class Erl2Network():
                         self.__mac = self.__networkStubs[ind]['MAC']
                         self.__stub = self.__networkStubs[ind]['STUB']
                         break
+
+            # but we always want to hardcode the stub where we search for tanks, if provided
+            if self.__ipNetworkStub is not None:
+                self.__stub = self.__ipNetworkStub
 
             # controller startup log message
             self.__networkLog.writeMessage(f"Controller startup at interface [{self.__interface}], ip [{self.__ip}], mac [{self.__mac}]")

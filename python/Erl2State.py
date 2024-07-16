@@ -65,6 +65,9 @@ class Erl2State():
 
     def readFromFile(self):
 
+        # watch out for file formatting errors
+        foundErrors = False
+
         # if there's a state file left over from a previous run
         if path.isfile(self.__fileName) and stat(self.__fileName).st_size > 0:
 
@@ -87,6 +90,19 @@ class Erl2State():
 
                         # save the recovered value to state memory
                         self.erl2state[t][n] = val
+
+                    else:
+                        foundErrors = True
+
+        # if errors, set aside a copy of the file
+        if foundErrors:
+
+            # on windows you must first explicitly remove the old .err file
+            if path.isfile(self.__fileName + '.err'):
+                remove(self.__fileName + '.err')
+
+            # now rename the current state file before creating the new one
+            rename(self.__fileName, self.__fileName + '.err')
 
     def writeToFile(self):
 

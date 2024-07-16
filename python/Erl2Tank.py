@@ -730,7 +730,7 @@ class Erl2Tank:
         # set any controls to zero
         if hasattr(self, 'controls'):
             for c in self.controls.values():
-                c.setControl(0,force=True)
+                c.resetControl()
 
         # terminate subthreads in network module
         if self.erl2context['network'] is not None:

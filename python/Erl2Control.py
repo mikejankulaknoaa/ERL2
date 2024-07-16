@@ -69,6 +69,7 @@ class Erl2Control():
         # read these useful parameters from Erl2Config
         self.__loggingFrequency = self.erl2context['conf'][self.controlType]['loggingFrequency']
         self.__systemFrequency = self.erl2context['conf']['system']['loggingFrequency']
+        self.__valueWhenReset = self.erl2context['conf'][self.controlType]['valueWhenReset']
 
         # a record of recent control settings for running averages
         self.recentValues = []
@@ -478,6 +479,10 @@ class Erl2Control():
         # update snapshot (state) file with last-known setting and timing
         self.erl2context['state'].set([(self.controlType,'setting',self.setting),
                                        (self.controlType,'lastChanged',self.settingLastChanged)])
+
+    def resetControl(self):
+
+        self.setControl(newSetting=self.__valueWhenReset, force=True)
 
     # placeholder method -- must be overridden in child classes
     def changeHardwareSetting(self):

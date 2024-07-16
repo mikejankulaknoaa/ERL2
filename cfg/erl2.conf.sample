@@ -27,21 +27,22 @@
 
 [network]
 
+# networking is disabled by default
+# enabled = False
+
 # controllers by default are expected to be found at the .1 address of the ERL2
 # subnet (which is the default behavior if this setting is None); you can override
 # this behavior by specifying a full IP address here (without quotation marks)
 # controllerIP = None
 
-# networking is disabled by default
-# enabled = False
-
 # any device: set ipNetworkStub to the stub address of the private ERL2 Tank
 # subnet (or use None to have ERL2 logic find the right addresses)
-# ipNetworkStub = 192.168.2.
+# example: ipNetworkStub = 192.168.2.
+# ipNetworkStub = None
 
 # controllers: set ipRange to restrict subnet searches to a subset of addresses
 # (or use None to search all possible addresses in the private ERL2 subnet)
-# ipRange = [2, 63]
+# ipRange = [2, 254]
 
 # hardcoding: manually specify a list of child IP addresses (default None)
 # example: hardcoding = ['10.141.140.223', '10.141.140.227']
@@ -238,6 +239,10 @@
 # controls how often metrics from the heater are saved in memory and written to log files
 # loggingFrequency = 300
 
+# Normally a control's 'reset' value (e.g. when powering off, or first entering Manual mode)
+# is zero, but some controls default to nonzero values
+# valueWhenReset = 0.
+
 
 [chiller]
 
@@ -260,6 +265,10 @@
 # logging: frequency (seconds)
 # controls how often metrics from the chiller are saved in memory and written to log files
 # loggingFrequency = 300
+
+# Normally a control's 'reset' value (e.g. when powering off, or first entering Manual mode)
+# is zero, but some controls default to nonzero values
+# valueWhenReset = 0.
 
 
 [mfc.air]
@@ -300,9 +309,9 @@
 # sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
 # outputChannel = 1
 
-# the minimum and maximum flow rates in mL/min for setting output voltages
-# on this MFC
-# flowRateRange = [0., 5000.]
+# Normally a control's 'reset' value (e.g. when powering off, or first entering Manual mode)
+# is zero, but some controls default to nonzero values
+# valueWhenReset = 500.
 
 
 [mfc.co2]
@@ -343,9 +352,9 @@
 # sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
 # outputChannel = 2
 
-# the minimum and maximum flow rates in mL/min for setting output voltages
-# on this MFC
-# flowRateRange = [0.0, 20.0]
+# Normally a control's 'reset' value (e.g. when powering off, or first entering Manual mode)
+# is zero, but some controls default to nonzero values
+# valueWhenReset = 0.
 
 
 [mfc.n2]
@@ -386,7 +395,7 @@
 # sequent microsystems output channel number (can be 1 - 4), writes 0-5 Vdc
 # outputChannel = 3
 
-# the minimum and maximum flow rates in mL/min for setting output voltages
-# on this MFC
-# flowRateRange = [0., 1000.]
+# Normally a control's 'reset' value (e.g. when powering off, or first entering Manual mode)
+# is zero, but some controls default to nonzero values
+# valueWhenReset = 0.
 
