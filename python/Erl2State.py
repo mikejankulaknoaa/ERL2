@@ -2,7 +2,7 @@ from csv import reader,writer
 from datetime import datetime as dt
 from datetime import timezone as tz
 from json import dumps, loads
-from os import makedirs,path,remove,rename,stat
+from os import makedirs,path,remove,rename,sync
 from re import findall, search
 from Erl2Config import Erl2Config
 from Erl2Log import Erl2Log
@@ -15,6 +15,9 @@ class Erl2State():
                  readExisting=True,
                  erl2context={}):
 
+        if internalID == 'state':
+            print (f"{self.__class__.__name__}: Debug: __init__(internalID={internalID},fullPath={fullPath},readExisting{readExisting}) called")
+
         # do not save erl2context as an attribute, it is only needed in __init__
         #self.erl2context = erl2context
 
@@ -26,6 +29,7 @@ class Erl2State():
         self.erl2state = {}
         self.__dirName = None
         self.__fileName = None
+        self.__internalID = internalID
 
         # read these useful parameters from Erl2Config
         self.__dtFormat = erl2context['conf']['system']['dtFormat']
@@ -65,11 +69,42 @@ class Erl2State():
 
     def readFromFile(self):
 
-        # watch out for file formatting errors
-        foundErrors = False
+        # monitor our progress
+        sizeDat = sizeBak = sizeLck = None
+        valuesRead = 0
+        if path.isfile(self.__fileName):
+            sizeDat = path.getsize(self.__fileName)
+        if path.isfile(self.__fileName + '.bak'):
+            sizeBak = path.getsize(self.__fileName + '.bak')
+        if path.isfile(self.__fileName + '.lck'):
+            sizeLck = path.getsize(self.__fileName + '.lck')
 
-        # if there's a state file left over from a previous run
-        if path.isfile(self.__fileName) and stat(self.__fileName).st_size > 0:
+        if self.__internalID == 'state':
+            print (f"{self.__class__.__name__}: Debug: readFromFile({self.__fileName}) called: sizeDat [{sizeDat}], sizeBak [{sizeBak}], sizeLck [{sizeLck}]]")
+
+        # if there's an orphaned lock file, and backup exists, restore it
+        if sizeLck is not None and sizeBak is not None and sizeBak > 0:
+            print (f"{self.__class__.__name__}: Warning: readFromFile({self.__fileName}): found .lck, restoring from .bak file")
+            self.moveFile(self.__fileName + '.bak', self.__fileName)
+            remove(self.__fileName + '.lck')
+
+        # otherwise if there's no .dat file, just give up
+        if sizeDat is None:
+            print (f"{self.__class__.__name__}: Warning: readFromFile({self.__fileName}) aborting, no .dat file found")
+            return
+
+        # if the main file is of zero size, try pivoting to the backup file
+        if sizeDat == 0 and sizeBak is not None and sizeBak > 0:
+
+            print (f"{self.__class__.__name__}: Warning: readFromFile({self.__fileName}): .dat file empty, restoring from .bak file")
+            self.moveFile(self.__fileName + '.bak', self.__fileName)
+
+        # keep looping until all options exhausted
+        keepLooping = True
+        while keepLooping:
+
+            # optimism!
+            keepLooping = False
 
             # open the state file for reading
             with open(self.__fileName, 'r', newline='') as f:
@@ -90,31 +125,49 @@ class Erl2State():
 
                         # save the recovered value to state memory
                         self.erl2state[t][n] = val
+                        valuesRead += 1
 
+                    # this means at least one line in the state files is corrupted
                     else:
-                        foundErrors = True
+                        # close the file we're currently reading
+                        f.close()
 
-        # if errors, set aside a copy of the file
-        if foundErrors:
+                        # note: I'm not going to erase any parameters that were loaded from the corrupted file
+                        # (anyhow if it's corrupted, then probably the whole thing is unreadable)
 
-            # on windows you must first explicitly remove the old .err file
-            if path.isfile(self.__fileName + '.err'):
-                remove(self.__fileName + '.err')
+                        # keep a copy of the corrupted file for posterity
+                        self.moveFile(self.__fileName, self.__fileName + '.err')
 
-            # now rename the current state file before creating the new one
-            rename(self.__fileName, self.__fileName + '.err')
+                        # is there a backup file we can try?
+                        if sizeBak is not None and sizeBak > 0:
+                            print (f"{self.__class__.__name__}: Warning: readFromFile({self.__fileName}): .dat file corrupted, restoring from .bak file")
+                            self.moveFile(self.__fileName + '.bak', self.__fileName)
+                            sizeDat = sizeBak
+                            sizeBak = None
+
+                            # we're not out of options yet
+                            keepLooping = True
+
+                        else:
+                            print (f"{self.__class__.__name__}: Warning: readFromFile({self.__fileName}): .dat file corrupted, no backup available")
+
+                        # no reason to keep reading this corrupted file
+                        break
+
+        if self.__internalID == 'state':
+            print (f"{self.__class__.__name__}: Debug: readFromFile({self.__fileName}) finished: valuesRead [{valuesRead}]")
 
     def writeToFile(self):
 
+        #print (f"{self.__class__.__name__}: Debug: writeToFile({self.__fileName}) called")
+
+        # open and close a lock file to track if this method finished correctly
+        with open(self.__fileName + '.lck', 'w') as f:
+            pass
+
         # if it exists, rename the old file instead of overwriting
-        if path.isfile(self.__fileName) and stat(self.__fileName).st_size > 0:
-
-            # on windows you must first explicitly remove the old .bak file
-            if path.isfile(self.__fileName + '.bak'):
-                remove(self.__fileName + '.bak')
-
-            # now rename the current state file before creating the new one
-            rename(self.__fileName, self.__fileName + '.bak')
+        if path.isfile(self.__fileName) and path.getsize(self.__fileName) > 0:
+            self.moveFile(self.__fileName, self.__fileName + '.bak')
 
         # open the state file for writing
         with open(self.__fileName, 'w', newline='') as f:
@@ -138,6 +191,15 @@ class Erl2State():
 
                     # don't buffer the output stream, in case of irregular app termination
                     f.flush()
+
+        # delete the lock file
+        if path.isfile(self.__fileName + '.lck'):
+            remove(self.__fileName + '.lck')
+
+        # force python to write changes to disk
+        sync()
+
+        #print (f"{self.__class__.__name__}: Debug: writeToFile({self.__fileName}) finished as expected")
 
     def get(self, valueType, valueName, defaultValue):
 
@@ -333,6 +395,15 @@ class Erl2State():
     def isName(self,valueType, valueName):
 
         return type(self.erl2state) is dict and valueType in self.erl2state and valueName in self.erl2state[valueType]
+
+    def moveFile(self,fromFile,toFile):
+
+        # on windows you must first explicitly remove the file you're overwriting
+        if path.isfile(toFile):
+            remove(toFile)
+
+        # now do the move (renaming)
+        rename(fromFile, toFile)
 
 def main():
 

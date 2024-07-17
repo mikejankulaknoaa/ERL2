@@ -2,7 +2,7 @@ from csv import DictReader,DictWriter,writer
 from datetime import datetime as dt
 from datetime import timedelta as td
 from datetime import timezone as tz
-from os import makedirs,path,stat
+from os import makedirs,path,sync
 from sys import version_info
 from Erl2Config import Erl2Config
 
@@ -62,7 +62,7 @@ class Erl2Log():
         # self.writeMessage(f'{self.__class__.__name__}[{self.__logType}][{self.__logName}]: log initialized')
 
         # are there any data records to be read in?
-        if path.isfile(self.__logData) and stat(self.__logData).st_size > 0:
+        if path.isfile(self.__logData) and path.getsize(self.__logData) > 0:
 
             # try to read in the old data to memory
             with open(self.__logData, 'r', newline='') as f:
@@ -123,7 +123,7 @@ class Erl2Log():
             assert type(data) is dict;
 
             # figure out if the data file has already been written to
-            fileExists = (path.isfile(self.__logData) and stat(self.__logData).st_size > 0)
+            fileExists = (path.isfile(self.__logData) and path.getsize(self.__logData) > 0)
 
             # figure out if this record is more than just a timestamp
             realData = (len([x for x in data if 'Timestamp' not in x]) > 0)
@@ -147,6 +147,9 @@ class Erl2Log():
 
                     # don't buffer the output stream, in case of irregular app termination
                     f.flush()
+
+                # force python to write changes to disk
+                sync()
 
         except Exception as e:
             print (f'{self.__class__.__name__}: Error: writeData(): {str(e)}')
@@ -172,6 +175,9 @@ class Erl2Log():
 
                 # don't buffer the output stream, in case of irregular app termination
                 f.flush()
+
+            # force python to write changes to disk
+            sync()
 
         except Exception as e:
             print (f'{self.__class__.__name__}: Error: __writeMessage({str(args)}): {str(e)}')
@@ -225,7 +231,7 @@ class Erl2Log():
         if pullFromDisk:
 
             # are there any data records to be read in?
-            if path.isfile(self.__logData) and stat(self.__logData).st_size > 0:
+            if path.isfile(self.__logData) and path.getsize(self.__logData) > 0:
 
                 # try to read in the old data to memory
                 with open(self.__logData, 'r', newline='') as f:
@@ -287,7 +293,7 @@ class Erl2Log():
                     # finally, write the new data point to the data file
                     try:
                         # figure out if the data file has already been written to
-                        fileExists = (path.isfile(self.__logData) and stat(self.__logData).st_size > 0)
+                        fileExists = (path.isfile(self.__logData) and path.getsize(self.__logData) > 0)
 
                         # write to the data file
                         with open(self.__logData, 'a', newline='') as f:
@@ -304,6 +310,9 @@ class Erl2Log():
                             # don't buffer the output stream, in case of irregular app termination
                             f.flush()
 
+                        # force python to write changes to disk
+                        sync()
+ 
                     except Exception as e:
                         print (f'{self.__class__.__name__}: Error: importLog(): {str(e)}')
 
