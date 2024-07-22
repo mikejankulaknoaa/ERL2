@@ -12,6 +12,7 @@ from Erl2Log import Erl2Log
 from Erl2Mfc import Erl2Mfc
 from Erl2Network import Erl2Network
 from Erl2MegaindOutput import Erl2MegaindOutput
+from Erl2Popup import Erl2Popup
 from Erl2Pyro import Erl2Pyro
 from Erl2SerialTemp import Erl2SerialTemp
 from Erl2State import Erl2State
@@ -75,9 +76,9 @@ class Erl2Tank:
         # these dicts will hold the objects in this module
         self.__tabs = {}
         self.__frames = {}
-        self.sensors = {}
-        self.controls = {}
-        self.subsystems = {}
+        self.erl2context['sensors'] = {}
+        self.erl2context['controls'] = {}
+        self.erl2context['subsystems'] = {}
 
         # remember if network module is active
         #self.network = None
@@ -359,6 +360,16 @@ class Erl2Tank:
             r += 1
             self.erl2context['startup'].createNumPadWidget(widgetLoc={'parent':self.__frames['Settings'][0][0],'row':r})
 
+            ## TEST of Erl2Popup in tank
+            #r += 1
+            #testFrame = ttk.Frame(self.__frames['Settings'][0][0], padding='2 2', relief='flat', borderwidth=0)
+            #testFrame.grid(row=r, column=0)
+            #l = ttk.Label(testFrame, text='About ERL2', font='Arial 16'
+            #    #, relief='solid', borderwidth=1
+            #    )
+            #l.grid(row=0, column=1, padx='2 2', sticky='w')
+            #l.bind('<Button-1>', lambda event, tp='About ERL2', cx=self.erl2context: Erl2Popup.openPopup(popupType=tp,erl2context=cx))
+
             # add a control to restart the app
             r = 1
             self.erl2context['startup'].createRestartWidget(widgetLoc={'parent':self.__frames['Settings'][1][0],'row':r})
@@ -369,15 +380,14 @@ class Erl2Tank:
 
         # readout displays for the current temperature (virtual, serial, or milliAmps/volts)
         if self.__virtualTemp:
-            self.sensors['temperature'] = Erl2VirtualTemp(
-                erl2Parent=self,
+            self.erl2context['sensors']['temperature'] = Erl2VirtualTemp(
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
                 statusLocs=tempStatusLocs,
                 correctionLoc={'parent':self.__frames['Temp'][0][3],'row':1,'column':0},
                 erl2context=self.erl2context)
         elif self.__serialTemp is not None:
-            self.sensors['temperature'] = Erl2SerialTemp(
+            self.erl2context['sensors']['temperature'] = Erl2SerialTemp(
                 sensorType='temperature',
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
@@ -385,7 +395,7 @@ class Erl2Tank:
                 correctionLoc={'parent':self.__frames['Temp'][0][3],'row':1,'column':0},
                 erl2context=self.erl2context)
         else:
-            self.sensors['temperature'] = Erl2Input(
+            self.erl2context['sensors']['temperature'] = Erl2Input(
                 sensorType='temperature',
                 displayLocs=[{'parent':self.__frames['Data'][0][0],'row':1,'column':0},
                              {'parent':self.__frames['Temp'][0][0],'row':1,'column':0}],
@@ -394,27 +404,27 @@ class Erl2Tank:
                 erl2context=self.erl2context)
 
         # readout displays for the current pH, as reported by the pico-pH
-        self.sensors['pH'] = Erl2Pyro(
+        self.erl2context['sensors']['pH'] = Erl2Pyro(
             sensorType='pH',
             displayLocs=[{'parent':self.__frames['Data'][1][0],'row':1,'column':0},
                          {'parent':self.__frames['pH'][0][0],'row':1,'column':0}],
             statusLocs=pHStatusLocs,
             correctionLoc={'parent':self.__frames['pH'][0][3],'row':1,'column':0},
-            tempSensor=self.sensors['temperature'],
+            tempSensor=self.erl2context['sensors']['temperature'],
             erl2context=self.erl2context)
 
         # readout displays for the current DO, as reported by the pico-o2
-        self.sensors['DO'] = Erl2Pyro(
+        self.erl2context['sensors']['DO'] = Erl2Pyro(
             sensorType='DO',
             displayLocs=[{'parent':self.__frames['Data'][2][0],'row':1,'column':0},
                          {'parent':self.__frames['DO'][0][0],'row':1,'column':0}],
             statusLocs=doStatusLocs,
             correctionLoc={'parent':self.__frames['DO'][0][3],'row':1,'column':0},
-            tempSensor=self.sensors['temperature'],
+            tempSensor=self.erl2context['sensors']['temperature'],
             erl2context=self.erl2context)
 
         # readout displays for the current Air MFC flow rate
-        self.sensors['mfc.air'] = Erl2Input(
+        self.erl2context['sensors']['mfc.air'] = Erl2Input(
             sensorType='mfc.air',
             displayLocs=[{'parent':self.__frames['Data'][1][1],'row':1,'column':0},
                          {'parent':self.__frames['pH'][0][1],'row':1,'column':0},
@@ -425,7 +435,7 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # readout displays for the current CO2 MFC flow rate
-        self.sensors['mfc.co2'] = Erl2Input(
+        self.erl2context['sensors']['mfc.co2'] = Erl2Input(
             sensorType='mfc.co2',
             displayLocs=[{'parent':self.__frames['Data'][1][1],'row':3,'column':0},
                          {'parent':self.__frames['pH'][0][1],'row':3,'column':0}],
@@ -434,7 +444,7 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # readout displays for the current N2 MFC flow rate
-        self.sensors['mfc.n2'] = Erl2Input(
+        self.erl2context['sensors']['mfc.n2'] = Erl2Input(
             sensorType='mfc.n2',
             displayLocs=[{'parent':self.__frames['Data'][2][1],'row':3,'column':0},
                          {'parent':self.__frames['DO'][0][1],'row':3,'column':0}],
@@ -444,7 +454,7 @@ class Erl2Tank:
 
         # readout and control widgets for the Heater relay
         if self.__heaterType in ['pwm', '10v']:
-            self.controls['heater'] = Erl2MegaindOutput(
+            self.erl2context['controls']['heater'] = Erl2MegaindOutput(
                 controlType='heater',
                 controlColor='red',
                 displayLocs=[{'parent':self.__frames['Data'][0][1],'row':0,'column':0},
@@ -452,7 +462,7 @@ class Erl2Tank:
                 buttonLoc={'parent':self.__frames['Temp'][0][2],'row':1,'column':0},
                 erl2context=self.erl2context)
         elif self.__heaterType == 'gpio':
-            self.controls['heater'] = Erl2GpioOutput(
+            self.erl2context['controls']['heater'] = Erl2GpioOutput(
                 controlType='heater',
                 controlColor='red',
                 displayLocs=[{'parent':self.__frames['Data'][0][1],'row':0,'column':0},
@@ -462,7 +472,7 @@ class Erl2Tank:
 
         # readout and control widgets for the Chiller solenoid
         if self.__chillerType in ['pwm', '10v']:
-            self.controls['chiller'] = Erl2MegaindOutput(
+            self.erl2context['controls']['chiller'] = Erl2MegaindOutput(
                 controlType='chiller',
                 controlColor='blue',
                 displayLocs=[{'parent':self.__frames['Data'][0][1],'row':1,'column':0},
@@ -470,7 +480,7 @@ class Erl2Tank:
                 buttonLoc={'parent':self.__frames['Temp'][0][2],'row':2,'column':0},
                 erl2context=self.erl2context)
         elif self.__chillerType == 'gpio':
-            self.controls['chiller'] = Erl2GpioOutput(
+            self.erl2context['controls']['chiller'] = Erl2GpioOutput(
                 controlType='chiller',
                 controlColor='blue',
                 displayLocs=[{'parent':self.__frames['Data'][0][1],'row':1,'column':0},
@@ -479,7 +489,7 @@ class Erl2Tank:
                 erl2context=self.erl2context)
 
         # readout and control widgets for the Air MFC
-        self.controls['mfc.air'] = Erl2Mfc(
+        self.erl2context['controls']['mfc.air'] = Erl2Mfc(
             controlType='mfc.air',
             displayLocs=[{'parent':self.__frames['Data'][1][1],'row':2,'column':0},
                          {'parent':self.__frames['pH'][0][1],'row':2,'column':0},
@@ -489,7 +499,7 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # readout and control widgets for the CO2 MFC
-        self.controls['mfc.co2'] = Erl2Mfc(
+        self.erl2context['controls']['mfc.co2'] = Erl2Mfc(
             controlType='mfc.co2',
             displayLocs=[{'parent':self.__frames['Data'][1][1],'row':4,'column':0},
                          {'parent':self.__frames['pH'][0][1],'row':4,'column':0}],
@@ -497,7 +507,7 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # readout and control widgets for the N2 MFC
-        self.controls['mfc.n2'] = Erl2Mfc(
+        self.erl2context['controls']['mfc.n2'] = Erl2Mfc(
             controlType='mfc.n2',
             displayLocs=[{'parent':self.__frames['Data'][2][1],'row':4,'column':0},
                          {'parent':self.__frames['DO'][0][1],'row':4,'column':0}],
@@ -505,7 +515,7 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # readout displays for the voltage
-        self.sensors['voltage'] = Erl2Voltage(
+        self.erl2context['sensors']['voltage'] = Erl2Voltage(
             sensorType='voltage',
             displayLocs=voltageLocs,
             #statusLocs=voltageStatusLocs,
@@ -513,7 +523,7 @@ class Erl2Tank:
             erl2context=self.erl2context)
 
         # the logic that implements the overarching temperature subsystem (and its controls)
-        self.subsystems['temperature'] = Erl2SubSystem(
+        self.erl2context['subsystems']['temperature'] = Erl2SubSystem(
             subSystemType='temperature',
             logic='hysteresis',
             ctrlRadioLoc={'parent':self.__frames['Temp'][1][0],'row':1,'column':0},
@@ -529,13 +539,13 @@ class Erl2Tank:
             plotDisplayLoc={'parent':self.__frames['Data'][0][2],'row':0,'column':0},
             statsDisplayLoc={'parent':self.__frames['Data'][0][3],'row':0,'column':0},
 
-            sensors={'temperature':self.sensors['temperature']},
-            toggles={'to.raise':self.controls['heater'],
-                     'to.lower':self.controls['chiller']},
+            sensors={'temperature':self.erl2context['sensors']['temperature']},
+            toggles={'to.raise':self.erl2context['controls']['heater'],
+                     'to.lower':self.erl2context['controls']['chiller']},
             erl2context=self.erl2context)
 
         # the logic that implements the overarching pH subsystem (and its controls)
-        self.subsystems['pH'] = Erl2SubSystem(
+        self.erl2context['subsystems']['pH'] = Erl2SubSystem(
             subSystemType='pH',
             logic='PID',
             ctrlRadioLoc={'parent':self.__frames['pH'][1][0],'row':1,'column':0},
@@ -550,13 +560,13 @@ class Erl2Tank:
             plotDisplayLoc={'parent':self.__frames['Data'][1][2],'row':0,'column':0},
             statsDisplayLoc={'parent':self.__frames['Data'][1][3],'row':0,'column':0},
 
-            sensors={'pH':self.sensors['pH']},
-            MFCs={'mfc.air':self.controls['mfc.air'],
-                  'mfc.co2':self.controls['mfc.co2']},
+            sensors={'pH':self.erl2context['sensors']['pH']},
+            MFCs={'mfc.air':self.erl2context['controls']['mfc.air'],
+                  'mfc.co2':self.erl2context['controls']['mfc.co2']},
             erl2context=self.erl2context)
 
         # the logic that implements the overarching DO subsystem (and its controls)
-        self.subsystems['DO'] = Erl2SubSystem(
+        self.erl2context['subsystems']['DO'] = Erl2SubSystem(
             subSystemType='DO',
             logic='PID',
             ctrlRadioLoc={'parent':self.__frames['DO'][1][0],'row':1,'column':0},
@@ -571,9 +581,9 @@ class Erl2Tank:
             plotDisplayLoc={'parent':self.__frames['Data'][2][2],'row':0,'column':0},
             statsDisplayLoc={'parent':self.__frames['Data'][2][3],'row':0,'column':0},
 
-            sensors={'DO':self.sensors['DO']},
-            MFCs={'mfc.air':self.controls['mfc.air'],
-                  'mfc.n2':self.controls['mfc.n2']},
+            sensors={'DO':self.erl2context['sensors']['DO']},
+            MFCs={'mfc.air':self.erl2context['controls']['mfc.air'],
+                  'mfc.n2':self.erl2context['controls']['mfc.n2']},
             erl2context=self.erl2context)
 
         # the logic that enables networking, if enabled
@@ -689,10 +699,10 @@ class Erl2Tank:
                      'Timestamp.Local': currentTime.astimezone(self.__timezone).strftime(self.__dtFormat)}
 
                 # first sensors, then controls: current values and average values
-                for s in self.sensors:
-                    m['s.'+s], m['s.'+s+'.avg'] = self.sensors[s].reportValue(self.__systemFrequency)
-                for c in self.controls:
-                    m['c.'+c], m['c.'+c+'.avg'] = self.controls[c].reportValue(self.__systemFrequency)
+                for s in self.erl2context['sensors']:
+                    m['s.'+s], m['s.'+s+'.avg'] = self.erl2context['sensors'][s].reportValue(self.__systemFrequency)
+                for c in self.erl2context['controls']:
+                    m['c.'+c], m['c.'+c+'.avg'] = self.erl2context['controls'][c].reportValue(self.__systemFrequency)
 
                 # write out the composite log record for the tank
                 self.__systemLog.writeData(m)
@@ -716,7 +726,7 @@ class Erl2Tank:
         self.__frames[p][0][0].focus()
 
         # explicitly deselect all entry fields
-        for s in list(self.sensors.values()) + list(self.controls.values()) + list(self.subsystems.values()):
+        for s in list(self.erl2context['sensors'].values()) + list(self.erl2context['controls'].values()) + list(self.erl2context['subsystems'].values()):
             if hasattr(s, 'allEntries'):
                 for e in s.allEntries:
                     e.widget.select_clear()
@@ -729,7 +739,7 @@ class Erl2Tank:
 
         # set any controls to zero
         if hasattr(self, 'controls'):
-            for c in self.controls.values():
+            for c in self.erl2context['controls'].values():
                 c.resetControl()
 
         # terminate subthreads in network module

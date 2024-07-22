@@ -28,17 +28,17 @@ class Erl2Popup(tk.Toplevel):
     erl2Popup = None
     popupType = None
 
-    def __init__(self, erl2context={}):
+    def __init__(self, mac=None, erl2context={}):
 
         super().__init__()
 
+        self.__mac = mac
         self.erl2context = erl2context
+
+        #print (f"{self.__class__.__name__}: Debug: __init__: mac [{self.__mac}]")
 
         # insist on 'root' always being defined
         assert('root' in self.erl2context and self.erl2context['root'] is not None)
-
-        # removes the OS window controls, but breaks logic that keeps window on top
-        #self.overrideredirect(1)
 
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
@@ -47,12 +47,22 @@ class Erl2Popup(tk.Toplevel):
         # read these useful parameters from Erl2Config
         self.__timezone = self.erl2context['conf']['system']['timezone']
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
-        self.__mfcAirDec = self.erl2context['conf']['mfc.air']['displayDecimals']
-        self.__mfcCO2Dec = self.erl2context['conf']['mfc.co2']['displayDecimals']
-        self.__mfcN2Dec = self.erl2context['conf']['mfc.n2']['displayDecimals']
-        self.__mfcAirRng = self.erl2context['conf']['mfc.air']['validRange']
-        self.__mfcCO2Rng = self.erl2context['conf']['mfc.co2']['validRange']
-        self.__mfcN2Rng = self.erl2context['conf']['mfc.n2']['validRange']
+
+        self.__mfcAirDecimals = self.erl2context['conf']['mfc.air']['displayDecimals']
+        self.__mfcCO2Decimals = self.erl2context['conf']['mfc.co2']['displayDecimals']
+        self.__mfcN2Decimals = self.erl2context['conf']['mfc.n2']['displayDecimals']
+
+        self.__mfcAirRange = self.erl2context['conf']['mfc.air']['validRange']
+        self.__mfcCO2Range = self.erl2context['conf']['mfc.co2']['validRange']
+        self.__mfcN2Range = self.erl2context['conf']['mfc.n2']['validRange']
+
+        # in theory heater and chiller should have reset logic too -- to be added later
+        #self.__heaterReset = self.erl2context['conf']['heater']['valueWhenReset']
+        #self.__chillerReset = self.erl2context['conf']['chiller']['valueWhenReset']
+
+        self.__mfcAirReset = self.erl2context['conf']['mfc.air']['valueWhenReset']
+        self.__mfcCO2Reset = self.erl2context['conf']['mfc.co2']['valueWhenReset']
+        self.__mfcN2Reset = self.erl2context['conf']['mfc.n2']['valueWhenReset']
 
         # if necessary, create an object to hold/remember image objects
         if 'img' not in self.erl2context:
@@ -289,14 +299,27 @@ class Erl2Popup(tk.Toplevel):
                 # loop through child tanks and build up a list of ids and macs
                 tankList = []
                 self.__macList = []
+                matching = None
                 for mac in self.erl2context['network'].sortedMacs:
                     tankList.append(self.erl2context['network'].childrenDict[mac]['id'])
                     self.__macList.append(mac)
+
+                    # if we find a mac that matches what was passed in, remember its index
+                    if self.__mac is not None and self.__mac == mac:
+                        matching = len(self.__macList) - 1
+                        #print (f"{self.__class__.__name__}: Debug: __init__: setting matching to [{matching}]")
 
                 var = tk.StringVar()
                 var.set(tankList)
                 self.__listbox = tk.Listbox(tanksFrame, listvariable=var, selectmode=tk.MULTIPLE, font='Arial 12')
                 self.__listbox.grid(row=1,column=0,sticky='nesw')
+
+                # preselect matching mac, if found
+                if matching is not None:
+                    #print (f"{self.__class__.__name__}: Debug: __init__: selecting [{matching}]")
+                    self.__listbox.selection_set(matching)
+                    self.__listbox.see(matching)
+                    self.__listbox.activate(matching)
 
             # the three subSystems frames are essentially identical
             sysR = -1
@@ -310,7 +333,7 @@ class Erl2Popup(tk.Toplevel):
                 self.__modeWidgets[sys]['header'] = {}
 
                 # how many decimal places to display?
-                dispDec = self.erl2context['conf'][sys]['displayDecimals']
+                dispDecimals = self.erl2context['conf'][sys]['displayDecimals']
                 validRg = self.erl2context['conf'][sys]['validRange']
 
                 # subSystem header frame
@@ -342,7 +365,7 @@ class Erl2Popup(tk.Toplevel):
                 # keep track of control + label widgets for this checkbox
                 self.__modeWidgets[sys]['checkbox'] = b
                 self.__modeWidgets[sys]['checkbox.label'] = l
-                self.__modeWidgets[sys]['checkbox.value'] = 1.
+                self.__modeWidgets[sys]['checkbox.value'] = 0.
 
                 # mode frame
                 modF = ttk.Frame(sysF, padding='2', relief='solid', borderwidth=1)
@@ -355,6 +378,8 @@ class Erl2Popup(tk.Toplevel):
 
                 # the radiobuttons themselves
                 self.__modeVar[sys] = tk.IntVar()
+                if 'modeDefault' in self.erl2context['conf'][sys]:
+                    self.__modeVar[sys].set(int(self.erl2context['conf'][sys]['modeDefault']))
                 self.__modeWidgets[sys]['radio'] = []
                 for value , text in MODEDICT.items():
                     rb = tk.Radiobutton(modF,
@@ -453,50 +478,60 @@ class Erl2Popup(tk.Toplevel):
 
                     # pH and DO subSystems have MFC (Erl2Entry) controls
                     self.__modeWidgets[sys]['manual'] = []
+                    self.__modeWidgets[sys]['manual.reset'] = []
+                    self.__modeWidgets[sys]['manual.enabled'] = []
 
                     # create the entry field for manual control of the Air MFC
                     e = Erl2Entry(entryLoc={'parent':manF,'row':2,'column':1},
                                             labelLoc={'parent':manF,'row':2,'column':0},
                                             label='Air',
                                             width=5,
-                                            displayDecimals=self.__mfcAirDec,
-                                            validRange=self.__mfcAirRng,
-                                            initValue=0.0,
+                                            displayDecimals=self.__mfcAirDecimals,
+                                            validRange=self.__mfcAirRange,
+                                            initValue=0.,
                                             erl2context=self.erl2context)
 
-                    # keep a reference to this hysteresis widget
+                    # keep a reference to this Air MFC control widget
                     self.__modeWidgets[sys]['manual'].append(e)
+                    self.__modeWidgets[sys]['manual.reset'].append(self.__mfcAirReset)
+                    self.__modeWidgets[sys]['manual.enabled'].append(False)
 
                     # create the entry field for manual control of the CO2 MFC
                     e = Erl2Entry(entryLoc={'parent':manF,'row':3,'column':1},
                                             labelLoc={'parent':manF,'row':3,'column':0},
                                             label=u'CO\u2082',
                                             width=5,
-                                            displayDecimals=self.__mfcCO2Dec,
-                                            validRange=self.__mfcCO2Rng,
-                                            initValue=0.0,
+                                            displayDecimals=self.__mfcCO2Decimals,
+                                            validRange=self.__mfcCO2Range,
+                                            initValue=0.,
                                             erl2context=self.erl2context)
 
-                    # keep a reference to this hysteresis widget
+                    # keep a reference to this CO2 MFC control widget
                     self.__modeWidgets[sys]['manual'].append(e)
+                    self.__modeWidgets[sys]['manual.reset'].append(self.__mfcCO2Reset)
+                    self.__modeWidgets[sys]['manual.enabled'].append(False)
 
                 elif sys == 'DO':
 
                     # pH and DO subSystems have MFC (Erl2Entry) controls
                     self.__modeWidgets[sys]['manual'] = []
+                    self.__modeWidgets[sys]['manual.reset'] = []
+                    self.__modeWidgets[sys]['manual.enabled'] = []
 
                     # create the entry field for manual control of the N2 MFC
                     e = Erl2Entry(entryLoc={'parent':manF,'row':2,'column':1},
                                             labelLoc={'parent':manF,'row':2,'column':0},
                                             label=u'N\u2082',
                                             width=5,
-                                            displayDecimals=self.__mfcN2Dec,
-                                            validRange=self.__mfcN2Rng,
-                                            initValue=0.0,
+                                            displayDecimals=self.__mfcN2Decimals,
+                                            validRange=self.__mfcN2Range,
+                                            initValue=0.,
                                             erl2context=self.erl2context)
 
-                    # keep a reference to this hysteresis widget
+                    # keep a reference to this N2 MFC control widget
                     self.__modeWidgets[sys]['manual'].append(e)
+                    self.__modeWidgets[sys]['manual.reset'].append(self.__mfcN2Reset)
+                    self.__modeWidgets[sys]['manual.enabled'].append(False)
 
                 # auto controls
                 autF = ttk.Frame(sysF, padding='2', relief='solid', borderwidth=1)
@@ -511,8 +546,8 @@ class Erl2Popup(tk.Toplevel):
                 e = Erl2Entry(entryLoc={'parent':autF,'row':1,'column':1},
                                         labelLoc={'parent':autF,'row':1,'column':0},
                                         label='Static\nSetpoint',
-                                        width=4,
-                                        displayDecimals=dispDec,
+                                        width=5,
+                                        displayDecimals=dispDecimals,
                                         validRange=validRg,
                                         initValue=self.erl2context['conf'][sys]['setpointDefault'],
                                         erl2context=self.erl2context)
@@ -525,8 +560,8 @@ class Erl2Popup(tk.Toplevel):
                     e = Erl2Entry(entryLoc={'parent':autF,'row':2,'column':1},
                                             labelLoc={'parent':autF,'row':2,'column':0},
                                             label='Hysteresis',
-                                            width=4,
-                                            displayDecimals=dispDec,
+                                            width=5,
+                                            displayDecimals=(dispDecimals+2),
                                             validRange=[0.,None],
                                             initValue=self.erl2context['conf'][sys]['hysteresisDefault'],
                                             erl2context=self.erl2context)
@@ -548,7 +583,6 @@ class Erl2Popup(tk.Toplevel):
                 hourNum = 0
                 self.__modeWidgets[sys]['dynamicSetpoints'] = []
                 self.__modeWidgets[sys]['dynamicSetpoints.labels'] = []
-                #for hourVal in [0.0] * 24:
                 for hourVal in self.erl2context['conf'][sys]['dynamicDefault']:
 
                     # lay them out in two rows, 12 boxes each
@@ -575,7 +609,7 @@ class Erl2Popup(tk.Toplevel):
                     e = Erl2Entry(entryLoc={'parent':dynF,'row':valRow,'column':valCol},
                                   width=5,
                                   font='Arial 16',
-                                  displayDecimals=dispDec,
+                                  displayDecimals=dispDecimals,
                                   validRange=validRg,
                                   initValue=hourVal,
                                   erl2context=self.erl2context)
@@ -595,6 +629,10 @@ class Erl2Popup(tk.Toplevel):
         displayContent.columnconfigure(0,weight=1)
         displayContent.columnconfigure(1,weight=1)
 
+        # at this point all the Edit Tank Settings widgets should be created, so prepopulate if necessary
+        if self.__mac is not None:
+            self.copyFromTank(force=True)
+
         # buttons row
         c = -1
 
@@ -604,7 +642,7 @@ class Erl2Popup(tk.Toplevel):
         ).grid(row=0, column=c, padx='0', pady=0, sticky='ew')
 
         # if this is the 'Network' popup, add the Rescan button
-        if Erl2Popup.popupType == 'Network':
+        if Erl2Popup.popupType == 'Network' and 'network' in self.erl2context:
             c += 1
             self.erl2context['network'].addWidgets(buttonLocs=[{'parent':displayButtons, 'padding':'2 2', 'relief':'solid', 'borderwidth':1,
                                                                 'row':0, 'column':c, 'padx':'0 4', 'pady':'0', 'sticky':'ew'}])
@@ -628,7 +666,7 @@ class Erl2Popup(tk.Toplevel):
                 #, relief='solid', borderwidth=1
                 )
             l.grid(row=0, column=1, padx='2 2', sticky='w')
-            l.bind('<Button-1>', self.copyFromTank)
+            l.bind('<Button-1>', lambda event: self.copyFromTank())
 
             copyFrame.rowconfigure(0,weight=1)
             copyFrame.columnconfigure(0,weight=0)
@@ -651,7 +689,7 @@ class Erl2Popup(tk.Toplevel):
                 #, relief='solid', borderwidth=1
                 )
             l.grid(row=0, column=1, padx='2 2', sticky='w')
-            l.bind('<Button-1>', self.loadFromFile)
+            l.bind('<Button-1>', lambda event: self.loadFromFile())
 
             loadFrame.rowconfigure(0,weight=1)
             loadFrame.columnconfigure(0,weight=0)
@@ -674,7 +712,7 @@ class Erl2Popup(tk.Toplevel):
                 #, relief='solid', borderwidth=1
                 )
             l.grid(row=0, column=1, padx='2 2', sticky='w')
-            l.bind('<Button-1>', self.saveToFile)
+            l.bind('<Button-1>', lambda event: self.saveToFile())
 
             saveFrame.rowconfigure(0,weight=1)
             saveFrame.columnconfigure(0,weight=0)
@@ -699,7 +737,7 @@ class Erl2Popup(tk.Toplevel):
             #, relief='solid', borderwidth=1
             )
         l.grid(row=0, column=1, padx='2 2', sticky='w')
-        l.bind('<Button-1>', self.closeWindow)
+        l.bind('<Button-1>', lambda event: self.closeWindow())
 
         exitFrame.rowconfigure(0,weight=1)
         exitFrame.columnconfigure(0,weight=0)
@@ -723,7 +761,7 @@ class Erl2Popup(tk.Toplevel):
                 #, relief='solid', borderwidth=1
                 )
             l.grid(row=0, column=1, padx='2 2', sticky='w')
-            l.bind('<Button-1>', self.applyToTanks)
+            l.bind('<Button-1>', lambda event: self.applyToTanks())
 
             applyFrame.rowconfigure(0,weight=1)
             applyFrame.columnconfigure(0,weight=0)
@@ -752,17 +790,16 @@ class Erl2Popup(tk.Toplevel):
         # these are ideas that might work on linux but are problematic on mac + PC
         #self.overrideredirect(1)
 
-    def toggleHeaterChiller(self, sys, ind):
+    def toggleHeaterChiller(self, sys, ind, redrawWidgets=True):
 
         #print (f"toggleHeaterChiller(sys=[{sys}], ind=[{ind}])")
 
         # change toggle value from 0. to 1. or vice versa
         self.__modeWidgets[sys]['toggle.value'][ind] = 1. - self.__modeWidgets[sys]['toggle.value'][ind]
 
-        # display an image appropriate to the control's state
-        onoff = ['off','on'][int(self.__modeWidgets[sys]['toggle.value'][ind])]
-        color = ['red','blue'][ind]
-        self.__modeWidgets[sys]['toggle'][ind].config(image=self.erl2context['img'][f"radio-{onoff}-{color}-30.png"])
+        # after this we'll want to redraw this subSystem's widgets
+        if redrawWidgets:
+            self.enableWidgets(sys)
 
     def toggleSubSystem(self, sys, redrawWidgets=True):
 
@@ -770,10 +807,6 @@ class Erl2Popup(tk.Toplevel):
 
         # change checkbox value from 0. to 1. or vice versa
         self.__modeWidgets[sys]['checkbox.value'] = 1. - self.__modeWidgets[sys]['checkbox.value']
-
-        # display an image appropriate to the control's state
-        onoff = ['off','on'][int(self.__modeWidgets[sys]['checkbox.value'])]
-        self.__modeWidgets[sys]['checkbox'].config(image=self.erl2context['img'][f"checkbox-{onoff}-25.png"])
 
         # after this we'll want to redraw this subSystem's widgets
         if redrawWidgets:
@@ -783,6 +816,10 @@ class Erl2Popup(tk.Toplevel):
 
         # is this subSystem enabled at all??
         sysEnabled = bool(self.__modeWidgets[sys]['checkbox.value'])
+
+        # display an image appropriate to the control's state
+        onoff = ['off','on'][int(self.__modeWidgets[sys]['checkbox.value'])]
+        self.__modeWidgets[sys]['checkbox'].config(image=self.erl2context['img'][f"checkbox-{onoff}-25.png"])
 
         # what mode is currently selected?
         currMode = self.__modeVar[sys].get()
@@ -804,6 +841,12 @@ class Erl2Popup(tk.Toplevel):
 
             # loop through all three arrays at once
             for ind in range(len(self.__modeWidgets[sys]['toggle'])):
+
+                # display an image appropriate to the control's state
+                onoff = ['off','on'][int(self.__modeWidgets[sys]['toggle.value'][ind])]
+                color = ['red','blue'][ind]
+                self.__modeWidgets[sys]['toggle'][ind].config(image=self.erl2context['img'][f"radio-{onoff}-{color}-30.png"])
+
                 if currMode == MANUAL and sysEnabled:
                     self.__modeWidgets[sys]['toggle'][ind].config(state='normal')
                     self.__modeWidgets[sys]['toggle.label'][ind].bind('<Button-1>', lambda event, x=sys, y=ind: self.toggleHeaterChiller(sys=x,ind=y))
@@ -818,13 +861,28 @@ class Erl2Popup(tk.Toplevel):
 
         # enable/disable manual controls (if applicable)
         if 'manual' in self.__modeWidgets[sys]:
-            for w in self.__modeWidgets[sys]['manual']:
+
+            # assuming that manual, manual.reset and manual.enabled go hand-in-hand
+            assert('manual.reset' in self.__modeWidgets[sys] and len(self.__modeWidgets[sys]['manual']) == len(self.__modeWidgets[sys]['manual.reset']))
+            assert('manual.enabled' in self.__modeWidgets[sys] and len(self.__modeWidgets[sys]['manual']) == len(self.__modeWidgets[sys]['manual.enabled']))
+
+            for ind in range(len(self.__modeWidgets[sys]['manual'])):
+                w = self.__modeWidgets[sys]['manual'][ind]
+
                 if currMode == MANUAL and sysEnabled:
                     w.setActive(1)
+
+                    # if this widget is just changing to active now, apply reset value
+                    if not self.__modeWidgets[sys]['manual.enabled'][ind]:
+                        w.setValue(self.__modeWidgets[sys]['manual.reset'][ind])
+                        self.__modeWidgets[sys]['manual.enabled'][ind] = True
+
                 else:
                     w.setActive(0)
-                    w.floatValue = 0.
-                    w.stringVar.set(w.valToString(0.))
+
+                    # when inactive it looks better to render as zero
+                    w.setValue(0.)
+                    self.__modeWidgets[sys]['manual.enabled'][ind] = False
 
         # enable/disable hysteresis (if applicable)
         if 'hysteresis' in self.__modeWidgets[sys]:
@@ -856,7 +914,7 @@ class Erl2Popup(tk.Toplevel):
             for hdr in self.__modeWidgets[sys]['header'].keys():
                 self.__modeWidgets[sys]['header'][hdr].config(foreground=clr)
 
-    def saveToFile(self, event=None):
+    def saveToFile(self):
 
         # ignore this call if the modal is already open
         if self.modalOpen:
@@ -912,7 +970,7 @@ class Erl2Popup(tk.Toplevel):
         #self.grab_set()
         #self.transient(self.erl2context['root'])
 
-    def loadFromFile(self, event=None):
+    def loadFromFile(self):
 
         # ignore this call if the modal is already open
         if self.modalOpen:
@@ -966,7 +1024,7 @@ class Erl2Popup(tk.Toplevel):
         #self.grab_set()
         #self.transient(self.erl2context['root'])
 
-    def copyFromTank(self, event=None):
+    def copyFromTank(self, force=False):
 
         # ignore this call if the modal is already open
         if self.modalOpen:
@@ -979,10 +1037,10 @@ class Erl2Popup(tk.Toplevel):
         # read the listbox to see what if anything is selected
         selection = self.__listbox.curselection()
 
-        print (f"{__name__}: Debug: copyFromTank() result is type [{type(selection).__name__}], length [{len(selection)}]")
+        #print (f"{__name__}: Debug: copyFromTank() result is type [{type(selection).__name__}], length [{len(selection)}]")
         for ind in selection:
             mac = self.__macList[ind]
-            print (f"{__name__}: Debug: copyFromTank() [{ind}][{mac}][{self.__listbox.get(ind)}][{self.erl2context['network'].childrenStates[mac]}]")
+            #print (f"{__name__}: Debug: copyFromTank() [{ind}][{mac}][{self.__listbox.get(ind)}][{self.erl2context['network'].childrenStates[mac]}]")
 
         # popup message if nothing is selected to copy from
         if len(selection) == 0:
@@ -993,22 +1051,39 @@ class Erl2Popup(tk.Toplevel):
             ind = selection[0]
             mac = self.__macList[ind]
 
-            # ask for confirmation before copying values
-            if mb.askyesno('Confirm Copy from Tank', f"Are you sure you wish to overwrite this window's values "
-                                                     f"with settings from {self.__listbox.get(ind)}?", parent=self):
+            # ask for confirmation before copying values (unless force=True)
+            if force or mb.askyesno('Confirm Copy from Tank', f"Are you sure you wish to overwrite this window's values "
+                                                              f"with settings from {self.__listbox.get(ind)}?", parent=self):
 
-                # set this window's values from the chosen tank's state
-                retVal = self.setSettings(self.erl2context['network'].childrenStates[mac])
+                # set this window's values from the chosen tank's (current) state
+                if mac in self.erl2context['network'].childrenStates:
+                    retVal = self.setSettings(self.erl2context['network'].childrenStates[mac], redrawWidgets=False)
 
-                # report any errors (unlikely, when copying from in-memory settings)
-                if retVal is not None:
-                    mb.showerror('Tank Error', 'Error while Copying Tank Settings: ' + retVal, parent=self)
+                    # report any errors (unlikely, when copying from in-memory settings)
+                    if retVal is not None:
+                        mb.showerror('Tank Error', 'Error while Copying Tank Settings from child: ' + retVal, parent=self)
+
+                # now overwrite these (current) tank settings with any prior program defined on the parent side
+                if mac in self.erl2context['network'].parentStates:
+                    retVal = self.setSettings(self.erl2context['network'].parentStates[mac], redrawWidgets=False)
+
+                    # report any errors (unlikely, when copying from in-memory settings)
+                    if retVal is not None:
+                        mb.showerror('Tank Error', 'Error while Copying Tank Settings from parent: ' + retVal, parent=self)
+
+                    # set subSystem checkboxes according to whether there's ever been a parent-side program or not
+                    for sys in SUBSYSTEMS:
+                        self.__modeWidgets[sys]['checkbox.value'] = int(self.erl2context['network'].parentStates[mac].isType(sys))
+
+                # now that all changes have been applied, redraw everything
+                for sys in SUBSYSTEMS:
+                    self.enableWidgets(sys)
 
         self.modalOpen = False
         #self.grab_set()
         #self.transient(self.erl2context['root'])
 
-    def applyToTanks(self, event=None):
+    def applyToTanks(self):
 
         # ignore this call if the modal is already open
         if self.modalOpen:
@@ -1023,10 +1098,12 @@ class Erl2Popup(tk.Toplevel):
 
         print (f"{__name__}: Debug: applyToTanks() result is type [{type(selection).__name__}], length [{len(selection)}]")
         ids = []
+        macs = []
         for ind in selection:
             mac = self.__macList[ind]
             print (f"{__name__}: Debug: applyToTanks() [{ind}][{mac}][{self.__listbox.get(ind)}][{self.erl2context['network'].childrenStates[mac]}]")
             ids.append(self.__listbox.get(ind))
+            macs.append(mac)
 
         # popup message if nothing is selected to copy from
         if len(selection) == 0:
@@ -1038,13 +1115,21 @@ class Erl2Popup(tk.Toplevel):
                            'Are you sure you wish to overwrite the programming in the following ' +
                            'tank(s) with settings from this window?\n\n    ' + '\n    '.join(ids),
                            parent=self):
-                pass
+
+                # get list of setting tuples suitable for creating Erl2State instances
+                thisSet = self.getSettings()
+
+                # loop through selected tanks
+                for mac in macs:
+
+                    # tell the Networking module that we want to send these settings to a child tank
+                    self.erl2context['network'].sendSettings(mac, thisSet)
 
         self.modalOpen = False
         #self.grab_set()
         #self.transient(self.erl2context['root'])
 
-    def closeWindow(self, event=None):
+    def closeWindow(self):
 
         #print (f"{__name__}: Debug: screen width [{self.winfo_screenwidth()}], height [{self.winfo_screenheight()}]")
         #print (f"{__name__}: Debug: popup width [{self.winfo_width()}], height [{self.winfo_height()}]")
@@ -1103,7 +1188,7 @@ class Erl2Popup(tk.Toplevel):
         # return the list of tuples when done
         return retVal
 
-    def setSettings(self,fromState):
+    def setSettings(self,fromState, redrawWidgets=True):
 
         # something is very wrong if this argument is the wrong type
         assert type(fromState) is Erl2State
@@ -1179,8 +1264,7 @@ class Erl2Popup(tk.Toplevel):
                         val = fromState.get(valueType=sys, valueName=param, defaultValue=None)
                         if val is not None:
                             #print (f"{__name__}: Debug: setSettings({sys}) {param} = [{val}]")
-                            w.floatValue = val
-                            w.stringVar.set(w.valToString(val))
+                            w.setValue(val)
 
                 # logic for reading dynamicSetpoints
                 if 'dynamicSetpoints' in self.__modeWidgets[sys]:
@@ -1196,11 +1280,11 @@ class Erl2Popup(tk.Toplevel):
                     # loop through as many as we can
                     for ind in range(min(len(wList), len(valList))):
                         #print (f"{__name__}: Debug: setSettings({sys}) dynamicSetpoints[{ind}]= [{valList[ind]}]")
-                        wList[ind].floatValue = valList[ind]
-                        wList[ind].stringVar.set(wList[ind].valToString(valList[ind]))
+                        wList[ind].setValue(valList[ind])
 
                 # enable/disable widgets if needed for mode changes
-                self.enableWidgets(sys)
+                if redrawWidgets:
+                    self.enableWidgets(sys)
 
         # no errors to report
         return None
@@ -1212,6 +1296,7 @@ class Erl2Popup(tk.Toplevel):
     @classmethod
     def openPopup(cls,
                   popupType='About ERL2',
+                  mac=None,
                   erl2context={}):
 
         if (cls.erl2Popup is not None and cls.erl2Popup.winfo_exists()
@@ -1221,21 +1306,36 @@ class Erl2Popup(tk.Toplevel):
         else:
             #print (f"{__name__}: Debug: openPopup({cls.__name__}): new popup")
             cls.popupType = popupType
-            cls.erl2Popup = Erl2Popup(erl2context=erl2context)
+            cls.erl2Popup = Erl2Popup(mac=mac, erl2context=erl2context)
 
-def testPopup(erl2context={}):
+def testPopup(popupType='About ERL2', erl2context={}):
 
-    Erl2Popup.openPopup(erl2context=erl2context)
+    Erl2Popup.openPopup(popupType=popupType, erl2context=erl2context)
 
 def main():
 
     root = tk.Tk()
     ttk.Label(root,text='Erl2Popup',font='Arial 30 bold').grid(row=0,column=0)
     b = tk.Button(root,
-                  text='Click Here',
-                  command=lambda: testPopup(erl2context={'root':root}),
+                  text='Edit Tank Settings',
+                  command=lambda tp='Edit Tank Settings': testPopup(popupType=tp, erl2context={'root':root}),
+                  )
+    b.grid(row=1,column=0)
+    b = tk.Button(root,
+                  text='Network',
+                  command=lambda tp='Network': testPopup(popupType=tp, erl2context={'root':root}),
                   )
     b.grid(row=2,column=0)
+    b = tk.Button(root,
+                  text='Settings',
+                  command=lambda tp='Settings': testPopup(popupType=tp, erl2context={'root':root}),
+                  )
+    b.grid(row=3,column=0)
+    b = tk.Button(root,
+                  text='About ERL2',
+                  command=lambda tp='About ERL2': testPopup(popupType=tp, erl2context={'root':root}),
+                  )
+    b.grid(row=4,column=0)
 
     root.mainloop()
 

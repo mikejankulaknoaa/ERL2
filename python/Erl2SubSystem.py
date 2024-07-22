@@ -103,6 +103,7 @@ class Erl2SubSystem():
         self.__validRange = self.erl2context['conf'][self.subSystemType]['validRange']
 
         # other useful parameters from Erl2Config
+        self.__modeDefault = self.erl2context['conf'][self.subSystemType]['modeDefault']
         self.__setpointDefault = self.erl2context['conf'][self.subSystemType]['setpointDefault']
         self.__dynamicDefault = self.erl2context['conf'][self.subSystemType]['dynamicDefault']
         if self.__logic == 'hysteresis':
@@ -198,7 +199,7 @@ class Erl2SubSystem():
 
         # during initialization, the default is auto static mode
         # (but see if there's a different setting in the system saved state)
-        self.__modeVar.set(self.erl2context['state'].get(self.subSystemType,'mode',AUTO_STATIC))
+        self.__modeVar.set(self.erl2context['state'].get(self.subSystemType,'mode',self.__modeDefault))
 
         # make sure we're not exceeding array bounds
         if self.__modeVar.get() > len(self.__modeDict):
@@ -242,7 +243,7 @@ class Erl2SubSystem():
             self.staticSetpointEntry = Erl2Entry(entryLoc={'parent':f,'row':0,'column':1},
                                                  labelLoc={'parent':f,'row':0,'column':0},
                                                  label='Static\nSetpoint',
-                                                 width=4,
+                                                 width=5,
                                                  displayDecimals=self.__displayDecimals,
                                                  validRange=self.__validRange,
                                                  initValue=self.staticSetpointFloat,
@@ -267,8 +268,8 @@ class Erl2SubSystem():
             self.hysteresisEntry = Erl2Entry(entryLoc={'parent':f,'row':0,'column':1},
                                              labelLoc={'parent':f,'row':0,'column':0},
                                              label='Hysteresis',
-                                             width=4,
-                                             displayDecimals=self.__displayDecimals,
+                                             width=5,
+                                             displayDecimals=(self.__displayDecimals+2),
                                              validRange=[0., None],
                                              initValue=self.hysteresisFloat,
                                              onChange=self.changeHysteresis,
@@ -450,14 +451,14 @@ class Erl2SubSystem():
             and self.__lastModeVar is not None and self.__lastModeVar == modeVar):
             return
 
+        # if there's been any change and we're now in controller mode, reapply parent programming
+        if ctrlVar == CONTROLLER:
+            self.reloadParentProgram(calledFromApply=True)
+
         # enable/disable this subsystem's associated controls as appropriate
         for c in self.__controls.values():
             #print (f"{__class__.__name__}: Debug: applyMode({self.subSystemType}) calling setActive({int(crtlVar==LOCAL and modeVar==MANUAL)}) for [{c.controlType}]")
             c.setActive(int(ctrlVar==LOCAL and modeVar==MANUAL))
-
-        # special case: if we are leaving Manual mode, reset all MFCs
-        for m in self.__MFCs.values():
-            m.resetControl()
 
         # enable/disable the static setpoint entry field as appropriate
         if self.staticSetpointEntry is not None:
@@ -480,13 +481,9 @@ class Erl2SubSystem():
             else:
                 w.setActive(0)
 
-        # if in Manual mode (either local or controller), reset all hardware controls to off
-        if modeVar==MANUAL:
-            for c in self.__controls.values():
-                c.resetControl()
-
-        # disable "Controller" mode for now
-        #self.__ctrlRadioWidgets[CONTROLLER].config(state='disabled')
+        # for any kind of mode change (either local or controller), reset all hardware controls
+        for c in self.__controls.values():
+            c.resetControl()
 
         # make a note of this change in the logs (unless this is system startup)
         if self.log is not None and self.__lastModeVar is not None:
@@ -497,11 +494,16 @@ class Erl2SubSystem():
         self.__lastModeVar = modeVar
         self.__modeChanged = True
 
-        # save the new mode setting to system state
-        self.erl2context['state'].set([(self.subSystemType,'ctrl',ctrlVar),
-                                       (self.subSystemType,'mode',modeVar)])
+        # if in controller mode, just save the ctrlVar to the regular state file
+        if ctrlVar == CONTROLLER:
+            self.erl2context['state'].set([(self.subSystemType,'ctrl',ctrlVar)])
 
-        # update display widgets to show to current mode and setpoint
+        # if in local mode, save ctrlVar and modeVar both
+        else:
+            self.erl2context['state'].set([(self.subSystemType,'ctrl',ctrlVar),
+                                           (self.subSystemType,'mode',modeVar)])
+
+        # update display widgets to show current mode and setpoint
         self.updateDisplays()
 
         # trigger monitorSystem right away to see immediate effects of mode change
@@ -783,6 +785,10 @@ class Erl2SubSystem():
 
     def changeEntry(self, param, index=None):
 
+        # if this gets called in CONTROLLER mode, something is awry
+        if self.__ctrlVar.get() == CONTROLLER:
+            raise SystemError(f"{self.__class__.__name__}: Error: changeEntry() called while in CONTROLLER mode")
+
         # dynamically determine the names of attributes we want based on param string
         floatName = param + 'Float'
         entryName = param + 'Entry'
@@ -862,6 +868,54 @@ class Erl2SubSystem():
             and self.erl2context['parentState'].isName(self.subSystemType, 'staticSetpoint')
             and self.erl2context['parentState'].isName(self.subSystemType, 'dynamicSetpoints')
             )
+
+    def reloadParentProgram(self, calledFromApply=False):
+
+        # first make sure the parent program is fully defined
+        if not self.hasParentProgram():
+            raise SystemError(f"{self.__class__.__name__}: Error: reloadParentProgram(): missing program")
+
+        # set local/controller to controller
+        #print (f"{self.__class__.__name__}: Debug: reloadParentProgram({self.subSystemType}): "
+        #       f"setting ctrlVar to [{CONTROLLER}]")
+        self.__ctrlVar.set(CONTROLLER)
+
+        # set mode
+        #print (f"{self.__class__.__name__}: Debug: reloadParentProgram({self.subSystemType}): "
+        #       f"setting modeVar to [{self.erl2context['parentState'].get(self.subSystemType, 'mode', None)}]")
+        self.__modeVar.set(self.erl2context['parentState'].get(self.subSystemType, 'mode', None))
+
+        # set hysteresis, if applicable
+        if self.__logic == 'hysteresis' and self.hysteresisEntry is not None:
+            #print (f"{self.__class__.__name__}: Debug: reloadParentProgram({self.subSystemType}): "
+            #       f"setting hysteresis to [{self.erl2context['parentState'].get(self.subSystemType, 'hysteresis', None)}]")
+            self.hysteresisEntry.setValue(self.erl2context['parentState'].get(self.subSystemType, 'hysteresis', None))
+            self.hysteresisFloat = self.hysteresisEntry.floatValue
+
+        # set staticSetpoint
+        #print (f"{self.__class__.__name__}: Debug: reloadParentProgram({self.subSystemType}): "
+        #       f"setting staticSetpoint to [{self.erl2context['parentState'].get(self.subSystemType, 'staticSetpoint', None)}]")
+        self.staticSetpointEntry.setValue(self.erl2context['parentState'].get(self.subSystemType, 'staticSetpoint', None))
+        self.staticSetpointFloat = self.staticSetpointEntry.floatValue
+
+        # set dynamicSetpoint
+        newVals = self.erl2context['parentState'].get(self.subSystemType, 'dynamicSetpoints', None)
+
+        # we don't expect these lists to be anything but 24 items long
+        if len(newVals) != 24 or len(self.dynamicSetpointsFloat) != 24 or len(self.dynamicSetpointsEntry) != 24:
+            raise SystemError(f"{self.__class__.__name__}: Error: reloadParentProgram(): unexpected list lengths: "
+                              f"newVals [{len(newVals)}], Floats [{len(self.dynamicSetpointsFloat)}], "
+                              f"Entries [{len(self.dynamicSetpointsEntry)}], newVals {newVals}")
+
+        #print (f"{self.__class__.__name__}: Debug: reloadParentProgram({self.subSystemType}): "
+        #       f"setting dynamicSetpoints to {newVals}")
+        for ind in range(len(newVals)):
+            self.dynamicSetpointsEntry[ind].setValue(newVals[ind])
+            self.dynamicSetpointsFloat[ind] = self.dynamicSetpointsEntry[ind].floatValue
+
+        # mode has changed, so applyMode (until this method was called from applyMode!)
+        if not calledFromApply:
+            self.applyMode()
 
 def main():
 

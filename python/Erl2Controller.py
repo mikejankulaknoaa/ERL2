@@ -275,8 +275,7 @@ class Erl2Controller():
 
                 # create new readout
                 rd = Erl2Readout(labelText=thisID,
-                                 deviceState=self.erl2context['network'].childrenStates[mac],
-                                 deviceLog=self.erl2context['network'].childrenLogs[mac],
+                                 mac=mac,
                                  displayLoc={'parent':self.__deviceReadouts[tankNum],'row':0,'column':0},
                                  erl2context=self.erl2context,
                                  )

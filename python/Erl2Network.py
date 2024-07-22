@@ -372,6 +372,7 @@ class Erl2Network():
 
         # Erl2States, Erl2Readouts and Erl2Logs associated with child devices
         self.childrenStates = {}
+        self.parentStates = {}
         self.childrenReadouts = {}
         self.childrenLogs = {}
 
@@ -384,6 +385,8 @@ class Erl2Network():
                 # load Erl2State info for child devices if any stored locally
                 self.childrenStates[thisMac] = Erl2State(internalID=self.childrenDict[thisMac]['internalID'],
                                                          erl2context=self.erl2context)
+                self.parentStates[thisMac] = Erl2State(internalID=self.childrenDict[thisMac]['internalID'] + '_parent',
+                                                       erl2context=self.erl2context)
 
                 # load Erl2Log info for child devices if any stored locally
                 self.childrenLogs[thisMac] = Erl2Log(logType='device',
@@ -964,7 +967,7 @@ class Erl2Network():
                     # unpack second parameter (most recent timestamp already sent)
                     mat = re.search(b'^GETLOG\|(.*)$', rq.inb)
                     if not mat:
-                        raise RuntimeError(f"Erl2Network|manageQueues: Error: [{localTimeStr}]: badly formatted request")
+                        raise RuntimeError(f"Erl2Network|manageQueues: Error: [{localTimeStr}]: badly formatted GETLOG request")
 
                     # the mat.groups() list should just be one item, the timestamp parameter
                     ts = mat.groups()[0]
@@ -986,6 +989,57 @@ class Erl2Network():
 
                     # send acknowledgment
                     rq.outb = 'OKAY!'.encode()
+
+                # SETSTATE: tell child tank what settings the parent wants it to run
+                elif re.match(b"^SETSTATE", rq.inb):
+
+                    # unpack second parameter (tank programming instructions)
+                    mat = re.search(b'^SETSTATE\|(.*)$', rq.inb, flags=re.DOTALL)
+                    if not mat:
+                        print (f"{self.__class__.__name__}: manageQueues: Debug: received command [{rq.inb}]")
+                        raise RuntimeError(f"Erl2Network|manageQueues: Error: badly formatted SETSTATE request")
+
+                    # the mat.groups() list should just be one item, the Erl2State parameter
+                    st = mat.groups()[0]
+                    if st == b'None':
+                        st = None
+                    else:
+
+                        # there could be unpickling problems
+                        try:
+
+                            # answered with an Erl2State instance (pickled)
+                            thisState = pickle.loads(st)
+
+                            # some cursory type checking
+                            if type(thisState) is not Erl2State:
+                                print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: " +
+                                       f"SETSTATE (child side) bad state instance [{type(thisState).__name__}]")
+
+                                # we're on the tank side so a HANGUP! would need to happen differently here
+
+                            else:
+
+                                # if the parent Erl2State instance hasn't been created yet
+                                if 'parentState' not in self.erl2context:
+                                    self.erl2context['parentState'] = Erl2State(internalID='parentState', erl2context=self.erl2context)
+
+                                # add parental instructions to parent state instance
+                                self.erl2context['parentState'].add(thisState)
+
+                                # for subsystems mentioned in the new instructions, tell them to change their programming
+                                for sys in thisState.erl2state.keys():
+                                    if sys in self.erl2context['subsystems']:
+                                        self.erl2context['subsystems'][sys].reloadParentProgram()
+
+                                # reply with new/augmented parent-side instruction set
+                                rq.outb = pickle.dumps(self.erl2context['parentState'])
+
+                        except (pickle.UnpicklingError, EOFError) as e:
+                            print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: " +
+                                   f"SETSTATE (child side) because [{e.__class__.__name__}] in [{st}] state")
+
+                            # we're on the tank side so a HANGUP! would need to happen differently here
 
                 # unrecognized request: answer with error
                 else:
@@ -1045,9 +1099,10 @@ class Erl2Network():
 
                             # something odd is going on if the reply isn't a datetime
                             if type(deviceT) is not dt:
-                                print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: HANGUP! because type(deviceT) is [{type(deviceT).__name__}], not datetime")
+                                print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: " +
+                                       f"HANGUP! because type(deviceT) is [{type(deviceT).__name__}], not datetime")
 
-                                # comms are out of sync, so hang up the listing tank and try again later
+                                # comms are out of sync, so hang up the listening tank and try again later
                                 self.sendCommand(mac, b"HANGUP!")
 
                             else:
@@ -1055,15 +1110,17 @@ class Erl2Network():
                                 # calculate difference in controller/device clocks
                                 self.childrenDict[mac]['latency'] = (deviceT-rs.replyTime).total_seconds()
                                 dictChanged = True
-                                #print (f"{self.__class__.__name__}: manageQueues: Debug: updating latency for [{mac}] to [{self.childrenDict[mac]['latency']}]")
+                                #print (f"{self.__class__.__name__}: manageQueues: Debug: updating latency " +
+                                #       f"for [{mac}] to [{self.childrenDict[mac]['latency']}]")
 
                         except (pickle.UnpicklingError, EOFError) as e:
-                            print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
+                            print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: " +
+                                   f"HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
 
-                            # comms are out of sync, so hang up the listing tank and try again later
+                            # comms are out of sync, so hang up the listening tank and try again later
                             self.sendCommand(mac, b"HANGUP!")
 
-                    elif rs.command == b"GETSTATE":
+                    elif rs.command in [b"GETSTATE", b"SETSTATE"]:
 
                         # there could be unpickling problems
                         try:
@@ -1073,29 +1130,36 @@ class Erl2Network():
 
                             # some cursory type checking
                             if type(thisState) is not Erl2State:
-                                print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: HANGUP! because bad state instance [{type(thisState).__name__}] for [{mac}][{self.childrenDict[mac]['id']}]")
+                                print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: " +
+                                       f"HANGUP! because bad state instance [{type(thisState).__name__}] for [{mac}][{self.childrenDict[mac]['id']}]")
 
-                                # comms are out of sync, so hang up the listing tank and try again later
+                                # comms are out of sync, so hang up the listening tank and try again later
                                 self.sendCommand(mac, b"HANGUP!")
 
                             else:
 
+                                # depending on the command, this could apply to different dicts
+                                dictRef = self.childrenStates
+                                if rs.command == b"SETSTATE":
+                                    dictRef = self.parentStates
+
                                 # if the Erl2State instance hasn't been created yet
-                                if mac not in self.childrenStates:
-                                    self.childrenStates[mac] = Erl2State(internalID=self.childrenDict[mac]['internalID'],
-                                                                         erl2context=self.erl2context)
+                                if mac not in dictRef:
+                                    dictRef[mac] = Erl2State(internalID=self.childrenDict[mac]['internalID'],
+                                                             erl2context=self.erl2context)
 
                                 # now assign the new state values to this child State instance
-                                self.childrenStates[mac].assign(thisState)
+                                dictRef[mac].assign(thisState)
 
                                 # as a final step, refresh any associated Erl2Readout instances
                                 if mac in self.childrenReadouts:
                                     self.childrenReadouts[mac].refreshDisplays()
 
                         except (pickle.UnpicklingError, EOFError) as e:
-                            print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
+                            print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: " +
+                                   f"HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
 
-                            # comms are out of sync, so hang up the listing tank and try again later
+                            # comms are out of sync, so hang up the listening tank and try again later
                             self.sendCommand(mac, b"HANGUP!")
 
                     elif re.match(b'^GETLOG|', rs.command):
@@ -1106,7 +1170,8 @@ class Erl2Network():
                             # answered with an export from an Erl2Log instance (pickled)
                             thisLog = pickle.loads(rs.replyString)
                             if type(thisLog) is not list:
-                                print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: bad log instance [{type(thisLog).__name__}] for [{mac}][{self.childrenDict[mac]['id']}]")
+                                print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: bad log instance " +
+                                       f"[{type(thisLog).__name__}] for [{mac}][{self.childrenDict[mac]['id']}]")
                             else:
 
                                 # if the Erl2Log instance hasn't been created yet
@@ -1119,9 +1184,10 @@ class Erl2Network():
                                 self.childrenLogs[mac].importLog(thisLog)
 
                         except (pickle.UnpicklingError, EOFError) as e:
-                            print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
+                            print (f"{self.__class__.__name__}: manageQueues: Error: [{localTimeStr}]: " +
+                                   f"HANGUP! because [{e.__class__.__name__}] in [{rs.command}] reply")
 
-                            # comms are out of sync, so hang up the listing tank and try again later
+                            # comms are out of sync, so hang up the listening tank and try again later
                             self.sendCommand(mac, b"HANGUP!")
 
                     elif rs.command == b"HANGUP!":
@@ -1150,7 +1216,8 @@ class Erl2Network():
         # call this method again after waiting 1s
         if self.__afterManageQueues is None:
             self.__afterManageQueues = self.erl2context['conf']['system']['allWidgets'].pop()
-            #print (f"{self.__class__.__name__}: Debug: scheduling manageQueues: allWidgets length [{len(self.erl2context['conf']['system']['allWidgets'])}]")
+            #print (f"{self.__class__.__name__}: Debug: scheduling manageQueues: allWidgets " +
+            #       f"length [{len(self.erl2context['conf']['system']['allWidgets'])}]")
         self.__afterManageQueues.after(1000, self.manageQueues)
 
     def pollChildren(self):
@@ -1596,6 +1663,18 @@ class Erl2Network():
 
             # continue stepping through the list
             ind += 1
+
+    def sendSettings(self, mac, valueList):
+
+        # create a dummy Erl2State instance with only the relevant settings
+        dummyState = Erl2State(internalID='dummy', memoryOnly=True, erl2context=self.erl2context)
+
+        # populate with new settings
+        dummyState.set(valueList)
+
+        # send these settings to the child tank!
+        print (f"{self.__class__.__name__}: sendSettings: Debug: sending command [{b'SETSTATE' + b'|' + pickle.dumps(dummyState)}]")
+        self.sendCommand(mac, b"SETSTATE" + b"|" + pickle.dumps(dummyState))
 
 def main():
 

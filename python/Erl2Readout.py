@@ -7,6 +7,7 @@ from Erl2Config import Erl2Config
 from Erl2Image import Erl2Image
 from Erl2Log import Erl2Log
 from Erl2Plot import Erl2Plot
+from Erl2Popup import Erl2Popup
 from Erl2State import Erl2State
 
 SUBS=['temperature','pH','DO']
@@ -24,16 +25,22 @@ class Erl2Readout():
 
     def __init__(self,
                  labelText=None,
-                 deviceState=None,
-                 deviceLog=None,
+                 mac=None,
                  displayLoc={},
                  erl2context={}):
 
         self.__labelText = labelText
-        self.__deviceState = deviceState
-        self.__deviceLog = deviceLog
+        self.__mac = mac
         self.__displayLoc = displayLoc
         self.erl2context = erl2context
+
+        #print (f"{self.__class__.__name__}: Debug: __init__: mac [{self.__mac}]")
+
+        # use the MAC address to get the right Erl2State and Erl2Log instances
+        self.__deviceState = self.__deviceLog = None
+        if 'network' in self.erl2context:
+            self.__deviceState = self.erl2context['network'].childrenStates[self.__mac]
+            self.__deviceLog = self.erl2context['network'].childrenLogs[self.__mac]
 
         # is the device state properly configured for readout?
         if self.__deviceState is None or type(self.__deviceState) is not Erl2State:
@@ -58,6 +65,7 @@ class Erl2Readout():
                   'button-blue-30.png',
                   'network-off-25.png',
                   'network-on-25.png',
+                  'edit-25.png',
                   ]:
             self.erl2context['img'].addImage(i,i)
 
@@ -120,6 +128,21 @@ class Erl2Readout():
             )
         l.grid(row=0, column=c1, sticky='ew')
         self.__labelWidget = l
+
+        # add a button to edit this particular tank's settings
+        c1 += 1
+        l = ttk.Label(f1, image=self.erl2context['img']['edit-25.png']
+            #, relief='solid', borderwidth=1
+            )
+        l.grid(row=0, column=c1, sticky='e')
+        self.__editWidget = l
+        self.__editWidget.bind('<Button-1>',
+            lambda event, tp='Edit Tank Settings', mac=self.__mac, cx=self.erl2context: Erl2Popup.openPopup(popupType=tp, mac=mac, erl2context=cx))
+
+        f1.rowconfigure(0,weight=1)
+        f1.columnconfigure(0,weight=0)
+        f1.columnconfigure(1,weight=0)
+        f1.columnconfigure(2,weight=1)
 
         # loop through list of possible subsystems
         self.__subSystemCount = 0

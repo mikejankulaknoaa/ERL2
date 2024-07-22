@@ -312,7 +312,7 @@ class Erl2Log():
 
                         # force python to write changes to disk
                         sync()
- 
+
                     except Exception as e:
                         print (f'{self.__class__.__name__}: Error: importLog(): {str(e)}')
 

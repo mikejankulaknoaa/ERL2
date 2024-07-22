@@ -107,7 +107,10 @@
 # validRange = [10.0, 40.0]
 
 # default temperature hysteresis (degrees Celsius)
-# hysteresisDefault = 0.1
+# hysteresisDefault = 0.100
+
+# default temperature subsystem mode (valid values: manual, auto_static, auto_dynamic)
+# modeNameDefault = manual
 
 # default temperature setpoint (degrees Celsius)
 # setpointDefault = 25.0
@@ -148,11 +151,11 @@
 # valid range: values outside of this range will be considered errors
 # validRange = [6.00, 9.00]
 
+# default pH subsystem mode (valid values: manual, auto_static, auto_dynamic)
+# modeNameDefault = manual
+
 # default pH setpoint (total pH)
 # setpointDefault = 7.80
-
-# default temperature hysteresis (total pH)
-# hysteresisDefault = 0.01
 
 # default dynamic program (24 values, total pH)
 # this is a sine shape running between 7.95 (6am low point) and 8.05 (6pm high point)
@@ -197,6 +200,9 @@
 
 # valid range: values outside of this range will be considered errors
 # validRange = [100., 400.]
+
+# default DO subsystem mode (valid values: manual, auto_static, auto_dynamic)
+# modeNameDefault = manual
 
 # default DO setpoint (umol/L)
 # setpointDefault = 220.

@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox as mb
+from Erl2Config import Erl2Config
 from Erl2NumPad import Erl2NumPad
 from Erl2State import Erl2State
 
@@ -182,6 +183,15 @@ class Erl2Entry():
 
         self.enabled = enabled
 
+    def setValue(self, newVal):
+
+        # right now just require that the new value is a float
+        if type(newVal) is float:
+
+            # set the internal float and then update the display with formatted value
+            self.floatValue = round(newVal, self.__displayDecimals)
+            self.stringVar.set(self.valToString(self.floatValue))
+
     def numPadPopup(self, event):
 
         # don't open a popup if the field is disabled
@@ -208,15 +218,18 @@ def main():
                        width=4,
                        displayDecimals=1,
                        validRange=[10.,40.],
-                       initValue=25.1)
+                       initValue=25.1,
+                       erl2context={'root':root})
     entry2 = Erl2Entry(entryLoc={'parent':f,'row':1,'column':1},
                        labelLoc={'parent':f,'row':1,'column':0},
                        label='pH (Total Scale)',
                        width=4,
                        displayDecimals=2,
                        validRange=[6.,9.],
-                       initValue=7.81)
-    entry3 = Erl2Entry(entryLoc={'parent':f,'row':2,'column':1})
+                       initValue=7.81,
+                       erl2context={'root':root})
+    entry3 = Erl2Entry(entryLoc={'parent':f,'row':2,'column':1},
+                       erl2context={'root':root})
     root.mainloop()
 
 if __name__ == "__main__": main()

@@ -13,10 +13,11 @@ class Erl2State():
                  internalID='state',
                  fullPath=None,
                  readExisting=True,
+                 memoryOnly=False,
                  erl2context={}):
 
-        if internalID == 'state':
-            print (f"{self.__class__.__name__}: Debug: __init__(internalID={internalID},fullPath={fullPath},readExisting{readExisting}) called")
+        #if internalID == 'state':
+        #    print (f"{self.__class__.__name__}: Debug: __init__(internalID={internalID},fullPath={fullPath},readExisting{readExisting}) called")
 
         # do not save erl2context as an attribute, it is only needed in __init__
         #self.erl2context = erl2context
@@ -30,6 +31,7 @@ class Erl2State():
         self.__dirName = None
         self.__fileName = None
         self.__internalID = internalID
+        self.__memoryOnly = memoryOnly
 
         # read these useful parameters from Erl2Config
         self.__dtFormat = erl2context['conf']['system']['dtFormat']
@@ -79,8 +81,8 @@ class Erl2State():
         if path.isfile(self.__fileName + '.lck'):
             sizeLck = path.getsize(self.__fileName + '.lck')
 
-        if self.__internalID == 'state':
-            print (f"{self.__class__.__name__}: Debug: readFromFile({self.__fileName}) called: sizeDat [{sizeDat}], sizeBak [{sizeBak}], sizeLck [{sizeLck}]]")
+        #if self.__internalID == 'state':
+        #    print (f"{self.__class__.__name__}: Debug: readFromFile({self.__fileName}) called: sizeDat [{sizeDat}], sizeBak [{sizeBak}], sizeLck [{sizeLck}]]")
 
         # if there's an orphaned lock file, and backup exists, restore it
         if sizeLck is not None and sizeBak is not None and sizeBak > 0:
@@ -154,10 +156,14 @@ class Erl2State():
                         # no reason to keep reading this corrupted file
                         break
 
-        if self.__internalID == 'state':
-            print (f"{self.__class__.__name__}: Debug: readFromFile({self.__fileName}) finished: valuesRead [{valuesRead}]")
+        #if self.__internalID == 'state':
+        #    print (f"{self.__class__.__name__}: Debug: readFromFile({self.__fileName}) finished: valuesRead [{valuesRead}]")
 
     def writeToFile(self):
+
+        # doesn't apply if this instance is memoryOnly
+        if self.__memoryOnly:
+            return
 
         #print (f"{self.__class__.__name__}: Debug: writeToFile({self.__fileName}) called")
 
@@ -228,6 +234,24 @@ class Erl2State():
 
         # return the decoded value
         return readValue
+
+    def getall(self):
+
+        #print (f"{self.__class__.__name__}: Debug: getall() called")
+
+        valueList = []
+
+        # loop through all types
+        for tp in self.erl2state.keys():
+
+            # loop through all names
+            for nm in self.erl2state[tp].keys():
+
+                # add this 3-tuple, including the decoded value, to the list
+                valueList.append((tp, nm, self.decode(self.erl2state[tp][nm])))
+
+        # return the resulting valueList
+        return valueList
 
     def set(self, valueList=[]):
 
@@ -377,6 +401,7 @@ class Erl2State():
             # if we reached this point then we couldn't overcome the TypeError
             raise TypeError(f"{self.__class__.__name__}: encode TypeError: type [{type(val)}] not supported")
 
+    # this method REPLACES any existing settings with the new set
     def assign(self,fromState):
 
         # something is very wrong if this argument is the wrong type
@@ -387,6 +412,15 @@ class Erl2State():
 
         # save the updated values to disk
         self.writeToFile()
+
+    # this method AUGMENTS any existing settings with the new set
+    def add(self,fromState):
+
+        # something is very wrong if this argument is the wrong type
+        assert type(fromState) is Erl2State
+
+        # get all values at once and send them to set() to be added
+        self.set(fromState.getall())
 
     def isType(self,valueType):
 

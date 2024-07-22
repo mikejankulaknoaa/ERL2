@@ -9,7 +9,7 @@ from tzlocal import get_localzone
 class Erl2Config():
 
     # hardcoded ERL2 version string
-    VERSION = '0.72b (2024-07-17)'
+    VERSION = '0.73b (2024-07-22)'
 
     # top-level categories in the erl2.conf file
     CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2', 'voltage']
@@ -17,6 +17,9 @@ class Erl2Config():
     # valid baud rates (borrowed from the pyrolib code)
     BAUDS = [ 1200,  2400,   4800,   9600,  14400,  19200,  28800,  38400,  38400,
              56000, 57600, 115200, 128000, 153600, 230400, 256000, 460800, 921600]
+
+    # valid modes
+    MODES = ['manual', 'auto_static', 'auto_dynamic']
 
     # use these parameter strings as defaults if they are missing from the erl2.conf file
     def __setDefaults(self):
@@ -55,10 +58,11 @@ class Erl2Config():
         self.__default['temperature']['sampleFrequency'] = '5'
         self.__default['temperature']['loggingFrequency'] = '300'
         self.__default['temperature']['offsetParameter'] = 'temp.degC'
-        self.__default['temperature']['offsetDefault'] = '0.0'
+        self.__default['temperature']['offsetDefault'] = '0.000'
         self.__default['temperature']['validRange'] = '[10.0, 40.0]'
 
-        self.__default['temperature']['hysteresisDefault'] = '0.1'
+        self.__default['temperature']['modeNameDefault'] = 'manual'
+        self.__default['temperature']['hysteresisDefault'] = '0.100'
         self.__default['temperature']['setpointDefault'] = '25.0'
         self.__default['temperature']['dynamicDefault'] = ('[27.0, 26.5, 26.0, 25.6, 25.3, 25.1, '
                                                             '25.0, 25.1, 25.3, 25.6, 26.0, 26.5, '
@@ -72,7 +76,7 @@ class Erl2Config():
         self.__default['voltage']['sampleFrequency'] = '5'
         self.__default['voltage']['loggingFrequency'] = '300'
         self.__default['voltage']['offsetParameter'] = 'None'
-        self.__default['voltage']['offsetDefault'] = '0.0'
+        self.__default['voltage']['offsetDefault'] = '0.00000'
         self.__default['voltage']['validRange'] = '[0.0, 36.0]'
 
         self.__default['pH']['serialPort'] = '/dev/ttyAMA2'
@@ -83,9 +87,10 @@ class Erl2Config():
         self.__default['pH']['sampleFrequency'] = '60'
         self.__default['pH']['loggingFrequency'] = '300'
         self.__default['pH']['offsetParameter'] = 'pH'
-        self.__default['pH']['offsetDefault'] = '0.00'
+        self.__default['pH']['offsetDefault'] = '0.0000'
         self.__default['pH']['validRange'] = '[6.00, 9.00]'
 
+        self.__default['pH']['modeNameDefault'] = 'manual'
         self.__default['pH']['setpointDefault'] = '7.80'
         self.__default['pH']['dynamicDefault'] = ('[8.00, 7.99, 7.98, 7.96, 7.96, 7.95, '
                                                    '7.95, 7.95, 7.96, 7.96, 7.98, 7.99, '
@@ -107,9 +112,10 @@ class Erl2Config():
         self.__default['DO']['sampleFrequency'] = '60'
         self.__default['DO']['loggingFrequency'] = '300'
         self.__default['DO']['offsetParameter'] = 'uM'
-        self.__default['DO']['offsetDefault'] = '0.'
+        self.__default['DO']['offsetDefault'] = '0.00'
         self.__default['DO']['validRange'] = '[100., 400.]'
 
+        self.__default['DO']['modeNameDefault'] = 'manual'
         self.__default['DO']['setpointDefault'] = '220.'
         self.__default['DO']['dynamicDefault'] = ('[220., 216., 213., 209., 207., 206., '
                                                    '205., 206., 207., 209., 213., 216., '
@@ -128,9 +134,10 @@ class Erl2Config():
         self.__default['generic']['sampleFrequency'] = '5'
         self.__default['generic']['loggingFrequency'] = '300'
         self.__default['generic']['offsetParameter'] = 'generic'
-        self.__default['generic']['offsetDefault'] = '0.000'
+        self.__default['generic']['offsetDefault'] = '0.00000'
         self.__default['generic']['validRange'] = '[-5.000, 5.000]'
 
+        self.__default['generic']['modeNameDefault'] = 'manual'
         self.__default['generic']['setpointDefault'] = '0.500'
         self.__default['generic']['dynamicDefault'] = ('[0.500, 0.371, 0.250, 0.146, 0.067, 0.017, '
                                                         '0.000, 0.017, 0.067, 0.146, 0.250, 0.371, '
@@ -161,7 +168,7 @@ class Erl2Config():
         self.__default['mfc.air']['sampleFrequency'] = '5'
         self.__default['mfc.air']['loggingFrequency'] = '300'
         self.__default['mfc.air']['offsetParameter'] = 'flow.mLperMin'
-        self.__default['mfc.air']['offsetDefault'] = '0.'
+        self.__default['mfc.air']['offsetDefault'] = '0.00'
         self.__default['mfc.air']['validRange'] = '[0., 5000.]'
         self.__default['mfc.air']['outputChannel'] = '1'
         self.__default['mfc.air']['valueWhenReset'] = '500.'
@@ -176,7 +183,7 @@ class Erl2Config():
         self.__default['mfc.co2']['sampleFrequency'] = '5'
         self.__default['mfc.co2']['loggingFrequency'] = '300'
         self.__default['mfc.co2']['offsetParameter'] = 'flow.mLperMin'
-        self.__default['mfc.co2']['offsetDefault'] = '0.0'
+        self.__default['mfc.co2']['offsetDefault'] = '0.000'
         self.__default['mfc.co2']['validRange'] = '[0.0, 20.0]'
         self.__default['mfc.co2']['outputChannel'] = '2'
         self.__default['mfc.co2']['valueWhenReset'] = '0.'
@@ -191,7 +198,7 @@ class Erl2Config():
         self.__default['mfc.n2']['sampleFrequency'] = '5'
         self.__default['mfc.n2']['loggingFrequency'] = '300'
         self.__default['mfc.n2']['offsetParameter'] = 'flow.mLperMin'
-        self.__default['mfc.n2']['offsetDefault'] = '0.'
+        self.__default['mfc.n2']['offsetDefault'] = '0.00'
         self.__default['mfc.n2']['validRange'] = '[0., 1000.]'
         self.__default['mfc.n2']['outputChannel'] = '3'
         self.__default['mfc.n2']['valueWhenReset'] = '0.'
@@ -251,6 +258,7 @@ class Erl2Config():
             raise RuntimeError('Cannot find the erl2.conf configuration file')
 
         # what OS are we running?
+        #print (f"{self.__class__.__name__}: Debug: found platform is [{platform}]")
         self.__erl2conf['system']['platform'] = platform
 
         # share the version info with the app
@@ -361,7 +369,7 @@ class Erl2Config():
 
             if (self.__erl2conf[sensorType]['baudRate'] is not None
                 and self.__erl2conf[sensorType]['baudRate'] not in self.BAUDS):
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['baudRate'] = [{self.__erl2conf[sensorType]['baudRate']}] is not a valid baud rate.\nValid baud rates are [{self.BAUDS}].")
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['baudRate'] = [{self.__erl2conf[sensorType]['baudRate']}] is not a valid baud rate.\nValid baud rates are {self.BAUDS}.")
 
         # temperature, pH, DO and the MFCs share a lot of the same parameter logic
         for sensorType in ['temperature', 'voltage', 'pH', 'DO', 'mfc.air', 'mfc.co2', 'mfc.n2', 'generic']:
@@ -387,8 +395,16 @@ class Erl2Config():
             self.validate(str,   sensorType, 'offsetParameter')
             self.validate(float, sensorType, 'offsetDefault')
 
-        # temperature, pH, and DO share the setpoint-related logic
+        # temperature, pH, and DO share the mode and setpoint-related logic
         for sensorType in ['temperature', 'pH', 'DO', 'generic']:
+
+            # mode is specified in words in the config file, and converted to integer here
+            self.validate(str, sensorType, 'modeNameDefault')
+            if (self.__erl2conf[sensorType]['modeNameDefault'].lower() not in self.MODES):
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['modeNameDefault'] = [{self.__erl2conf[sensorType]['modeNameDefault']}] is not a valid mode name.\nValid mode names are {self.MODES}.")
+
+            # convert modeNameDefault to an integer
+            self.__erl2conf[sensorType]['modeDefault'] = self.MODES.index(self.__erl2conf[sensorType]['modeNameDefault'].lower())
 
             # these are required to fall within the validRange for the sensor
             self.validate    (float, sensorType, 'setpointDefault',    min=self.__erl2conf[sensorType]['validRange'][0], max=self.__erl2conf[sensorType]['validRange'][1])

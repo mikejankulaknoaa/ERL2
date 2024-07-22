@@ -17,7 +17,7 @@ class Erl2Sensor():
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
-                 correctionWidth=4,
+                 correctionWidth=5,
                  label=None,
                  erl2context={}):
 
@@ -149,7 +149,7 @@ class Erl2Sensor():
                                            labelLoc={'parent':f,'row':0,'column':0},
                                            label='Offset',
                                            width=self.__correctionWidth,
-                                           displayDecimals=self.__displayDecimals,
+                                           displayDecimals=(self.__displayDecimals+2),
                                            #validRange=,
                                            initValue=self.__offsetFloat,
                                            onChange=self.changeOffset,
@@ -260,13 +260,14 @@ class Erl2Sensor():
             # even if the parameter is present, it might not be in float format
             try:
                 value = float(self.value[self.__displayParameter])
-                raw = upd = f"{round(value,self.__displayDecimals):.{self.__displayDecimals}f}"
+                upd = f"{round(value,self.__displayDecimals):.{self.__displayDecimals}f}"
+                raw = f"{round(value,(self.__displayDecimals+2)):.{(self.__displayDecimals+2)}f}"
                 #if self.sensorType == 'pH':
                 #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.sensorType}] update is [{upd}]")
 
                 # default to raw=upd, but assuming the raw.value parameter exists, use that
                 if 'raw.value' in self.value:
-                    raw = f"{float(round(self.value['raw.value'],self.__displayDecimals)):.{self.__displayDecimals}f}"
+                    raw = f"{float(round(self.value['raw.value'],(self.__displayDecimals+2))):.{(self.__displayDecimals+2)}f}"
 
             except:
                 #if self.sensorType == 'pH':
