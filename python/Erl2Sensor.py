@@ -17,7 +17,7 @@ class Erl2Sensor():
                  displayLocs=[],
                  statusLocs=[],
                  correctionLoc={},
-                 correctionWidth=5,
+                 correctionWidth=6,
                  label=None,
                  erl2context={}):
 
