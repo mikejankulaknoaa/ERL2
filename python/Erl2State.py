@@ -1,8 +1,21 @@
+# on windows load fsync instead of sync
+_syncLoaded = False
+_fsyncLoaded = False
+try:
+    from os import sync
+    _syncLoaded = True
+except:
+    try:
+        from os import fsync
+        _fsyncLoaded = True
+    except:
+        pass
+
 from csv import reader,writer
 from datetime import datetime as dt
 from datetime import timezone as tz
 from json import dumps, loads
-from os import makedirs,path,remove,rename,sync
+from os import makedirs,path,remove,rename
 from re import findall, search
 from Erl2Config import Erl2Config
 from Erl2Log import Erl2Log
@@ -25,6 +38,9 @@ class Erl2State():
         # read in the system configuration file if needed
         if 'conf' not in erl2context:
             erl2context['conf'] = Erl2Config()
+
+        # trigger an error if the sync method (or fsync on windows) failed to load
+        assert(_syncLoaded or (erl2context['conf']['system']['platform'] == 'win32' and _fsyncLoaded))
 
         # application state info is stored in nested dicts
         self.erl2state = {}
@@ -203,7 +219,10 @@ class Erl2State():
             remove(self.__fileName + '.lck')
 
         # force python to write changes to disk
-        sync()
+        if _syncLoaded:
+            sync()
+        elif _fsyncLoaded:
+            fsync(f.fileno())
 
         #print (f"{self.__class__.__name__}: Debug: writeToFile({self.__fileName}) finished as expected")
 

@@ -1,8 +1,21 @@
+# on windows load fsync instead of sync
+_syncLoaded = False
+_fsyncLoaded = False
+try:
+    from os import sync
+    _syncLoaded = True
+except:
+    try:
+        from os import fsync
+        _fsyncLoaded = True
+    except:
+        pass
+
 from csv import DictReader,DictWriter,writer
 from datetime import datetime as dt
 from datetime import timedelta as td
 from datetime import timezone as tz
-from os import makedirs,path,sync
+from os import makedirs,path
 from sys import version_info
 from Erl2Config import Erl2Config
 
@@ -19,6 +32,9 @@ class Erl2Log():
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
+
+        # trigger an error if the sync method (or fsync on windows) failed to load
+        assert(_syncLoaded or (erl2context['conf']['system']['platform'] == 'win32' and _fsyncLoaded))
 
         # keep a global record of what kind of log types we've been asked to create
         Erl2Log.logTypes[self.__logType] = True
@@ -149,7 +165,10 @@ class Erl2Log():
                     f.flush()
 
                 # force python to write changes to disk
-                sync()
+                if _syncLoaded:
+                    sync()
+                elif _fsyncLoaded:
+                    fsync(f.fileno())
 
         except Exception as e:
             print (f'{self.__class__.__name__}: Error: writeData(): {str(e)}')
@@ -177,7 +196,10 @@ class Erl2Log():
                 f.flush()
 
             # force python to write changes to disk
-            sync()
+            if _syncLoaded:
+                sync()
+            elif _fsyncLoaded:
+                fsync(f.fileno())
 
         except Exception as e:
             print (f'{self.__class__.__name__}: Error: __writeMessage({str(args)}): {str(e)}')
@@ -311,7 +333,10 @@ class Erl2Log():
                             f.flush()
 
                         # force python to write changes to disk
-                        sync()
+                        if _syncLoaded:
+                            sync()
+                        elif _fsyncLoaded:
+                            fsync(f.fileno())
 
                     except Exception as e:
                         print (f'{self.__class__.__name__}: Error: importLog(): {str(e)}')
