@@ -40,7 +40,8 @@ class Erl2Sensor():
         # remember what widgets are active for this sensor
         self.__displayWidgets = []
         self.__statusWidgets = []
-        self.__correctionWidgets = []
+        self.__rawWidgets = []
+        self.__adjWidgets = []
         self.__offsetEntry = None
 
         # keep a list of entry widgets
@@ -166,7 +167,17 @@ class Erl2Sensor():
                 #, relief='solid', borderwidth=1
                 ).grid(row=1, column=0, padx='2 2', sticky='w')
 
-            self.__correctionWidgets.append(l)
+            self.__rawWidgets.append(l)
+
+            # add a Label widget to show the adjusted sensor value
+            l = ttk.Label(f, text='--', font='Arial 16', justify='right')
+            l.grid(row=2, column=1, sticky='e')
+
+            ttk.Label(f, text='Adj Value', font='Arial 14'
+                #, relief='solid', borderwidth=1
+                ).grid(row=2, column=0, padx='2 2', sticky='w')
+
+            self.__adjWidgets.append(l)
 
             f.rowconfigure(0,weight=1)
             f.rowconfigure(1,weight=1)
@@ -206,7 +217,7 @@ class Erl2Sensor():
         #print (f"{self.__class__.__name__}: Debug: readSensor() receiving [{str(currentTime)}][{str(measurement)}][{str(online)}]")
 
         # update the display widgets with their current values
-        self.updateDisplays(self.__displayWidgets,self.__statusWidgets,self.__correctionWidgets)
+        self.updateDisplays(self.__displayWidgets,self.__statusWidgets,self.__rawWidgets,self.__adjWidgets)
 
         # how long before we should update the display widgets again?
         nextSampleTime = nextIntervalTime(currentTime, self.__sampleFrequency)
@@ -234,13 +245,13 @@ class Erl2Sensor():
         if self.__nextFileTime is None or currentTime.timestamp() > self.__nextFileTime:
             self.__nextFileTime = nextIntervalTime(currentTime, self.__loggingFrequency)
 
-    def updateDisplays(self, displayWidgets, statusWidgets, correctionWidgets):
+    def updateDisplays(self, displayWidgets, statusWidgets, rawWidgets, adjWidgets):
 
         #print (f"{self.__class__.__name__}: Debug: updateDisplays() using [{str(self.lastValid)}][{str(self.value)}][{str(self.online)}]")
 
         # default value and display text
         value = None
-        raw = upd = '--'
+        upd = raw = adj = '--'
 
         # figure out what values to use in update
         if not self.online:
@@ -261,7 +272,7 @@ class Erl2Sensor():
             try:
                 value = float(self.value[self.__displayParameter])
                 upd = f"{round(value,self.__displayDecimals):.{self.__displayDecimals}f}"
-                raw = f"{round(value,(self.__displayDecimals+2)):.{(self.__displayDecimals+2)}f}"
+                adj = raw = f"{round(value,(self.__displayDecimals+2)):.{(self.__displayDecimals+2)}f}"
                 #if self.sensorType == 'pH':
                 #    print (f"{self.__class__.__name__}: Debug updateDisplays() sensor[{self.sensorType}] update is [{upd}]")
 
@@ -280,11 +291,17 @@ class Erl2Sensor():
             # update the display
             w.config(text=upd)
 
-        # loop through all of this sensor's offset/correction widgets
-        for w in correctionWidgets:
+        # loop through all of this sensor's offset/raw widgets
+        for w in rawWidgets:
 
             # update the display
             w.config(text=raw)
+
+        # loop through all of this sensor's offset/adjusted widgets
+        for w in adjWidgets:
+
+            # update the display
+            w.config(text=adj)
 
         # the status message conveys information about how current the reading is and on/offline status
         if self.lastValid is not None:
@@ -391,7 +408,7 @@ class Erl2Sensor():
                 #print (f"{self.__class__.__name__}: Debug: changeOffset({self.sensorType}|{self.__offsetParameter}) new value is [{self.value[self.__offsetParameter]}]")
 
             # redraw the app's displays immediately
-            self.updateDisplays(self.__displayWidgets,self.__statusWidgets,self.__correctionWidgets)
+            self.updateDisplays(self.__displayWidgets,self.__statusWidgets,self.__rawWidgets, self.__adjWidgets)
 
             # notify application that its state has changed
             self.erl2context['state'].set([(self.sensorType,'offset',self.__offsetFloat)])

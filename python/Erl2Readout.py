@@ -164,8 +164,9 @@ class Erl2Readout():
                 controlF.grid(row=1, column=3*self.__subSystemCount+1, padx='2', pady='2', sticky='nesw')
 
                 # frame for plots
-                plotF = ttk.Frame(f2, padding='2', relief='solid', borderwidth=1)
-                plotF.grid(row=1, column=3*self.__subSystemCount+2, padx='2', pady='2', sticky='nesw')
+                if  self.erl2context['state'].get('system','plots',1):
+                    plotF = ttk.Frame(f2, padding='2', relief='solid', borderwidth=1)
+                    plotF.grid(row=1, column=3*self.__subSystemCount+2, padx='2', pady='2', sticky='nesw')
 
                 # label for sensor frame
                 sensorLabel = None
@@ -313,8 +314,10 @@ class Erl2Readout():
 
                     # note: ignoring lastValid info for control "sensors"
 
-                # if provided with log data, draw a plot of sensor + control data
-                if self.__deviceLog is not None and type(self.__deviceLog) is Erl2Log:
+                # if provided with log data, draw a plot of sensor + control data (unless plots are disabled system-wide)
+                if (    self.__deviceLog is not None
+                    and type(self.__deviceLog) is Erl2Log
+                    and self.erl2context['state'].get('system','plots',1)):
 
                     # build up the displaySpecs we need to send
                     dSpecs = []
@@ -330,12 +333,13 @@ class Erl2Readout():
 
                     # now create the actual plot
                     thisPlot = Erl2Plot(plotLoc={'parent':plotF,'row':0,'column':0},
-                                       #figsize=(2.500,1.000),
-                                       figsize=(3.000,0.250),
-                                       displayData=[self.__deviceLog],
-                                       displaySpecs=dSpecs,
-                                       #displayDecimals=None,
-                                       )
+                                        #figsize=(2.500,1.000),
+                                        figsize=(3.000,0.250),
+                                        displayData=[self.__deviceLog],
+                                        displaySpecs=dSpecs,
+                                        #displayDecimals=None,
+                                        erl2context=self.erl2context,
+                                        )
 
                     # keep a list of plots we've created here
                     self.__allPlots.append(thisPlot)

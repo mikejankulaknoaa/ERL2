@@ -267,6 +267,10 @@ class Erl2Popup(tk.Toplevel):
                 r += 1
                 self.erl2context['startup'].createNumPadWidget(widgetLoc={'parent':displayContent,'row':r})
 
+                # add a control to enable / disable the matplotlib plots
+                r += 1
+                self.erl2context['startup'].createPlotsWidget(widgetLoc={'parent':displayContent,'row':r})
+
         # the 'Network' popup...
         elif Erl2Popup.popupType == 'Network':
 

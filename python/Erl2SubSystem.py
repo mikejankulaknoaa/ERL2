@@ -391,8 +391,10 @@ class Erl2SubSystem():
             displayData.append(self.__controls[ctrl].log)
             displaySpecs.append({'yName':ctrl,'yParameter':'Average Setting'})
 
-        # draw a plot of the history of the subsystem
-        if 'parent' in self.__plotDisplayLoc:
+        # draw a plot of the history of the subsystem (unless plots are disabled system-wide)
+        if (    'parent' in self.__plotDisplayLoc
+            and self.erl2context['state'].get('system','plots',1)):
+
             self.__plot = Erl2Plot(plotLoc=self.__plotDisplayLoc,
                                    statsLoc=self.__statsDisplayLoc,
                                    #figsize=(3.166,1.345), # sizing doesn't seem to matter if frame is weighted properly
@@ -400,7 +402,8 @@ class Erl2SubSystem():
                                    displaySpecs=displaySpecs,
                                    displayData=displayData,
                                    displayDecimals=self.__displayDecimals,
-                                   erl2context=self.erl2context)
+                                   erl2context=self.erl2context,
+                                   )
 
         # begin monitoring the system
         self.monitorSystem()

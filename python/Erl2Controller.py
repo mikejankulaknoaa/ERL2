@@ -1,3 +1,4 @@
+from math import ceil,floor
 from multiprocessing import Queue
 import sys
 import tkinter as tk
@@ -236,6 +237,12 @@ class Erl2Controller():
 
     def updateDisplays(self):
 
+        # display geometry (two columns if plots aren't shown)
+        numCols = 1
+        if not self.erl2context['state'].get('system','plots',1):
+            numCols = 2
+        numRows = ceil(len(self.erl2context['network'].sortedMacs)/numCols)
+
         # loop through child devices
         tankNum = 0
         for mac in self.erl2context['network'].sortedMacs:
@@ -249,10 +256,14 @@ class Erl2Controller():
                 self.__deviceLabels.append(thisID)
                 overwrite = True
 
+            # geometry: work out rowNum and colNum
+            rowNum = tankNum % numRows
+            colNum = floor(tankNum / numRows)
+
             # no readout frame yet? create it
             if len(self.__deviceReadouts) < (tankNum+1):
                 f = ttk.Frame(self.__displayTanks, padding='0', relief='flat', borderwidth=0)
-                f.grid(row=tankNum, column=0, padx='0', pady='0', sticky='nesw')
+                f.grid(row=rowNum, column=colNum, padx=f"{8*colNum} 0", pady='0', sticky='nesw')
                 self.__deviceReadouts.append(f)
                 overwrite = True
 
