@@ -27,6 +27,7 @@ class Erl2Popup(tk.Toplevel):
     # allow only one Erl2Popup popup at a time
     erl2Popup = None
     popupType = None
+    isOpening = False
 
     def __init__(self, mac=None, erl2context={}):
 
@@ -794,6 +795,9 @@ class Erl2Popup(tk.Toplevel):
         # these are ideas that might work on linux but are problematic on mac + PC
         #self.overrideredirect(1)
 
+        # indicate that we've finished opening
+        Erl2Popup.isOpening = False
+
     def toggleHeaterChiller(self, sys, ind, redrawWidgets=True):
 
         #print (f"toggleHeaterChiller(sys=[{sys}], ind=[{ind}])")
@@ -870,6 +874,7 @@ class Erl2Popup(tk.Toplevel):
             assert('manual.reset' in self.__modeWidgets[sys] and len(self.__modeWidgets[sys]['manual']) == len(self.__modeWidgets[sys]['manual.reset']))
             assert('manual.enabled' in self.__modeWidgets[sys] and len(self.__modeWidgets[sys]['manual']) == len(self.__modeWidgets[sys]['manual.enabled']))
 
+            # loop through all three arrays at once
             for ind in range(len(self.__modeWidgets[sys]['manual'])):
                 w = self.__modeWidgets[sys]['manual'][ind]
 
@@ -878,6 +883,7 @@ class Erl2Popup(tk.Toplevel):
 
                     # if this widget is just changing to active now, apply reset value
                     if not self.__modeWidgets[sys]['manual.enabled'][ind]:
+                        #print (f"{self.__class__.__name__}: Debug: enableWidgets: resetting Erl2Entry value to [{self.__modeWidgets[sys]['manual.reset'][ind]}]")
                         w.setValue(self.__modeWidgets[sys]['manual.reset'][ind])
                         self.__modeWidgets[sys]['manual.enabled'][ind] = True
 
@@ -885,6 +891,7 @@ class Erl2Popup(tk.Toplevel):
                     w.setActive(0)
 
                     # when inactive it looks better to render as zero
+                    #print (f"{self.__class__.__name__}: Debug: enableWidgets: disabling Erl2Entry value to [0.]")
                     w.setValue(0.)
                     self.__modeWidgets[sys]['manual.enabled'][ind] = False
 
@@ -1061,6 +1068,7 @@ class Erl2Popup(tk.Toplevel):
 
                 # set this window's values from the chosen tank's (current) state
                 if mac in self.erl2context['network'].childrenStates:
+                    #print (f"{__name__}: Debug: copyFromTank(): copying from child/tank state")
                     retVal = self.setSettings(self.erl2context['network'].childrenStates[mac], redrawWidgets=False)
 
                     # report any errors (unlikely, when copying from in-memory settings)
@@ -1069,6 +1077,7 @@ class Erl2Popup(tk.Toplevel):
 
                 # now overwrite these (current) tank settings with any prior program defined on the parent side
                 if mac in self.erl2context['network'].parentStates:
+                    #print (f"{__name__}: Debug: copyFromTank(): copying from parent/controller state")
                     retVal = self.setSettings(self.erl2context['network'].parentStates[mac], redrawWidgets=False)
 
                     # report any errors (unlikely, when copying from in-memory settings)
@@ -1100,7 +1109,7 @@ class Erl2Popup(tk.Toplevel):
         # read the listbox to see what if anything is selected
         selection = self.__listbox.curselection()
 
-        print (f"{__name__}: Debug: applyToTanks() result is type [{type(selection).__name__}], length [{len(selection)}]")
+        #print (f"{__name__}: Debug: applyToTanks() result is type [{type(selection).__name__}], length [{len(selection)}]")
         ids = []
         macs = []
         for ind in selection:
@@ -1128,6 +1137,9 @@ class Erl2Popup(tk.Toplevel):
 
                     # tell the Networking module that we want to send these settings to a child tank
                     self.erl2context['network'].sendSettings(mac, thisSet)
+
+                # once all requests processed, close the Edit Tank Settings window
+                self.destroy()
 
         self.modalOpen = False
         #self.grab_set()
@@ -1168,15 +1180,40 @@ class Erl2Popup(tk.Toplevel):
             if 'checkbox.value' in self.__modeWidgets[sys] and  self.__modeWidgets[sys]['checkbox.value'] > 0:
 
                 # what mode is currently selected?
-                retVal.append((sys, 'mode', self.__modeVar[sys].get()))
+                currMode = self.__modeVar[sys].get()
+                retVal.append((sys, 'mode', currMode))
+
+                # send manual settings only if current mode is Manual
+                if currMode == MANUAL:
+
+                    # note: this part of the parent/child communication assumes that the
+                    # toggle and Erl2Entry controls are presented in the same order in
+                    # both parent and child apps
+
+                    # does this subSystem have toggle controls?
+                    if 'toggle.value' in self.__modeWidgets[sys]:
+
+                        # toggle.value is already an array of control setting values
+                        #print (f"{__name__}: Debug: getSettings({sys}): found toggle settings {self.__modeWidgets[sys]['toggle.value']}")
+                        retVal.append((sys, 'toggle', self.__modeWidgets[sys]['toggle.value']))
+
+                    # does this subSystem have Erl2Entry controls?
+                    if 'manual' in self.__modeWidgets[sys]:
+
+                        # build an array of float values from the Erl2Entry instances
+                        manualVals = []
+                        for e in self.__modeWidgets[sys]['manual']:
+                            manualVals.append(e.floatValue)
+                        #print (f"{__name__}: Debug: getSettings({sys}): found manual settings {manualVals}")
+                        retVal.append((sys, 'manual', manualVals))
 
                 # some subsystems may have hysteresis parameter
                 if 'hysteresis' in self.__modeWidgets[sys]:
-                    retVal.append((sys, 'hysteresis', float(self.__modeWidgets[sys]['hysteresis'].stringVar.get())))
+                    retVal.append((sys, 'hysteresis', self.__modeWidgets[sys]['hysteresis'].floatValue))
 
                 # auto static setpoints
                 if 'staticSetpoint' in self.__modeWidgets[sys]:
-                    retVal.append((sys, 'staticSetpoint', float(self.__modeWidgets[sys]['staticSetpoint'].stringVar.get())))
+                    retVal.append((sys, 'staticSetpoint', self.__modeWidgets[sys]['staticSetpoint'].floatValue))
 
                 # enable/disable auto dynamic parameters
                 if 'dynamicSetpoints' in self.__modeWidgets[sys]:
@@ -1184,7 +1221,7 @@ class Erl2Popup(tk.Toplevel):
                     # first build the whole list of float values (24 vals expected)
                     dynList = []
                     for w in self.__modeWidgets[sys]['dynamicSetpoints']:
-                        dynList.append(float(w.stringVar.get()))
+                        dynList.append(w.floatValue)
 
                     # then assign it into the list of tuples
                     retVal.append((sys, 'dynamicSetpoints', dynList))
@@ -1209,6 +1246,17 @@ class Erl2Popup(tk.Toplevel):
                 tp = type(fromState.get(sys,'mode',None))
                 if tp is not int:
                     return f"corrupt {sys}/mode value: expected int, got {tp.__name__}."
+
+                # for these next settings, we need to know if we're in manual mode
+                val = fromState.get(valueType=sys, valueName='mode', defaultValue=None)
+                if val is not None and val == MANUAL:
+
+                    # toggle and manual settings are both optional, but must be number arrays if present
+                    for s in ['toggle','manual']:
+                        if fromState.isName(sys,s):
+                            val = fromState.get(sys,s,None)
+                            if type(val) is not list or len(val) == 0 or type(val[0]) not in (int, float):
+                                return f"corrupt {sys}/{s} value: expected a nonempty list of numbers, got {val}."
 
                 # staticSetpoint
                 if not fromState.isName(sys,'staticSetpoint'):
@@ -1252,10 +1300,44 @@ class Erl2Popup(tk.Toplevel):
                     self.toggleSubSystem(sys, redrawWidgets=False)
 
                 # logic for reading mode
-                val = fromState.get(valueType=sys, valueName='mode', defaultValue=None)
-                if val is not None and sys in self.__modeVar:
-                    #print (f"{__name__}: Debug: setSettings({sys}) mode = [{val}]")
-                    self.__modeVar[sys].set(int(val))
+                currMode = fromState.get(valueType=sys, valueName='mode', defaultValue=None)
+                if currMode is not None and sys in self.__modeVar:
+                    #print (f"{__name__}: Debug: setSettings({sys}) mode = [{currMode}]")
+                    self.__modeVar[sys].set(int(currMode))
+
+                    # really only want to process toggle + manual settings if mode is manual
+                    if currMode == MANUAL:
+
+                        # toggle settings
+                        if 'toggle.value' in self.__modeWidgets[sys] and fromState.isName(sys, 'toggle'):
+
+                            # get the list of toggle settings
+                            toggleSet = fromState.get(sys, 'toggle', defaultValue=None)
+
+                            # assuming that settings and widgets lists go hand-in-hand
+                            assert(len(self.__modeWidgets[sys]['toggle.value']) == len(toggleSet))
+
+                            # for safety's sake I'm going to avoid list assignment
+                            for ind in range(len(toggleSet)):
+                                self.__modeWidgets[sys]['toggle.value'][ind] = toggleSet[ind]
+
+                        # manual settings
+                        if 'manual' in self.__modeWidgets[sys] and fromState.isName(sys, 'manual'):
+
+                            # get the list of manual settings
+                            manualSet = fromState.get(sys, 'manual', defaultValue=None)
+
+                            # assuming that settings and widgets lists go hand-in-hand
+                            assert(len(self.__modeWidgets[sys]['manual']) == len(manualSet))
+                            assert('manual.enabled' in self.__modeWidgets[sys] and len(self.__modeWidgets[sys]['manual.enabled']) == len(manualSet))
+
+                            # loop through Erl2Entry widgets and update their values
+                            for ind in range(len(manualSet)):
+                                #print (f"{self.__class__.__name__}: Debug: setSettings: setting Erl2Entry value to [{manualSet[ind]}]")
+                                self.__modeWidgets[sys]['manual'][ind].setValue(manualSet[ind])
+
+                                # consider this control to be 'enabled' so that its value isn't later reset to its default
+                                self.__modeWidgets[sys]['manual.enabled'][ind] = True
 
                 # logic for reading hysteresis and staticSetpoint
                 for param in ['hysteresis', 'staticSetpoint']:
@@ -1305,11 +1387,15 @@ class Erl2Popup(tk.Toplevel):
 
         if (cls.erl2Popup is not None and cls.erl2Popup.winfo_exists()
                 and cls.popupType is not None and cls.popupType == popupType):
-            #print (f"{__name__}: Debug: openPopup({cls.__name__}): popup already open")
+            #print (f"{__name__}: Debug: openPopup({popupType}): popup already open")
             cls.erl2Popup.lift()
+        elif cls.isOpening:
+            #print (f"{__name__}: Debug: openPopup({popupType}): popup in the process of opening")
+            pass
         else:
-            #print (f"{__name__}: Debug: openPopup({cls.__name__}): new popup")
+            #print (f"{__name__}: Debug: openPopup({popupType}): new popup")
             cls.popupType = popupType
+            cls.isOpening = True
             cls.erl2Popup = Erl2Popup(mac=mac, erl2context=erl2context)
 
 def testPopup(popupType='About ERL2', erl2context={}):

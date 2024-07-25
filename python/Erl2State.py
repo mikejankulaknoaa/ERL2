@@ -214,15 +214,17 @@ class Erl2State():
                     # don't buffer the output stream, in case of irregular app termination
                     f.flush()
 
+                    # force python to write changes to disk (windows)
+                    if _fsyncLoaded:
+                        fsync(f.fileno())
+
+        # force python to write changes to disk (non-windows)
+        if _syncLoaded:
+            sync()
+
         # delete the lock file
         if path.isfile(self.__fileName + '.lck'):
             remove(self.__fileName + '.lck')
-
-        # force python to write changes to disk
-        if _syncLoaded:
-            sync()
-        elif _fsyncLoaded:
-            fsync(f.fileno())
 
         #print (f"{self.__class__.__name__}: Debug: writeToFile({self.__fileName}) finished as expected")
 

@@ -211,6 +211,8 @@ class Erl2Control():
         self.setActive(self.enabled)
 
         # at initialization, force the hardware control to match the logical control setting
+        #if self.controlType in ['heater','chiller']:
+        #    print (f"{self.__class__.__name__}: Debug: __init__({self.controlType}).setControl({self.setting})")
         self.setControl(self.setting,force=True)
 
         # start up the timing loop to log control metrics to a log file
@@ -331,10 +333,8 @@ class Erl2Control():
                 clr = 'grey'
             self.__controlLabelWidget.config(foreground=clr)
 
-        # if we are enabling this control, then make sure that the current
-        # hardware setting matches what the control currently shows
-        if self.enabled:
-            self.applySetting()
+        # always make sure that the current hardware setting matches what the control currently shows
+        self.applySetting()
 
     def updateDisplays(self, displayWidgets, controlWidget=None):
 
@@ -345,17 +345,17 @@ class Erl2Control():
             for w in displayWidgets:
 
                 # update the display
+                #if self.controlType in ['heater','chiller']:
+                #    print (f"{self.__class__.__name__}: Debug: updateDisplays({self.controlType}): setting display image to [{self.displayImages[int(self.setting)]}]")
                 w.config(image=self.erl2context['img'][self.displayImages[int(self.setting)]])
 
             # also change the image on this control's button widget
             if controlWidget is not None:
 
-                # for a button to diplay the 'on' image, two things are required:
-                # the control must be set to 'on', and the button must be enabled
-                imageInd = self.enabled * self.setting
-
                 # update the button
-                controlWidget.config(image=self.erl2context['img'][self.buttonImages[int(imageInd)]])
+                #if self.controlType in ['heater','chiller']:
+                #    print (f"{self.__class__.__name__}: Debug: updateDisplays({self.controlType}): setting button image to [{self.buttonImages[int(self.setting)]}]")
+                controlWidget.config(image=self.erl2context['img'][self.buttonImages[int(self.setting)]])
 
         # for an entry, format the setting and update all (text) display widgets
         elif self.__widgetType == 'entry':
@@ -378,6 +378,8 @@ class Erl2Control():
         assert(self.__widgetType == 'button')
 
         # the new setting is the inverse of the current setting
+        #if self.controlType in ['heater','chiller']:
+        #    print (f"{self.__class__.__name__}: Debug: toggleSetting({self.controlType}).setControl({1. - self.setting})")
         self.setControl(1. - self.setting)
 
         # apply the new setting
@@ -387,6 +389,8 @@ class Erl2Control():
 
         # for a button, the new setting (if changing) was already set by toggleSetting
         if self.__widgetType == 'button':
+            #if self.controlType in ['heater','chiller']:
+            #    print (f"{self.__class__.__name__}: Debug: applySetting({self.controlType}).setControl({self.setting})")
             self.setControl(self.setting)
 
         # for an entry, the new setting is whatever was entered
@@ -403,7 +407,8 @@ class Erl2Control():
 
     def setControl(self, newSetting=0., force=False):
 
-        #print (f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}], force [{force}], while range is {self.validRange}")
+        #if self.controlType in ['heater','chiller']:
+        #    print (f"{__class__.__name__}: Debug: setControl({newSetting}) called for [{self.controlType}], force [{force}], while range is {self.validRange}")
 
         # allow changes to be 'forced' even if setting looks the same, but don't log it
         logThis = True
@@ -482,6 +487,8 @@ class Erl2Control():
 
     def resetControl(self):
 
+        #if self.controlType in ['heater','chiller']:
+        #    print (f"{self.__class__.__name__}: Debug: resetControl({self.controlType}).setControl({self.__valueWhenReset})")
         self.setControl(newSetting=self.__valueWhenReset, force=True)
 
     # placeholder method -- must be overridden in child classes

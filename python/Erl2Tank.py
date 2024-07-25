@@ -542,6 +542,7 @@ class Erl2Tank:
             sensors={'temperature':self.erl2context['sensors']['temperature']},
             toggles={'to.raise':self.erl2context['controls']['heater'],
                      'to.lower':self.erl2context['controls']['chiller']},
+            thisTabControls=['to.raise','to.lower'],
             erl2context=self.erl2context)
 
         # the logic that implements the overarching pH subsystem (and its controls)
@@ -563,6 +564,7 @@ class Erl2Tank:
             sensors={'pH':self.erl2context['sensors']['pH']},
             MFCs={'mfc.air':self.erl2context['controls']['mfc.air'],
                   'mfc.co2':self.erl2context['controls']['mfc.co2']},
+            thisTabControls=['mfc.air','mfc.co2'],
             erl2context=self.erl2context)
 
         # the logic that implements the overarching DO subsystem (and its controls)
@@ -584,6 +586,7 @@ class Erl2Tank:
             sensors={'DO':self.erl2context['sensors']['DO']},
             MFCs={'mfc.air':self.erl2context['controls']['mfc.air'],
                   'mfc.n2':self.erl2context['controls']['mfc.n2']},
+            thisTabControls=['mfc.n2'],
             erl2context=self.erl2context)
 
         # the logic that enables networking, if enabled

@@ -3,6 +3,7 @@ from datetime import timezone as tz
 from math import isnan
 from re import sub
 from simple_pid import PID
+from sys import version_info
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
@@ -15,8 +16,9 @@ from Erl2State import Erl2State
 from Erl2VirtualTemp import Erl2VirtualTemp
 
 # control constants
-LOCAL=0
-CONTROLLER=1
+OFFLINE=0
+LOCAL=1
+CONTROLLER=2
 
 # mode constants
 MANUAL=0
@@ -46,6 +48,7 @@ class Erl2SubSystem():
                  sensors={},
                  toggles={},
                  MFCs={},
+                 thisTabControls=[],
                  erl2context={}):
 
         self.subSystemType = subSystemType
@@ -69,11 +72,20 @@ class Erl2SubSystem():
         self.__sensors = sensors
         self.__toggles = toggles
         self.__MFCs = MFCs
+        self.__thisTabControls = thisTabControls
         self.__controls = {**toggles, **MFCs}
         self.__PIDs = {}
         self.__pidParams = {}
         self.__pidLastUpdated = {}
         self.erl2context = erl2context
+
+        # this module requires Python 3.7 or higher
+        # (the release when dictionaries are guaranteed to be ordered)
+        try:
+            assert version_info > (3,7)
+        except:
+            print (f"{self.__class__.__name__}: Error: Python 3.7 or higher is required for this system")
+            raise
 
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
@@ -156,7 +168,8 @@ class Erl2SubSystem():
         self.__setpointLastChanged = None
 
         # a list of choices for the control radio buttons
-        self.__ctrlDict = {LOCAL:'Local',
+        self.__ctrlDict = {OFFLINE:'Offline',
+                           LOCAL:'Local',
                            CONTROLLER:'Controller'}
 
         # during initialization, the default is local control
@@ -170,34 +183,37 @@ class Erl2SubSystem():
         # add radio buttons to toggle this subsystem's control mode
         if 'parent' in self.__ctrlRadioLoc:
             for value , text in self.__ctrlDict.items():
-                r = tk.Radiobutton(self.__ctrlRadioLoc['parent'],
-                                   indicatoron=0,
-                                   image=self.erl2context['img'][self.radioImages[0]],
-                                   selectimage=self.erl2context['img'][self.radioImages[1]],
-                                   compound='left',
-                                   font='Arial 16',
-                                   bd=0,
-                                   highlightthickness=0,
-                                   activebackground='#DBDBDB',
-                                   highlightcolor='#DBDBDB',
-                                   highlightbackground='#DBDBDB',
-                                   #bg='#DBDBDB',
-                                   selectcolor='#DBDBDB',
-                                   variable=self.__ctrlVar,
-                                   value=value,
-                                   text=' '+text,
-                                   command=self.applyMode
-                                   )
-                r.grid(row=ctrlRadioLoc['row']+value,column=0,ipadx=2,ipady=2,sticky='w')
 
-                self.__ctrlRadioWidgets.append(r)
+                # don't explicitly draw an Offline radio button (but adjust array indices by -1 later!)
+                if value != OFFLINE:
+                    r = tk.Radiobutton(self.__ctrlRadioLoc['parent'],
+                                       indicatoron=0,
+                                       image=self.erl2context['img'][self.radioImages[0]],
+                                       selectimage=self.erl2context['img'][self.radioImages[1]],
+                                       compound='left',
+                                       font='Arial 16',
+                                       bd=0,
+                                       highlightthickness=0,
+                                       activebackground='#DBDBDB',
+                                       highlightcolor='#DBDBDB',
+                                       highlightbackground='#DBDBDB',
+                                       #bg='#DBDBDB',
+                                       selectcolor='#DBDBDB',
+                                       variable=self.__ctrlVar,
+                                       value=value,
+                                       text=' '+text,
+                                       command=self.applyMode
+                                       )
+                    r.grid(row=ctrlRadioLoc['row']+value,column=0,ipadx=2,ipady=2,sticky='w')
+
+                    self.__ctrlRadioWidgets.append(r)
 
         # a list of choices for the mode radio buttons
         self.__modeDict = {MANUAL:'Manual',
                            AUTO_STATIC:'Auto Static',
                            AUTO_DYNAMIC:'Auto Dynamic'}
 
-        # during initialization, the default is auto static mode
+        # during initialization, the default is determined by the erl2.conf file settings / defaults
         # (but see if there's a different setting in the system saved state)
         self.__modeVar.set(self.erl2context['state'].get(self.subSystemType,'mode',self.__modeDefault))
 
@@ -449,7 +465,7 @@ class Erl2SubSystem():
         ctrlVar = self.__ctrlVar.get()
         modeVar = self.__modeVar.get()
 
-        # if we've just re-clicked the already-active mode, disregard
+        # if we still have the already-active mode, disregard
         if (    self.__lastCtrlVar is not None and self.__lastCtrlVar == ctrlVar
             and self.__lastModeVar is not None and self.__lastModeVar == modeVar):
             return
@@ -459,9 +475,10 @@ class Erl2SubSystem():
             self.reloadParentProgram(calledFromApply=True)
 
         # enable/disable this subsystem's associated controls as appropriate
-        for c in self.__controls.values():
-            #print (f"{__class__.__name__}: Debug: applyMode({self.subSystemType}) calling setActive({int(crtlVar==LOCAL and modeVar==MANUAL)}) for [{c.controlType}]")
-            c.setActive(int(ctrlVar==LOCAL and modeVar==MANUAL))
+        for c in self.__thisTabControls:
+            #if self.__controls[c].controlType in ['heater','chiller']:
+            #    print (f"{__class__.__name__}: Debug: applyMode({self.subSystemType}) calling setActive({int(ctrlVar==LOCAL and modeVar==MANUAL)}) for [{self.__controls[c].controlType}]")
+            self.__controls[c].setActive(int(ctrlVar in [OFFLINE,LOCAL] and modeVar==MANUAL))
 
         # enable/disable the static setpoint entry field as appropriate
         if self.staticSetpointEntry is not None:
@@ -485,8 +502,10 @@ class Erl2SubSystem():
                 w.setActive(0)
 
         # for any kind of mode change (either local or controller), reset all hardware controls
-        for c in self.__controls.values():
-            c.resetControl()
+        # (exception: don't reset controls if in controller/manual mode)
+        if ctrlVar != CONTROLLER or modeVar != MANUAL:
+            for c in self.__controls.values():
+                c.resetControl()
 
         # make a note of this change in the logs (unless this is system startup)
         if self.log is not None and self.__lastModeVar is not None:
@@ -497,8 +516,12 @@ class Erl2SubSystem():
         self.__lastModeVar = modeVar
         self.__modeChanged = True
 
+        # don't save ctrl or mode values if in Offline mode
+        if ctrlVar == OFFLINE:
+            pass
+
         # if in controller mode, just save the ctrlVar to the regular state file
-        if ctrlVar == CONTROLLER:
+        elif ctrlVar == CONTROLLER:
             self.erl2context['state'].set([(self.subSystemType,'ctrl',ctrlVar)])
 
         # if in local mode, save ctrlVar and modeVar both
@@ -555,21 +578,51 @@ class Erl2SubSystem():
         # try to get the sensor's current value
         currVal, currTime, currOnline = self.getCurrentValue()
 
-        # if current value is missing or invalid
-        if (currVal is None):
+        # if current value is missing or sensor is considered offline
+        if (currVal is None or not currOnline):
 
-            # change to Manual mode if not already there
-            if modeVar!=MANUAL:
+            # change to Offline/Manual mode if not already there
+            if ctrlVar!=OFFLINE or modeVar!=MANUAL:
 
-                # change to Manual mode and trigger a data record to the log
+                # change to Offline/Manual mode
+                self.__ctrlVar.set(OFFLINE)
                 self.__modeVar.set(MANUAL)
+                ctrlVar=OFFLINE
                 modeVar=MANUAL
+
+                # trigger a data record to the log
                 writeNow = True
 
                 # apply the new mode, but make absolutely certain this isn't an infinite loop
                 if loopCount <= 10:
                     #print (f"{__class__.__name__}: Debug: monitorSystem() recursion level [{loopCount}]")
                     self.applyMode(loopCount+1)
+
+        # contrariwise, if we are currently in offline mode but the sensor is no longer offline
+        elif ctrlVar==OFFLINE:
+
+            # call up the last known ctrl setting and return to it
+            lastCtrlVar = self.erl2context['state'].get(self.subSystemType,'ctrl',LOCAL)
+            self.__ctrlVar.set(lastCtrlVar)
+            ctrlVar=lastCtrlVar
+
+            # reload parent program if going back to controller mode
+            if lastCtrlVar==CONTROLLER:
+                self.reloadParentProgram(calledFromApply=True)
+
+            # otherwise, return to last known local mode
+            else:
+                lastModeVar = self.erl2context['state'].get(self.subSystemType,'mode',self.__modeDefault)
+                self.__modeVar.set(lastModeVar)
+                modeVar=lastModeVar
+
+            # trigger a data record to the log
+            writeNow = True
+
+            # apply the new mode, but make absolutely certain this isn't an infinite loop
+            if loopCount <= 10:
+                #print (f"{__class__.__name__}: Debug: monitorSystem() recursion level [{loopCount}]")
+                self.applyMode(loopCount+1)
 
         # no logic to carry out if in Manual mode
         if modeVar==MANUAL:
@@ -694,11 +747,22 @@ class Erl2SubSystem():
                         # remember the last time we updated the PID
                         self.__pidLastUpdated[mfc] = currTime
 
-        # enable/disable controller radio button depending on whether a parent program is available
-        if self.hasParentProgram():
-            self.__ctrlRadioWidgets[CONTROLLER].config(state='normal')
+        # if offline, then all control buttons are disabled other than Offline
+        if ctrlVar==OFFLINE:
+            #self.__ctrlRadioWidgets[OFFLINE].config(state='normal')
+            self.__ctrlRadioWidgets[LOCAL-1].config(state='disabled')
+            self.__ctrlRadioWidgets[CONTROLLER-1].config(state='disabled')
+
+        # otherwise disable Offline and enable Local
         else:
-            self.__ctrlRadioWidgets[CONTROLLER].config(state='disabled')
+            #self.__ctrlRadioWidgets[OFFLINE].config(state='disabled')
+            self.__ctrlRadioWidgets[LOCAL-1].config(state='normal')
+
+            # and Controller button is enabled iff there is a parent program
+            if self.hasParentProgram():
+                self.__ctrlRadioWidgets[CONTROLLER-1].config(state='normal')
+            else:
+                self.__ctrlRadioWidgets[CONTROLLER-1].config(state='disabled')
 
         # if this is controller mode, then all mode buttons should be disabled
         if ctrlVar==CONTROLLER:
@@ -718,13 +782,13 @@ class Erl2SubSystem():
                 self.__modeRadioWidgets[AUTO_STATIC].config(state='disabled')
                 self.__modeRadioWidgets[AUTO_DYNAMIC].config(state='disabled')
 
-        # also, disable/enable the offset entry field depending on controller mode
-        if ctrlVar==CONTROLLER: actv = 0
-        else:                   actv = 1
-        for s in self.__sensors.values():
-            if hasattr(s, 'allEntries'):
-                for e in s.allEntries:
-                    e.setActive(actv)
+        ## also, disable/enable the offset entry field depending on controller mode
+        #if ctrlVar==CONTROLLER: actv = 0
+        #else:                   actv = 1
+        #for s in self.__sensors.values():
+        #    if hasattr(s, 'allEntries'):
+        #        for e in s.allEntries:
+        #            e.setActive(actv)
 
         # if the mode has changed, always trigger a data record
         if self.__modeChanged:
@@ -788,8 +852,8 @@ class Erl2SubSystem():
 
     def changeEntry(self, param, index=None):
 
-        # if this gets called in CONTROLLER mode, something is awry
-        if self.__ctrlVar.get() == CONTROLLER:
+        # if this gets called in OFFLINE or CONTROLLER mode, something is awry
+        if self.__ctrlVar.get() in [OFFLINE,CONTROLLER]:
             raise SystemError(f"{self.__class__.__name__}: Error: changeEntry() called while in CONTROLLER mode")
 
         # dynamically determine the names of attributes we want based on param string
@@ -883,10 +947,44 @@ class Erl2SubSystem():
         #       f"setting ctrlVar to [{CONTROLLER}]")
         self.__ctrlVar.set(CONTROLLER)
 
+        # saving this mode allows the Controller to instruct the tank to go into Controller
+        # mode, now or later, even if the sensor is Offline and the subSystem was in Local mode
+        self.erl2context['state'].set([(self.subSystemType,'ctrl',CONTROLLER)])
+
         # set mode
         #print (f"{self.__class__.__name__}: Debug: reloadParentProgram({self.subSystemType}): "
         #       f"setting modeVar to [{self.erl2context['parentState'].get(self.subSystemType, 'mode', None)}]")
-        self.__modeVar.set(self.erl2context['parentState'].get(self.subSystemType, 'mode', None))
+        newMode = self.erl2context['parentState'].get(self.subSystemType, 'mode', None)
+        self.__modeVar.set(newMode)
+
+        # if the new mode is manual, set the toggle and/or manual controls too
+        if newMode == MANUAL:
+
+            # toggle controls (Heater, Chiller)
+            if self.erl2context['parentState'].isName(self.subSystemType, 'toggle'):
+
+                # the controls, and the values to apply
+                toggleKeys = list(self.__toggles.keys())
+                toggleSets = self.erl2context['parentState'].get(self.subSystemType, 'toggle', None)
+                assert(len(toggleKeys) == len(toggleSets))
+
+                # one control value for each toggle control
+                for ind in range(len(toggleKeys)):
+                    #print (f"{self.__class__.__name__}: Debug: reloadParentProgram({self.subSystemType}): "
+                    #       f"setting [{self.__toggles[toggleKeys[ind]].controlType}] to [{toggleSets[ind]}]")
+                    self.__toggles[toggleKeys[ind]].setControl(toggleSets[ind], force=True)
+
+            # manual controls (MFCs)
+            if self.erl2context['parentState'].isName(self.subSystemType, 'manual'):
+
+                # the controls, and the values to apply
+                manualKeys = list(self.__MFCs.keys())
+                manualSets = self.erl2context['parentState'].get(self.subSystemType, 'manual', None)
+                assert(len(manualKeys) == len(manualSets))
+
+                # one control value for each manual control
+                for ind in range(len(manualKeys)):
+                    self.__MFCs[manualKeys[ind]].setControl(manualSets[ind], force=True)
 
         # set hysteresis, if applicable
         if self.__logic == 'hysteresis' and self.hysteresisEntry is not None:
@@ -916,7 +1014,7 @@ class Erl2SubSystem():
             self.dynamicSetpointsEntry[ind].setValue(newVals[ind])
             self.dynamicSetpointsFloat[ind] = self.dynamicSetpointsEntry[ind].floatValue
 
-        # mode has changed, so applyMode (until this method was called from applyMode!)
+        # mode has changed, so applyMode (unless this method was called from applyMode!)
         if not calledFromApply:
             self.applyMode()
 

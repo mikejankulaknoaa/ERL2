@@ -152,17 +152,22 @@ class Erl2SerialTemp(Erl2Sensor):
         # tell the serial device to take a measurement
         if self.__conn is not None:
 
-            # reset buffer, then ask for a temperature reading
-            self.__conn.reset_input_buffer()
-            self.__conn.write(bytes('r\r','utf8'))
-            ans = self.__conn.read(7)
-            reply['temp.degC'] = float(re_split(b'[\r,]', ans)[0])
+            try:
 
-            # reset buffer, then ask for status message that includes voltage
-            self.__conn.reset_input_buffer()
-            self.__conn.write(bytes('status\r','utf8'))
-            ans = self.__conn.read(18)
-            reply['volts'] = float(re_split(b'[\r,]', ans)[2])
+                # reset buffer, then ask for a temperature reading
+                self.__conn.reset_input_buffer()
+                self.__conn.write(bytes('r\r','utf8'))
+                ans = self.__conn.read(7)
+                reply['temp.degC'] = float(re_split(b'[\r,]', ans)[0])
+
+                # reset buffer, then ask for status message that includes voltage
+                self.__conn.reset_input_buffer()
+                self.__conn.write(bytes('status\r','utf8'))
+                ans = self.__conn.read(18)
+                reply['volts'] = float(re_split(b'[\r,]', ans)[2])
+
+            except:
+                pass
 
         q.put(reply)
 

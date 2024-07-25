@@ -962,7 +962,7 @@ class Erl2Network():
                     rq.outb = pickle.dumps(self.erl2context['state'])
 
                 # GETLOG: answer with an export of logs from Erl2Log (pickled)
-                elif re.match(b"^GETLOG", rq.inb):
+                elif re.match(b"^GETLOG", rq.inb, flags=re.DOTALL):
 
                     # unpack second parameter (most recent timestamp already sent)
                     mat = re.search(b'^GETLOG\|(.*)$', rq.inb)
@@ -978,6 +978,7 @@ class Erl2Network():
                         ts = dt.strptime(ts.decode(), DTFMT).replace(tzinfo=tz.utc)
 
                     #print (f"{self.__class__.__name__}: manageQueues: Debug: unpacked request [{rq.inb}] from [{rq.addr}] to give timestamp [{ts}]")
+                    #print (f"{self.__class__.__name__}: manageQueues: Debug: sending reply [{b'GETLOG' + b'|' + pickle.dumps(self.__systemLog.exportLog(ts))}]")
                     rq.outb = pickle.dumps(self.__systemLog.exportLog(ts))
 
                 # HANGUP!: terminate listener and let it start up naturally again later
@@ -991,12 +992,12 @@ class Erl2Network():
                     rq.outb = 'OKAY!'.encode()
 
                 # SETSTATE: tell child tank what settings the parent wants it to run
-                elif re.match(b"^SETSTATE", rq.inb):
+                elif re.match(b"^SETSTATE", rq.inb, flags=re.DOTALL):
 
                     # unpack second parameter (tank programming instructions)
                     mat = re.search(b'^SETSTATE\|(.*)$', rq.inb, flags=re.DOTALL)
                     if not mat:
-                        print (f"{self.__class__.__name__}: manageQueues: Debug: received command [{rq.inb}]")
+                        #print (f"{self.__class__.__name__}: manageQueues: Debug: received command [{rq.inb}]")
                         raise RuntimeError(f"Erl2Network|manageQueues: Error: badly formatted SETSTATE request")
 
                     # the mat.groups() list should just be one item, the Erl2State parameter
@@ -1033,6 +1034,8 @@ class Erl2Network():
                                         self.erl2context['subsystems'][sys].reloadParentProgram()
 
                                 # reply with new/augmented parent-side instruction set
+                                #print (f"{self.__class__.__name__}: manageQueues: Debug: sending reply " +
+                                #       f"[{b'SETSTATE' + b'|' + pickle.dumps(self.erl2context['parentState'])}]")
                                 rq.outb = pickle.dumps(self.erl2context['parentState'])
 
                         except (pickle.UnpicklingError, EOFError) as e:
@@ -1120,7 +1123,7 @@ class Erl2Network():
                             # comms are out of sync, so hang up the listening tank and try again later
                             self.sendCommand(mac, b"HANGUP!")
 
-                    elif rs.command in [b"GETSTATE", b"SETSTATE"]:
+                    elif re.match(b"^[GS]ETSTATE", rs.command, flags=re.DOTALL):
 
                         # there could be unpickling problems
                         try:
@@ -1140,7 +1143,7 @@ class Erl2Network():
 
                                 # depending on the command, this could apply to different dicts
                                 dictRef = self.childrenStates
-                                if rs.command == b"SETSTATE":
+                                if re.match(b"^SETSTATE", rs.command, flags=re.DOTALL):
                                     dictRef = self.parentStates
 
                                 # if the Erl2State instance hasn't been created yet
@@ -1162,7 +1165,7 @@ class Erl2Network():
                             # comms are out of sync, so hang up the listening tank and try again later
                             self.sendCommand(mac, b"HANGUP!")
 
-                    elif re.match(b'^GETLOG|', rs.command):
+                    elif re.match(b'^GETLOG|', rs.command, flags=re.DOTALL):
 
                         # there could be unpickling problems
                         try:
@@ -1430,7 +1433,7 @@ class Erl2Network():
 
                     # if the requested location is already in the list
                     if loc == wDef['loc']:
-                        print (f"{self.__class__.__name__}: createWidgets({widgetType}): Debug: found matching location")
+                        #print (f"{self.__class__.__name__}: createWidgets({widgetType}): Debug: found matching location")
                         break
 
             # for/else is executed only if we didn't 'break'

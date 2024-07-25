@@ -113,7 +113,7 @@ class Erl2Readout():
         if lastActive is None or currentTime.timestamp() - lastActive.timestamp() > self.__lapseTime:
             self.__online = False
 
-        # add a widget to indicate online/offline depending on time since last update
+        # add a widget to indicate network online/offline status depending on time since last update
         c1 += 1
         l = ttk.Label(f1, image=self.erl2context['img'][self.__onlineImages[self.__online]]
             #, relief='solid', borderwidth=1
@@ -327,8 +327,6 @@ class Erl2Readout():
 
                     # then the associated controls
                     for ctrl in PLOTS[sub]:
-
-                        # use a dict union (python 3.9 or higher)
                         dSpecs.append({'yName':ctrl, 'yParameter':f"c.{ctrl}.avg"})
 
                     # now create the actual plot
@@ -398,7 +396,7 @@ class Erl2Readout():
 
                 # figure out what the text description of the mode should be
                 if ctrl is not None and mode is not None:
-                    modeText = ['Local','Controller'][ctrl] + '/' + ['Manual','Static','Dynamic'][mode]
+                    modeText = ['Offline','Local','Controller'][ctrl] + '/' + ['Manual','Static','Dynamic'][mode]
 
                 # update the displays
                 self.__displayWidgets[sub]['sensor'].config(text=valueText)
