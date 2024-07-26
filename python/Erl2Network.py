@@ -34,6 +34,71 @@ DTFMT = '%Y-%m-%d %H:%M:%S.%f %Z'
 # counter for tracking requests + replies
 RQID = 0
 
+def subthreadReceiveMessage(sock, firstByte=None):
+
+    expected = None
+    replyString = b''
+    data = b''
+    firstLoop = True
+    numLoops = 0
+
+    # make sure firstByte is consistent with our design
+    assert(firstByte is None or re.match(b'^[0-9]$', firstByte))
+
+    # loop for multiple parts of potentially long message
+    while True:
+
+        # calling procedure might already have read the first part of the message
+        if firstLoop and firstByte is not None:
+            #print (f"Erl2Network|subthreadReceiveMessage: Debug: loop [{numLoops}], given firstByte [{firstByte}]")
+            data = firstByte
+
+        # otherwise, wait for more characters
+        else:
+
+            # let's try to finesse how many bytes we ask for: go one byte at a time until we know how long the message is
+            gulp = 1
+            if expected is not None:
+                if replyString is None:
+                    gulp = min(1024, expected)
+                else:
+                    gulp = min(1024, expected-len(replyString))
+
+            # ask for more bytes
+            #print (f"Erl2Network|subthreadReceiveMessage: Debug: loop [{numLoops}], asking for [{gulp}] bytes")
+            data = sock.recv(gulp)
+
+        # pick out expected reply length if we don't know it yet
+        if expected is None:
+
+            # beginning of message should be numbers, ending in |
+            if re.match(b'^[0-9]$', data):
+                replyString += data
+            elif data == b'|' and replyString is not None:
+                expected = int(replyString)
+                replyString = b''
+                #print (f"Erl2Network|subthreadReceiveMessage: Debug: expecting [{expected}]")
+            else:
+                raise RuntimeError('Erl2Network|subthreadReceiveMessage: error: badly formatted reply [{replyString}][{data}]')
+
+        # add any new bytes to the end of the rest of the reply
+        else:
+            replyString += data
+            #print (f"Erl2Network|subthreadReceiveMessage: Debug: expected [{expected}], SO FAR GOT [{len(replyString)}]")
+
+        # check if we've received everything we expected to
+        if expected is not None and len(replyString) >= expected:
+            #print (f"Erl2Network|subthreadReceiveMessage: Debug: expected [{expected}], finished with [{len(replyString)}]")
+            break
+
+        # reset loop variable
+        firstLoop = False
+        numLoops += 1
+
+    # return the body of the message we received
+    #print (f"Erl2Network|subthreadReceiveMessage: Debug: returning replyString [{replyString}]")
+    return replyString
+
 def subthreadSendCommand(host,
                          command,
                          commandResultsQ=None,
@@ -55,38 +120,19 @@ def subthreadSendCommand(host,
                 # once socket is successfully connected, lengthen timeout to 10s
                 s.settimeout(10)
 
+                # format answer with length of reply
+                sendString = str(len(command)).encode() + b"|" + command
+
+                #print (f"Erl2Network|subthreadSendCommand: Debug: sending message [{sendString}]")
+
                 # send whatever command we've been told to send
-                s.sendall(command)
+                s.sendall(sendString)
 
-                # loop for multiple parts of potentially long reply
-                while True:
+                # get the reply, which might be longer than 1024 characters
+                replyString = subthreadReceiveMessage(s)
 
-                    # wait for the next 1024 characters
-                    data = s.recv(1024)
-
-                    # pick out expected reply length if we don't know it yet
-                    if expected is None:
-
-                        # first part of reply is going to be length|payload (variable type = bytes)
-                        mat = re.search(b'^([0-9]+)\|(.*)$', data, flags=re.DOTALL)
-                        if not mat:
-                            raise RuntimeError('Erl2Network|subthreadSendCommand: error: badly formatted reply')
-
-                        # the mat.groups() list is composed of <expected reply length>, <first part of reply>
-                        expected = int(mat.groups()[0])
-                        replyString = mat.groups()[1]
-                        #print (f"Erl2Network|subthreadSendCommand: Debug: expecting [{expected}], got [{len(replyString)}]")
-
-                    # add any new bytes to the end of the rest of the reply
-                    else:
-                        replyString += data
-                        #print (f"Erl2Network|subthreadSendCommand: Debug: expected [{expected}], TOPPING UP TO [{len(replyString)}]")
-
-                    # check if we've received everything we expected to
-                    if len(replyString) >= expected:
-                        #print (f"Erl2Network|subthreadSendCommand: Debug: expected [{expected}], finished with [{len(replyString)}]")
-                        replyObj = SimpleNamespace(addr=host, command=command, replyTime=dt.now(tz=tz.utc), replyString=replyString)
-                        break
+                # construct a reply Object to leave in the command results queue
+                replyObj = SimpleNamespace(addr=host, command=command, replyTime=dt.now(tz=tz.utc), replyString=replyString)
 
             else:
                 pass
@@ -208,13 +254,17 @@ def subthreadListen(
                     # if this socket was registered with a bitmask including READ events
                     if mask & selectors.EVENT_READ:
 
-                        # receive data from the socket (assumption: requests will never exceed 1024 bytes)
-                        recv_data = sock.recv(1024)  # Should be ready to read
+                        # wait for the first incoming byte
+                        firstByte = sock.recv(1)  # Should be ready to read
 
                         # something was received
-                        if recv_data:
+                        if firstByte:
 
-                            #print (f"Erl2Network|subthreadListen: Debug: received data {recv_data}")
+                            #print (f"Erl2Network|subthreadListen: Debug: received byte [{firstByte}], asking for more")
+
+                            # now quickly grab the rest of the incoming message
+                            recv_data = subthreadReceiveMessage(sock, firstByte)
+
                             data.inb = recv_data
 
                             # create a request object, add it to the incoming queue
@@ -239,16 +289,16 @@ def subthreadListen(
                             # wait up to 10s for a reply
                             countdown=10.
                             while countdown>0.:
-                                 if not outgoingQ.empty():
-                                     # format answer with length of reply
-                                     rq = outgoingQ.get_nowait()
-                                     data.outb = str(len(rq.outb)).encode() + b"|" + rq.outb
-                                     #print (f"Erl2Network|subthreadListen: Debug: read {data.outb} from outgoingQ")
-                                     data.status = b"RECEIVED"
-                                     break
-                                 else:
-                                     countdown -= 0.5
-                                     sleep(0.5)
+                                if not outgoingQ.empty():
+                                    # format answer with length of reply
+                                    rq = outgoingQ.get_nowait()
+                                    data.outb = str(len(rq.outb)).encode() + b"|" + rq.outb
+                                    #print (f"Erl2Network|subthreadListen: Debug: read {data.outb} from outgoingQ")
+                                    data.status = b"RECEIVED"
+                                    break
+                                else:
+                                    countdown -= 0.5
+                                    sleep(0.5)
 
                         # if we have a reply
                         if data.outb:
@@ -1676,7 +1726,7 @@ class Erl2Network():
         dummyState.set(valueList)
 
         # send these settings to the child tank!
-        print (f"{self.__class__.__name__}: sendSettings: Debug: sending command [{b'SETSTATE' + b'|' + pickle.dumps(dummyState)}]")
+        #print (f"{self.__class__.__name__}: sendSettings: Debug: sending command [{b'SETSTATE' + b'|' + pickle.dumps(dummyState)}]")
         self.sendCommand(mac, b"SETSTATE" + b"|" + pickle.dumps(dummyState))
 
 def main():
