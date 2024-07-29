@@ -237,9 +237,10 @@ class Erl2Controller():
 
     def updateDisplays(self):
 
-        # display geometry (two columns if plots aren't shown)
+        # display geometry (two columns if plots aren't shown, or too many tanks)
         numCols = 1
-        if not self.erl2context['state'].get('system','plots',1):
+        if (   not self.erl2context['state'].get('system','plots',1)
+            or len(self.erl2context['network'].sortedMacs) > 4):
             numCols = 2
         numRows = ceil(len(self.erl2context['network'].sortedMacs)/numCols)
 

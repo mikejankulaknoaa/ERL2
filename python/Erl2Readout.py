@@ -177,7 +177,7 @@ class Erl2Readout():
                 elif sub == 'pH':
                     sensorLabel = 'pH (Total Scale)'
                 elif sub == 'DO':
-                    sensorLabel = u'DO (\u00B5mol  L\u207B\u00B9)'
+                    sensorLabel = u'DO (\u00B5mol  L\u207B\u00B9)    '
                     if self.erl2context['conf']['DO']['displayParameter'] == 'mgL':
                         sensorLabel = u'DO (mg L\u207B\u00B9)'
 
@@ -378,7 +378,13 @@ class Erl2Readout():
                 # these pertain to the subsystem not the sensor
                 ctrl = self.__deviceState.get(sub,'ctrl',None)
                 mode = self.__deviceState.get(sub,'mode',None)
+                actualCtrl = self.__deviceState.get(sub,'ctrl.actual',None)
+                actualMode = self.__deviceState.get(sub,'mode.actual',None)
                 activeSetpoint = self.__deviceState.get(sub,'activeSetpoint',None)
+
+                # if the tank provides actual control/mode info, use it
+                if actualCtrl is not None: ctrl = actualCtrl
+                if actualMode is not None: mode = actualMode
 
                 #print (f"{self.__class__.__name__}: Debug: refreshDisplays() online [{online}][{type(online)}],"
                 #       f"value [{value}][{type(value)}], displayDecimals [{displayDecimals}][{type(displayDecimals)}]")

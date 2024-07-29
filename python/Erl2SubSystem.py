@@ -461,7 +461,11 @@ class Erl2SubSystem():
     # detect a change in mode, and enable/disable widgets according to the current mode
     def applyMode(self, loopCount=0):
 
-        # read the current mode of the system
+        # first of all: if there's been any change and we're now in controller mode, reapply parent programming
+        if self.__ctrlVar.get() == CONTROLLER:
+            self.reloadParentProgram(calledFromApply=True)
+
+        # read the current ctrl+mode of the system
         ctrlVar = self.__ctrlVar.get()
         modeVar = self.__modeVar.get()
 
@@ -469,10 +473,6 @@ class Erl2SubSystem():
         if (    self.__lastCtrlVar is not None and self.__lastCtrlVar == ctrlVar
             and self.__lastModeVar is not None and self.__lastModeVar == modeVar):
             return
-
-        # if there's been any change and we're now in controller mode, reapply parent programming
-        if ctrlVar == CONTROLLER:
-            self.reloadParentProgram(calledFromApply=True)
 
         # enable/disable this subsystem's associated controls as appropriate
         for c in self.__thisTabControls:
@@ -528,6 +528,10 @@ class Erl2SubSystem():
         else:
             self.erl2context['state'].set([(self.subSystemType,'ctrl',ctrlVar),
                                            (self.subSystemType,'mode',modeVar)])
+
+        # save actual ctrl/mode settings so that controller will see them
+        self.erl2context['state'].set([(self.subSystemType,'ctrl.actual',ctrlVar),
+                                       (self.subSystemType,'mode.actual',modeVar)])
 
         # update display widgets to show current mode and setpoint
         self.updateDisplays()
@@ -947,15 +951,16 @@ class Erl2SubSystem():
         #       f"setting ctrlVar to [{CONTROLLER}]")
         self.__ctrlVar.set(CONTROLLER)
 
+        # set mode
+        newMode = self.erl2context['parentState'].get(self.subSystemType, 'mode', None)
+        #print (f"{self.__class__.__name__}: Debug: reloadParentProgram({self.subSystemType}): setting modeVar to [{newMode}]")
+        self.__modeVar.set(newMode)
+
         # saving this mode allows the Controller to instruct the tank to go into Controller
         # mode, now or later, even if the sensor is Offline and the subSystem was in Local mode
-        self.erl2context['state'].set([(self.subSystemType,'ctrl',CONTROLLER)])
-
-        # set mode
-        #print (f"{self.__class__.__name__}: Debug: reloadParentProgram({self.subSystemType}): "
-        #       f"setting modeVar to [{self.erl2context['parentState'].get(self.subSystemType, 'mode', None)}]")
-        newMode = self.erl2context['parentState'].get(self.subSystemType, 'mode', None)
-        self.__modeVar.set(newMode)
+        self.erl2context['state'].set([(self.subSystemType,'ctrl',CONTROLLER),
+                                       (self.subSystemType,'ctrl.actual',CONTROLLER),
+                                       (self.subSystemType,'mode.actual',newMode)])
 
         # if the new mode is manual, set the toggle and/or manual controls too
         if newMode == MANUAL:
