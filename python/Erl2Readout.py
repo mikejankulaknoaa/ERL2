@@ -9,17 +9,17 @@ from Erl2Log import Erl2Log
 from Erl2Plot import Erl2Plot
 from Erl2Popup import Erl2Popup
 from Erl2State import Erl2State
+from Erl2Useful import SUBSYSTEMS
 
-SUBS=['temperature','pH','DO']
-CTRLS={'temperature':['heater','chiller'],
-       'pH':['mfc.air','mfc.co2'],
-       'DO':['mfc.air','mfc.n2']}
-LBLS={'temperature':['Heater','Chiller'],
-      'pH':['Air',u'CO\u2082'],
-      'DO':['Air',u'N\u2082']}
-PLOTS={'temperature':['heater','chiller'],
-      'pH':['mfc.air','mfc.co2'],
-      'DO':['mfc.air','mfc.n2']}
+SUBSYSTEM_CTRLS = {'temperature':['heater','chiller'],
+                   'pH':['mfc.air','mfc.co2'],
+                   'DO':['mfc.air','mfc.n2']}
+SUBSYSTEM_LBLS = {'temperature':['Heater','Chiller'],
+                  'pH':['Air',u'CO\u2082'],
+                  'DO':['Air',u'N\u2082']}
+SUBSYSTEM_PLOTS = {'temperature':['heater','chiller'],
+                   'pH':['mfc.air','mfc.co2'],
+                   'DO':['mfc.air','mfc.n2']}
 
 class Erl2Readout():
 
@@ -146,7 +146,7 @@ class Erl2Readout():
 
         # loop through list of possible subsystems
         self.__subSystemCount = 0
-        for sub in SUBS:
+        for sub in SUBSYSTEMS:
 
             # is this subSystem present?
             if self.__deviceState.isType(sub):
@@ -236,8 +236,8 @@ class Erl2Readout():
                     self.__displayWidgets[sub]['ctrl.label'] = l
 
                 # each subsystem currently has two controls (hardcoded for now)
-                controlList = CTRLS[sub]
-                labelList = LBLS[sub]
+                controlList = SUBSYSTEM_CTRLS[sub]
+                labelList = SUBSYSTEM_LBLS[sub]
 
                 # build out readouts for each control in the subsystem
                 for ind in range(0,len(controlList)):
@@ -323,10 +323,10 @@ class Erl2Readout():
                     dSpecs = []
 
                     # first, the specs for the sensor plot
-                    dSpecs.append({'yName':sub, 'yParameter':f"s.{sub}.avg"})
+                    dSpecs.append({'yName':sub, 'yParameter':f"s.{sub}"})
 
                     # then the associated controls
-                    for ctrl in PLOTS[sub]:
+                    for ctrl in SUBSYSTEM_PLOTS[sub]:
                         dSpecs.append({'yName':ctrl, 'yParameter':f"c.{ctrl}.avg"})
 
                     # now create the actual plot
@@ -360,7 +360,7 @@ class Erl2Readout():
 
         # loop through list of possible subsystems
         self.__subSystemCount = 0
-        for sub in SUBS:
+        for sub in SUBSYSTEMS:
 
             # is this subSystem present?
             if self.__deviceState.isType(sub):
@@ -410,7 +410,7 @@ class Erl2Readout():
                 self.__displayWidgets[sub]['mode'].config(text=modeText)
 
                 # each subsystem currently has two controls (hardcoded for now)
-                controlList = CTRLS[sub]
+                controlList = SUBSYSTEM_CTRLS[sub]
 
                 # now loop through controls for this subsystem
                 for ind in range(0,len(controlList)):
@@ -494,7 +494,7 @@ class Erl2Readout():
             self.__checkInactivityTime = currentTime
 
             # loop through possible subsystems
-            for sub in SUBS:
+            for sub in SUBSYSTEMS:
 
                 # is this subSystem present?
                 if sub in self.__displayWidgets:

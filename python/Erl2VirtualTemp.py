@@ -48,7 +48,7 @@ class Erl2VirtualTemp(Erl2Sensor):
         local = dt.now()
 
         # how far into the current day are we?
-        day = ((float(local.strftime('%H'))/60. + float(local.strftime('%M')))/60. + float(local.strftime('%S')))/24.
+        day = ((float(local.strftime('%S'))/60. + float(local.strftime('%M')))/60. + float(local.strftime('%H')))/24.
 
         # figure out the external temperature we're equilibrating towards, at this hour
         targetTemp = self.__midpoint - cos( day * 2. * pi ) * self.__range
@@ -66,9 +66,9 @@ class Erl2VirtualTemp(Erl2Sensor):
 
         # sneak a peak at whether the system has the heater or chiller turned on
         try:
-            heaterOn = self.erl2context['conf']['sensors']['heater'].setting
-            chillerOn = self.erl2context['conf']['sensors']['chiller'].setting
-        except:
+            heaterOn = self.erl2context['controls']['heater'].setting
+            chillerOn = self.erl2context['controls']['chiller'].setting
+        except Exception as e:
             heaterOn = 0
             chillerOn = 0
 

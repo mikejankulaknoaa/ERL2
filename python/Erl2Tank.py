@@ -63,7 +63,7 @@ class Erl2Tank:
         self.erl2context['state'].set([('virtualtemp','enabled',self.__virtualTemp)])
 
         # start a system log
-        self.__systemLog = Erl2Log(logType='device', logName='Erl2Tank', erl2context=self.erl2context)
+        self.__systemLog = Erl2Log(logType='system', logName='Erl2Tank', erl2context=self.erl2context)
 
         # keep track of when the next file-writing interval is
         self.__nextFileTime = None

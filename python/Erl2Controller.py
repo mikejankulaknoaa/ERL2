@@ -7,7 +7,6 @@ from tkinter import messagebox as mb
 from Erl2Clock import Erl2Clock
 from Erl2Config import Erl2Config
 from Erl2Image import Erl2Image
-from Erl2Log import Erl2Log
 from Erl2Network import Erl2Network
 from Erl2Popup import Erl2Popup
 from Erl2Readout import Erl2Readout
@@ -42,9 +41,6 @@ class Erl2Controller():
         self.erl2context['img'].addImage('settings','settings-25.png')
         self.erl2context['img'].addImage('about','about-25.png')
         self.erl2context['img'].addImage('edit','edit-25.png')
-
-        # start a system log
-        self.__systemLog = Erl2Log(logType='device', logName='Erl2Controller', erl2context=self.erl2context)
 
         # keep track of when the next file-writing interval is
         self.__nextFileTime = None

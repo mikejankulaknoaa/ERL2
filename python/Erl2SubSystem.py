@@ -13,17 +13,8 @@ from Erl2Log import Erl2Log
 from Erl2Plot import Erl2Plot
 from Erl2MegaindOutput import Erl2MegaindOutput
 from Erl2State import Erl2State
+from Erl2Useful import OFFLINE,LOCAL,CONTROLLER,MANUAL,AUTO_STATIC,AUTO_DYNAMIC
 from Erl2VirtualTemp import Erl2VirtualTemp
-
-# control constants
-OFFLINE=0
-LOCAL=1
-CONTROLLER=2
-
-# mode constants
-MANUAL=0
-AUTO_STATIC=1
-AUTO_DYNAMIC=2
 
 class Erl2SubSystem():
 

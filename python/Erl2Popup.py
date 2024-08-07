@@ -6,21 +6,8 @@ from tkinter import messagebox as mb
 from Erl2Config import Erl2Config
 from Erl2Entry import Erl2Entry
 from Erl2Image import Erl2Image
-from Erl2Log import Erl2Log
 from Erl2State import Erl2State
-
-# mode constants
-MANUAL=0
-AUTO_STATIC=1
-AUTO_DYNAMIC=2
-
-# a list of choices for the mode radio buttons
-MODEDICT = {MANUAL:'Manual',
-            AUTO_STATIC:'Auto Static',
-            AUTO_DYNAMIC:'Auto Dynamic'}
-
-# hardcoded list of subSystems
-SUBSYSTEMS = ['temperature', 'pH', 'DO']
+from Erl2Useful import MANUAL,AUTO_STATIC,AUTO_DYNAMIC,MODEDICT,SUBSYSTEMS
 
 class Erl2Popup(tk.Toplevel):
 
@@ -89,8 +76,8 @@ class Erl2Popup(tk.Toplevel):
 
         # need a tanksettings folder in the main logging directory
         try:
-            # if there's no system-level log, reroute to a debug directory
-            if 'system' not in Erl2Log.logTypes:
+            # if the startup instance isn't defined, reroute to a debug directory
+            if 'startup' not in self.erl2context:
                 self.__dirName = erl2context['conf']['system']['logDir'] + '/zDebug/tanksettings'
             else:
                 self.__dirName = erl2context['conf']['system']['logDir'] + '/tanksettings'

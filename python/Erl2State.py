@@ -15,10 +15,10 @@ from csv import reader,writer
 from datetime import datetime as dt
 from datetime import timezone as tz
 from json import dumps, loads
-from os import makedirs,path,remove,rename
+from os import makedirs,path,remove
 from re import findall, search
 from Erl2Config import Erl2Config
-from Erl2Log import Erl2Log
+from Erl2Useful import moveFile
 
 class Erl2State():
 
@@ -62,8 +62,8 @@ class Erl2State():
         else:
             # state file is based on the location of the main logging directory
             try:
-                # if there's no system-level log, reroute to a debug directory
-                if 'system' not in Erl2Log.logTypes:
+                # if the startup instance isn't defined, reroute to a debug directory
+                if 'startup' not in erl2context:
                     self.__dirName = erl2context['conf']['system']['logDir'] + '/zDebug/state'
                 else:
                     self.__dirName = erl2context['conf']['system']['logDir'] + '/state'
@@ -103,7 +103,7 @@ class Erl2State():
         # if there's an orphaned lock file, and backup exists, restore it
         if sizeLck is not None and sizeBak is not None and sizeBak > 0:
             print (f"{self.__class__.__name__}: Warning: readFromFile({self.__fileName}): found .lck, restoring from .bak file")
-            self.moveFile(self.__fileName + '.bak', self.__fileName)
+            moveFile(self.__fileName + '.bak', self.__fileName)
             remove(self.__fileName + '.lck')
 
         # otherwise if there's no .dat file, just give up
@@ -115,7 +115,7 @@ class Erl2State():
         if sizeDat == 0 and sizeBak is not None and sizeBak > 0:
 
             print (f"{self.__class__.__name__}: Warning: readFromFile({self.__fileName}): .dat file empty, restoring from .bak file")
-            self.moveFile(self.__fileName + '.bak', self.__fileName)
+            moveFile(self.__fileName + '.bak', self.__fileName)
 
         # keep looping until all options exhausted
         keepLooping = True
@@ -154,12 +154,12 @@ class Erl2State():
                         # (anyhow if it's corrupted, then probably the whole thing is unreadable)
 
                         # keep a copy of the corrupted file for posterity
-                        self.moveFile(self.__fileName, self.__fileName + '.err')
+                        moveFile(self.__fileName, self.__fileName + '.err')
 
                         # is there a backup file we can try?
                         if sizeBak is not None and sizeBak > 0:
                             print (f"{self.__class__.__name__}: Warning: readFromFile({self.__fileName}): .dat file corrupted, restoring from .bak file")
-                            self.moveFile(self.__fileName + '.bak', self.__fileName)
+                            moveFile(self.__fileName + '.bak', self.__fileName)
                             sizeDat = sizeBak
                             sizeBak = None
 
@@ -189,7 +189,7 @@ class Erl2State():
 
         # if it exists, rename the old file instead of overwriting
         if path.isfile(self.__fileName) and path.getsize(self.__fileName) > 0:
-            self.moveFile(self.__fileName, self.__fileName + '.bak')
+            moveFile(self.__fileName, self.__fileName + '.bak')
 
         # open the state file for writing
         with open(self.__fileName, 'w', newline='') as f:
@@ -447,18 +447,23 @@ class Erl2State():
 
         return type(self.erl2state) is dict and valueType in self.erl2state
 
-    def isName(self,valueType, valueName):
+    def isName(self,valueType,valueName):
 
         return type(self.erl2state) is dict and valueType in self.erl2state and valueName in self.erl2state[valueType]
 
-    def moveFile(self,fromFile,toFile):
+    def allTypes(self):
 
-        # on windows you must first explicitly remove the file you're overwriting
-        if path.isfile(toFile):
-            remove(toFile)
+        if type(self.erl2state) is not dict:
+            return None
+        else:
+            return list(self.erl2state.keys())
 
-        # now do the move (renaming)
-        rename(fromFile, toFile)
+    def allNames(self,valueType):
+
+        if not self.isType(valueType):
+            return None
+        else:
+            return list(self.erl2state[valueType].keys())
 
 def main():
 
