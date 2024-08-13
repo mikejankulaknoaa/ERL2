@@ -77,7 +77,7 @@ class Erl2Log():
 
         # internal attributes
         self.__logMessages = self.__logDir + '/' + self.__logName + '.txt'
-        self.__logData = self.__logDir + '/' + self.__logName + '.dat'
+        self.__logData = self.__logDir + '/' + self.__logName + '.csv'
 
         # initial directories (create if missing, including parents)
         makedirs(self.__logDir, exist_ok=True)
@@ -467,7 +467,8 @@ class Erl2Log():
                             sync()
 
                     # what is the full filename?
-                    fn = f"{self.__summaryDir}/{fileYYYYMM}/{sys}.csv"
+                    fnMonth = dt.fromtimestamp(thisTS).astimezone(tz.utc).strftime('%Y-%m')
+                    fn = f"{self.__summaryDir}/{fileYYYYMM}/{sys}-{fnMonth}.csv"
 
                     # if it exists, rename the old file instead of overwriting
                     if path.isfile(fn) and path.getsize(fn) > 0:
@@ -586,7 +587,10 @@ class Erl2Log():
         # keep an eye on how much time this is all taking
         endTime = dt.now(tz=tz.utc)
 
-        print (f"{__class__.__name__}: Debug: rewriteSummaries({self.__logHeader}): time elapsed [{endTime.timestamp()-beginTime.timestamp()}]")
+        print (f"{__class__.__name__}: [{endTime}]: Debug: rewriteSummaries({self.__logHeader}, " +
+               f"[{rewriteEarliestTS.astimezone(self.__timezone).strftime(self.__dtFormat)}], " +
+               f"[{rewriteLatestTS.astimezone(self.__timezone).strftime(self.__dtFormat)}]): " +
+               f"time elapsed [{endTime.timestamp()-beginTime.timestamp()}]")
 
     def strToUtcDatetime(self, s):
 

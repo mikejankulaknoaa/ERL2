@@ -129,6 +129,7 @@ class Erl2SubSystem():
         self.dynamicSetpointsFloat = self.erl2context['state'].get(self.subSystemType,'dynamicSetpoints',self.__dynamicDefault)
         if self.__logic == 'hysteresis':
             self.hysteresisFloat = self.erl2context['state'].get(self.subSystemType,'hysteresis',self.__hysteresisDefault)
+            self.__hysteresisMetadata = {}
 
         # remember what radio widgets and entry fields are active for this control
         self.__ctrlRadioWidgets = []
@@ -413,6 +414,7 @@ class Erl2SubSystem():
                                    )
 
         # begin monitoring the system
+        #print (f"{__class__.__name__}: Debug: __init__({self.subSystemType}) calling monitorSystem()")
         self.monitorSystem()
 
     # figure out what the target variable's current value is
@@ -451,6 +453,8 @@ class Erl2SubSystem():
 
     # detect a change in mode, and enable/disable widgets according to the current mode
     def applyMode(self, loopCount=0):
+
+        #print (f"{__class__.__name__}: Debug: applyMode({self.subSystemType}) called, recursion level [{loopCount}]")
 
         # first of all: if there's been any change and we're now in controller mode, reapply parent programming
         if self.__ctrlVar.get() == CONTROLLER:
@@ -529,7 +533,7 @@ class Erl2SubSystem():
 
         # trigger monitorSystem right away to see immediate effects of mode change
         if loopCount <= 10:
-            #print (f"{__class__.__name__}: Debug: applyMode() recursion level [{loopCount}]")
+            #print (f"{__class__.__name__}: Debug: applyMode({self.subSystemType}) calling monitorSystem(), recursion level [{loopCount+1}]")
             self.monitorSystem(loopCount+1)
 
     def updateDisplays(self):
@@ -557,14 +561,16 @@ class Erl2SubSystem():
 
     def monitorSystem(self, loopCount=0):
 
+        #print (f"{__class__.__name__}: Debug: monitorSystem({self.subSystemType}) called, recursion level [{loopCount}]")
+
         # figure out by the end if a new data record should be written
         writeNow = False
 
         # make note of the current timestamp
         currentTime = dt.now(tz=tz.utc)
 
-        # what is the current hour of day?
-        currentHour = int(currentTime.strftime('%H'))
+        # what is the current hour of day? (USE LOCAL TIME!)
+        currentHour = int(currentTime.astimezone(self.__timezone).strftime('%H'))
 
         # read the current mode of the system
         ctrlVar = self.__ctrlVar.get()
@@ -590,7 +596,7 @@ class Erl2SubSystem():
 
                 # apply the new mode, but make absolutely certain this isn't an infinite loop
                 if loopCount <= 10:
-                    #print (f"{__class__.__name__}: Debug: monitorSystem() recursion level [{loopCount}]")
+                    #print (f"{__class__.__name__}: Debug: monitorSystem({self.subSystemType}) calling applyMode() while sensor offline, recursion level [{loopCount+1}]")
                     self.applyMode(loopCount+1)
 
         # contrariwise, if we are currently in offline mode but the sensor is no longer offline
@@ -616,7 +622,7 @@ class Erl2SubSystem():
 
             # apply the new mode, but make absolutely certain this isn't an infinite loop
             if loopCount <= 10:
-                #print (f"{__class__.__name__}: Debug: monitorSystem() recursion level [{loopCount}]")
+                #print (f"{__class__.__name__}: Debug: monitorSystem({self.subSystemType}) calling applyMode() while sensor BACK ONLINE, recursion level [{loopCount+1}]")
                 self.applyMode(loopCount+1)
 
         # no logic to carry out if in Manual mode
@@ -660,15 +666,173 @@ class Erl2SubSystem():
                 else:
                     hysteresis = float('nan')
 
-                #print (f"{__class__.__name__}: Debug: monitorSystem() modeVar is [{modeVar}], currVal is [{currVal}], setpoint is [{self.__activeSetpoint}], hysteresis is [{hysteresis}]")
+                # fine-tune the logic if recent sensor history can be determined
+                currSens = minSens = maxSens = None
+                if self.subSystemType in self.__sensors:
+                    currSens, _, minSens, maxSens = self.__sensors[self.subSystemType].reportValue() #numIntervals=12)
+
+                # we want to know recent toggle history too
+                currRaise = avgRaise = currLower = avgLower = None
+                if 'to.raise' in self.__toggles:
+                    currRaise, avgRaise, _, _ = self.__toggles['to.raise'].reportValue() #numIntervals=12)
+                if 'to.lower' in self.__toggles:
+                    currLower, avgLower, _, _ = self.__toggles['to.lower'].reportValue() #numIntervals=12)
+
+                #print (f"{__class__.__name__}: Debug: monitorSystem({self.subSystemType}) " +
+                #       f"setpoint [{self.__activeSetpoint}], hysteresis [{hysteresis}], " +
+                #       f"minSens [{minSens:.3f}], maxSens [{maxSens:.3f}]")
+
+                # hysteresis default behavior
+                lowHyst = highHyst = hysteresis
+
+                # can't do anything without proper information
+                if (    currSens is not None and minSens is not None and maxSens is not None
+                    and avgRaise is not None and avgLower is not None):
+
+                    # hysteresis concepts:
+                    #
+                    #  regime: whether pushing hotter ( +1. ) or cooler ( -1. )
+                    #  controlOn: last-known state of the dominant control in this regime
+                    #  lowerLimit: lower limit of temp since control last kicked on
+                    #  upperLimit: upper limit of temp since control last kicked on
+                    #  prevHyst: most recently-applied (adjusted) hysteresis
+                    #  prevTemp: last known temperature of the system
+
+                    # context for hysteresis logic
+                    regime = currControl = recentLimit = 0.
+
+                    # heater-only regime
+                    if avgLower == 0. and avgRaise > 0.:
+                        regime = 1.
+                        currControl = currRaise
+                        recentLimit = maxSens
+
+                    # chiller-only regime
+                    elif avgLower > 0. and avgRaise == 0.:
+                        regime = -1.
+                        currControl = currLower
+                        recentLimit = minSens
+
+                    # no special logic possible, clear out the metadata
+                    else:
+                        for param in ['controlOn', 'lowerLimit', 'upperLimit', 'prevHyst']:
+                            if param in self.__hysteresisMetadata:
+                                del self.__hysteresisMetadata[param]
+
+                    # three options: one, if we are new to the current regime
+                    if 'controlOn' not in self.__hysteresisMetadata:
+
+                        # use defaults of (nearest) hysteresis limit...
+                        self.__hysteresisMetadata['lowerLimit'] = self.__activeSetpoint + (regime * hysteresis)
+                        self.__hysteresisMetadata['upperLimit'] = self.__activeSetpoint + (regime * hysteresis)
+
+                        # ...and adjust for current temp
+                        if currSens < self.__hysteresisMetadata['lowerLimit']:
+                            self.__hysteresisMetadata['lowerLimit'] = currSens
+                        if currSens > self.__hysteresisMetadata['upperLimit']:
+                            self.__hysteresisMetadata['upperLimit'] = currSens
+
+                    # two, if the temp control has just kicked on, update logic
+                    elif currControl > 0 and self.__hysteresisMetadata['controlOn'] == 0.:
+
+                        # do not approach within 25% of the hysteresis limit to the far side of
+                        # the temp range: keep this buffer to avoid unnecessary triggering of
+                        # the opposing control (based on last 5min of sensor data). this may
+                        # be negative if the temp limits already exceed this boundary
+
+                        farBoundary = self.__activeSetpoint + (regime * 0.75 * hysteresis)
+                        buffer = regime * (farBoundary - recentLimit)
+
+                        # shouldn't be possible to reach here without knowing lowerLimit
+                        # and upperLimit, but define sensible (conservative) defaults JIC
+                        thisLowerLimit = self.__activeSetpoint + (regime * hysteresis)
+                        thisUpperLimit = farBoundary
+                        if 'lowerLimit' in self.__hysteresisMetadata:
+                            thisLowerLimit = self.__hysteresisMetadata['lowerLimit']
+                        if 'upperLimit' in self.__hysteresisMetadata:
+                            thisUpperLimit = self.__hysteresisMetadata['upperLimit']
+
+                        # the current system midpoint
+                        midpoint = (thisLowerLimit + thisUpperLimit) / 2.
+
+                        # hysteresis difference is how much change we want to make to the
+                        # system as it is running now (can be -ve, if we're backing off)
+                        hystDiff = regime * (self.__activeSetpoint - midpoint)
+
+                        # but we're limited by the buffer in how far we can push
+                        hystDiff = min(buffer, hystDiff)
+
+                        # now compare to any known previous hysteresis
+                        prevHyst = hysteresis
+                        if 'prevHyst' in self.__hysteresisMetadata:
+                            prevHyst = self.__hysteresisMetadata['prevHyst']
+
+                        # in this framing, a positive hysteresisDiff means we want to be more
+                        # aggressive, i.e., we want to reduce the hysteresis (but we cannot
+                        # reduce it to less than zero
+                        newHyst = max(0., (prevHyst - hystDiff))
+
+                        # remember hysteresis for use until a new one is calculated
+                        self.__hysteresisMetadata['prevHyst'] = newHyst
+
+                        # if prevTemp available, take that into account
+                        thisPrevTemp = currSens
+                        if 'prevTemp' in self.__hysteresisMetadata:
+                            thisPrevTemp = self.__hysteresisMetadata['prevTemp']
+
+                        # start tracking new temp limits for next cycle
+                        self.__hysteresisMetadata['lowerLimit'] = min(currSens, thisPrevTemp)
+                        self.__hysteresisMetadata['upperLimit'] = max(currSens, thisPrevTemp)
+
+                        #print (f"{__class__.__name__}: Debug: monitorSystem({self.subSystemType}): " +
+                        #       f"farBoundary [{farBoundary:6.4f}], buffer [{buffer:6.4f}], midpoint [{midpoint:.4f}], " +
+                        #       f"hystDiff [{hystDiff:6.4f}], prevHyst [{prevHyst:6.4f}], newHyst [{newHyst:6.4f}]")
+
+                    # three, the control is off (whether newly- or not), or not-newly on
+                    else:
+
+                        # in this case we're just tracking temps during the cycle
+                        if (   'lowerLimit' not in self.__hysteresisMetadata
+                            or currSens < self.__hysteresisMetadata['lowerLimit']):
+
+                            self.__hysteresisMetadata['lowerLimit'] = currSens
+
+                        if (   'upperLimit' not in self.__hysteresisMetadata
+                            or currSens > self.__hysteresisMetadata['upperLimit']):
+
+                            self.__hysteresisMetadata['upperLimit'] = currSens
+
+                    # remember the current control setting, and system temperature
+                    self.__hysteresisMetadata['controlOn'] = currControl
+                    self.__hysteresisMetadata['prevTemp'] = currSens
+
+                # use saved value, if any for adjusted hysteresis
+                if 'prevHyst' in self.__hysteresisMetadata:
+                    if regime > 0:
+                        lowHyst = self.__hysteresisMetadata['prevHyst']
+                    elif regime < 0:
+                        highHyst = self.__hysteresisMetadata['prevHyst']
+
+                printOn = printLower = printUpper = None
+                if 'controlOn' in self.__hysteresisMetadata:
+                    printOn = self.__hysteresisMetadata['controlOn']
+                if 'lowerLimit' in self.__hysteresisMetadata:
+                    printLower = self.__hysteresisMetadata['lowerLimit']
+                if 'upperLimit' in self.__hysteresisMetadata:
+                    printUpper = self.__hysteresisMetadata['upperLimit']
+
+                #print (f"{__class__.__name__}: Debug: hysteresis logic: " +
+                #       f"setpoint [{self.__activeSetpoint}], regime [{regime:2.0f}], LOW hysteresis [{lowHyst:.4f}], " +
+                #       f"HIGH hysteresis [{highHyst:.4f}], controlOn [{printOn:2.0f}], currSens [{currSens:.3f}], " +
+                #       f"recentLimit [{recentLimit:.3f}], lowerLimit [{printLower:.3f}], upperLimit [{printUpper:.3f}]")
 
                 # determine the correct course of action
-                if currVal < self.__activeSetpoint-hysteresis:
+                if currVal < self.__activeSetpoint - lowHyst:
                     if 'to.raise' in self.__toggles:
                         self.__toggles['to.raise'].setControl(1.)
                     if 'to.lower' in self.__toggles:
                         self.__toggles['to.lower'].setControl(0.)
-                elif currVal > self.__activeSetpoint+hysteresis:
+                elif currVal > self.__activeSetpoint + highHyst:
                     if 'to.raise' in self.__toggles:
                         self.__toggles['to.raise'].setControl(0.)
                     if 'to.lower' in self.__toggles:
@@ -834,8 +998,10 @@ class Erl2SubSystem():
         else:
             self.erl2context['state'].set([(self.subSystemType,'activeSetpoint',self.__activeSetpoint)])
 
-        # wake up every five seconds and see if anything needs adjustment
-        self.__modeRadioWidgets[0].after(5000, self.monitorSystem)
+        # wake up every five seconds and see if anything needs adjustment (only is loopCount is 0 though)
+        if loopCount == 0:
+            #print (f"{__class__.__name__}: Debug: monitorSystem({self.subSystemType}) being scheduled to run again in 5s")
+            self.__modeRadioWidgets[0].after(5000, self.monitorSystem)
 
     # wrapper methods for changeEntry()
     def changeStaticSetpoint(self):

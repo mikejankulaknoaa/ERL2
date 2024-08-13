@@ -236,7 +236,7 @@ class Erl2Sensor():
                 if self.online:
 
                     # add an average value for the reporting period
-                    _, measurement['avg.value'] = self.reportValue()
+                    _, measurement['avg.value'], _, _ = self.reportValue()
 
                     # write record to file
                     self.log.writeData(measurement)
@@ -413,11 +413,13 @@ class Erl2Sensor():
             # notify application that its state has changed
             self.erl2context['state'].set([(self.sensorType,'offset',self.__offsetFloat)])
 
-    def reportValue(self, period=None):
+    def reportValue(self, period=None, numIntervals=1.):
 
-        # default to sensor's own logging frequency
+        # if period is provided, it takes precedence
         if period is None:
-            period = self.__loggingFrequency
+
+            # otherwise default to one (or more) logging interval
+            period = numIntervals * self.__loggingFrequency
 
         # timing
         currentTime = dt.now(tz=tz.utc)
@@ -426,6 +428,9 @@ class Erl2Sensor():
         # running totals
         runningTotal = 0.
         runningTime = 0.
+
+        # min/max
+        minValue = maxValue = None
 
         # from the previous time through the loop
         lastTime = lastCurr = None
@@ -456,6 +461,12 @@ class Erl2Sensor():
                     runningTime += delta
                     runningTotal += val['prev'] * delta
 
+                # update min and max
+                if minValue is None or minValue > val['prev']:
+                    minValue = val['prev']
+                if maxValue is None or maxValue < val['prev']:
+                    maxValue = val['prev']
+
             # remember vals from the last time through the loop
             lastTime = val['ts']
             lastCurr = val['curr']
@@ -466,11 +477,17 @@ class Erl2Sensor():
             runningTime += delta
             runningTotal += lastCurr * delta
 
+            # update min and max one last time
+            if minValue is None or minValue > lastCurr:
+                minValue = lastCurr
+            if maxValue is None or maxValue < lastCurr:
+                maxValue = lastCurr
+
         # final math
         if runningTime > 0.:
-            return lastCurr, runningTotal/runningTime
+            return lastCurr, runningTotal/runningTime, minValue, maxValue
         else:
-            return lastCurr, None
+            return lastCurr, None, minValue, maxValue
 
 def main():
 

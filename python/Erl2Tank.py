@@ -703,9 +703,9 @@ class Erl2Tank:
 
                 # first sensors, then controls: current values and average values
                 for s in self.erl2context['sensors']:
-                    m['s.'+s], m['s.'+s+'.avg'] = self.erl2context['sensors'][s].reportValue(self.__systemFrequency)
+                    m['s.'+s], m['s.'+s+'.avg'], _, _ = self.erl2context['sensors'][s].reportValue(self.__systemFrequency)
                 for c in self.erl2context['controls']:
-                    m['c.'+c], m['c.'+c+'.avg'] = self.erl2context['controls'][c].reportValue(self.__systemFrequency)
+                    m['c.'+c], m['c.'+c+'.avg'], _, _ = self.erl2context['controls'][c].reportValue(self.__systemFrequency)
 
                 # write out the composite log record for the tank
                 self.__systemLog.writeData(m)
