@@ -109,8 +109,6 @@ class Erl2SubSystem():
         self.__modeDefault = self.erl2context['conf'][self.subSystemType]['modeDefault']
         self.__setpointDefault = self.erl2context['conf'][self.subSystemType]['setpointDefault']
         self.__dynamicDefault = self.erl2context['conf'][self.subSystemType]['dynamicDefault']
-        if self.__logic == 'hysteresis':
-            self.__hysteresisDefault = self.erl2context['conf'][self.subSystemType]['hysteresisDefault']
 
         # look up PID tuning parameters for the MFCs
         if self.__logic == 'PID':
@@ -127,9 +125,23 @@ class Erl2SubSystem():
         # also keep a float-valued record of the current values of these parameters
         self.staticSetpointFloat = self.erl2context['state'].get(self.subSystemType,'staticSetpoint',self.__setpointDefault)
         self.dynamicSetpointsFloat = self.erl2context['state'].get(self.subSystemType,'dynamicSetpoints',self.__dynamicDefault)
+
+        # set up hysteresis logic, if applicable
         if self.__logic == 'hysteresis':
+
+            self.__hysteresisDefault = self.erl2context['conf'][self.subSystemType]['hysteresisDefault']
             self.hysteresisFloat = self.erl2context['state'].get(self.subSystemType,'hysteresis',self.__hysteresisDefault)
-            self.__hysteresisMetadata = {}
+
+            # try to reload metadata from the state file
+            self.__hysteresisMetadata = self.erl2context['state'].get(self.subSystemType,'hysteresisMetadata',{})
+
+            # discard metadata if incomplete or not recent enough
+            if ('currentTime' not in self.__hysteresisMetadata
+                or (  dt.now(tz=tz.utc).timestamp()
+                    - self.__hysteresisMetadata['currentTime'].timestamp()
+                    > self.erl2context['conf'][self.subSystemType]['loggingFrequency'])):
+
+                self.__hysteresisMetadata = {}
 
         # remember what radio widgets and entry fields are active for this control
         self.__ctrlRadioWidgets = []
@@ -697,6 +709,7 @@ class Erl2SubSystem():
                     #  upperLimit: upper limit of temp since control last kicked on
                     #  prevHyst: most recently-applied (adjusted) hysteresis
                     #  prevTemp: last known temperature of the system
+                    #  currentTime: time of analysis, for potential reloading after reboot
 
                     # context for hysteresis logic
                     regime = currControl = recentLimit = 0.
@@ -704,20 +717,45 @@ class Erl2SubSystem():
                     # heater-only regime
                     if avgLower == 0. and avgRaise > 0.:
                         regime = 1.
-                        currControl = currRaise
-                        recentLimit = maxSens
 
                     # chiller-only regime
                     elif avgLower > 0. and avgRaise == 0.:
                         regime = -1.
-                        currControl = currLower
-                        recentLimit = minSens
+
+                    # if both controls are zero and there's a previous regime, reload it
+                    elif avgLower == 0. and avgRaise == 0. and 'regime' in self.__hysteresisMetadata:
+                        regime = self.__hysteresisMetadata['regime']
 
                     # no special logic possible, clear out the metadata
                     else:
-                        for param in ['controlOn', 'lowerLimit', 'upperLimit', 'prevHyst']:
+                        ## debug when changing from nonzero to zero regime
+                        #if 'prevHyst' in self.__hysteresisMetadata:
+                        #    print (f"{__class__.__name__}: Debug: hysteresis: RESET: " +
+                        #           f"avgLower [{avgLower}], " +
+                        #           f"avgLower == 0. [{avgLower == 0.}], " +
+                        #           f"avgLower > 0. [{avgLower> 0. }], " +
+                        #           f"avgRaise [{avgRaise}], " +
+                        #           f"avgRaise == 0. [{avgRaise == 0.}], " +
+                        #           f"avgRaise > 0. [{avgRaise> 0. }]")
+
+                        for param in ['regime', 'controlOn', 'lowerLimit', 'upperLimit',
+                                      'prevHyst', 'prevTemp', 'currentTime']:
                             if param in self.__hysteresisMetadata:
                                 del self.__hysteresisMetadata[param]
+
+                    # some additional parameters are set based on regime
+                    if regime > 0.:
+                        currControl = currRaise
+                        recentLimit = maxSens
+                    elif regime < 0.:
+                        currControl = currLower
+                        recentLimit = minSens
+
+                    # remember regime for next time through
+                    self.__hysteresisMetadata['regime'] = regime
+
+                    # remember timing, in case system is restarted quickly after shutdown
+                    self.__hysteresisMetadata['currentTime'] = currentTime
 
                     # three options: one, if we are new to the current regime
                     if 'controlOn' not in self.__hysteresisMetadata:
@@ -806,6 +844,9 @@ class Erl2SubSystem():
                     self.__hysteresisMetadata['controlOn'] = currControl
                     self.__hysteresisMetadata['prevTemp'] = currSens
 
+                    # finally, save snapshot of metadata to state file
+                    self.erl2context['state'].set([(self.subSystemType,'hysteresisMetadata',self.__hysteresisMetadata)])
+
                 # use saved value, if any for adjusted hysteresis
                 if 'prevHyst' in self.__hysteresisMetadata:
                     if regime > 0:
@@ -821,10 +862,22 @@ class Erl2SubSystem():
                 if 'upperLimit' in self.__hysteresisMetadata:
                     printUpper = self.__hysteresisMetadata['upperLimit']
 
-                #print (f"{__class__.__name__}: Debug: hysteresis logic: " +
-                #       f"setpoint [{self.__activeSetpoint}], regime [{regime:2.0f}], LOW hysteresis [{lowHyst:.4f}], " +
-                #       f"HIGH hysteresis [{highHyst:.4f}], controlOn [{printOn:2.0f}], currSens [{currSens:.3f}], " +
-                #       f"recentLimit [{recentLimit:.3f}], lowerLimit [{printLower:.3f}], upperLimit [{printUpper:.3f}]")
+                #print (f"{__class__.__name__}: Debug: hysteresis: " +
+                #       #f"setpoint [{self.__activeSetpoint}], " +
+                #       f"regime [{regime:2.0f}], " +
+                #       f"LOW hyst [{lowHyst:.4f}], " +
+                #       f"HIGH hyst [{highHyst:.4f}], " +
+                #       f"controlOn [{printOn:2.0f}], " +
+                #       f"currRaise [{currRaise:2.0f}], " +
+                #       f"avgRaise [{avgRaise:5.3f}], " +
+                #       f"currLower [{currLower:2.0f}], " +
+                #       f"avgLower [{avgLower:5.3f}], " +
+                #       f"currSens [{currSens:5.3f}], " +
+                #       f"minSens [{minSens:5.3f}], " +
+                #       f"maxSens [{maxSens:5.3f}], " +
+                #       f"recentLim [{recentLimit:5.3f}], " +
+                #       f"lowerLim [{printLower:5.3f}], " +
+                #       f"upperLim [{printUpper:5.3f}]")
 
                 # determine the correct course of action
                 if currVal < self.__activeSetpoint - lowHyst:
