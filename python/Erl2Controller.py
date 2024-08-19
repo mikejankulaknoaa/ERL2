@@ -65,16 +65,16 @@ class Erl2Controller():
         self.__deviceReadouts = []
 
         # divide the main display vertically
-        displayTop = ttk.Frame(self.erl2context['root'], padding='2', relief='solid', borderwidth=1)
-        displayTop.grid(row=0, column=0, padx='2', pady='2', sticky='nesw')
+        displayTop = ttk.Frame(self.erl2context['root'], padding='0', relief='solid', borderwidth=2)
+        displayTop.grid(row=0, column=0, padx='4', pady='2', sticky='nesw')
         displayBody = ttk.Frame(self.erl2context['root'], padding='0', relief='solid', borderwidth=0)
         displayBody.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')
 
         # divide the displayBody into top (tanks) and bottom (buttons) sections
-        self.__displayTanks = ttk.Frame(displayBody, padding='2', relief='solid', borderwidth=1)
-        self.__displayTanks.grid(row=0, column=0, padx='2', pady='2', sticky='nesw')
+        self.__displayTanks = ttk.Frame(displayBody, padding='0', relief='flat', borderwidth=0)
+        self.__displayTanks.grid(row=0, column=0, padx='0', pady='0', sticky='nesw')
         displayButtons = ttk.Frame(displayBody, padding='0', relief='flat', borderwidth=0)
-        displayButtons.grid(row=2, column=0, padx='2', pady='2', sticky='nesw')
+        displayButtons.grid(row=2, column=0, padx='2', pady='2', sticky='ns')
 
         # add frames to allWidgets array for widgetless modules add use .after() methods
         self.erl2context['conf']['system']['allWidgets'].append(displayTop)

@@ -103,7 +103,7 @@ class Erl2Popup(tk.Toplevel):
         displayContent = ttk.Frame(self.__f, padding='2', relief='solid', borderwidth=1)
         displayContent.grid(row=0, column=0, padx='2', pady='2', sticky='nesw')
         displayButtons = ttk.Frame(self.__f, padding='0', relief='flat', borderwidth=0)
-        displayButtons.grid(row=2, column=0, padx='2', pady='2', sticky='nesw')
+        displayButtons.grid(row=2, column=0, padx='2', pady='2', sticky='ns')
 
         # label for the main content frame
         ttk.Label(displayContent, text=Erl2Popup.popupType, font='Arial 12 bold'
@@ -258,6 +258,10 @@ class Erl2Popup(tk.Toplevel):
                 # add a control to enable / disable the matplotlib plots
                 r += 1
                 self.erl2context['startup'].createPlotsWidget(widgetLoc={'parent':displayContent,'row':r})
+
+                # add a control to enable / disable the summary logs
+                r += 1
+                self.erl2context['startup'].createSummaryLogsWidget(widgetLoc={'parent':displayContent,'row':r})
 
         # the 'Network' popup...
         elif Erl2Popup.popupType == 'Network':
@@ -629,9 +633,9 @@ class Erl2Popup(tk.Toplevel):
         c = -1
 
         # left padding
-        c += 1
-        ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1
-        ).grid(row=0, column=c, padx='0', pady=0, sticky='ew')
+        #c += 1
+        #ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1
+        #).grid(row=0, column=c, padx='0', pady=0, sticky='ew')
 
         # if this is the 'Network' popup, add the Rescan button
         if Erl2Popup.popupType == 'Network' and 'network' in self.erl2context:
@@ -760,9 +764,9 @@ class Erl2Popup(tk.Toplevel):
             applyFrame.columnconfigure(1,weight=1)
 
         # right padding
-        c += 1
-        ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1
-        ).grid(row=0, column=c, padx='0', pady=0, sticky='ew')
+        #c += 1
+        #ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1
+        #).grid(row=0, column=c, padx='0', pady=0, sticky='ew')
 
         displayButtons.rowconfigure(0,weight=0)
         displayButtons.columnconfigure(0,weight=1)

@@ -37,6 +37,10 @@ class Erl2Log():
         if 'conf' not in self.erl2context:
             self.erl2context['conf'] = Erl2Config()
 
+        # load any saved info about the application state
+        if 'state' not in self.erl2context:
+            self.erl2context['state'] = Erl2State(erl2context=self.erl2context)
+
         # read these useful parameters from Erl2Config
         self.__dtFormat = self.erl2context['conf']['system']['dtFormat']
         self.__memoryRetention = self.erl2context['conf']['system']['memoryRetention']
@@ -360,7 +364,8 @@ class Erl2Log():
                     self.history = [ x for x in self.history if self.strToUtcDatetime(x['Timestamp.UTC']) > oldestTS ]
 
                     # last step: any new log imports should trigger a rewrite of the summary log files
-                    self.rewriteSummaries(newLog)
+                    if self.erl2context['state'].get('system','summaryLogs',1):
+                        self.rewriteSummaries(newLog)
 
     def rewriteSummaries(self, newLog):
 

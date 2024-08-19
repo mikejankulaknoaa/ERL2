@@ -1,11 +1,16 @@
+from os import path
 import tkinter as tk
 from tkinter import ttk
 from Erl2Config import Erl2Config
 
 class Erl2Image():
 
-    def __init__(self, erl2context={}):
+    def __init__(self,
+                 moreImgDirs=[],
+                 erl2context={}
+                 ):
 
+        self.__moreImgDirs = moreImgDirs
         self.erl2context = erl2context
 
         # read in the system configuration file if needed
@@ -20,9 +25,17 @@ class Erl2Image():
 
     def addImage(self, key, file):
 
+        # search more than one directory, potentially
+        imgDir = self.__imgDir
+        if not path.isfile(f"{imgDir}/{file}"):
+            for d in self.__moreImgDirs:
+                if path.isfile(f"{d}/{file}"):
+                    imgDir = d
+                    break
+
         # don't reload the image if it's already there
         if key not in self.__img:
-            self.__img[key] = tk.PhotoImage(file=self.__imgDir + '/' + file)
+            self.__img[key] = tk.PhotoImage(file=f"{imgDir}/{file}")
 
     # override [] syntax to return PhotoImage objects
     def __getitem__(self, key):

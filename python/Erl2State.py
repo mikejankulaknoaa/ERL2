@@ -108,7 +108,7 @@ class Erl2State():
 
         # otherwise if there's no .dat file, just give up
         if sizeDat is None:
-            print (f"{self.__class__.__name__}: Warning: readFromFile({self.__fileName}) aborting, no .dat file found")
+            #print (f"{self.__class__.__name__}: Warning: readFromFile({self.__fileName}): no .dat file found")
             return
 
         # if the main file is of zero size, try pivoting to the backup file

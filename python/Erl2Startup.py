@@ -111,6 +111,10 @@ class Erl2Startup:
         self.__plotsVar = tk.IntVar()
         self.__plotsVar.set(self.erl2context['state'].get('system','plots',1))
 
+        # another checkbox is for enabling / disabling the summary logs
+        self.__summaryLogsVar = tk.IntVar()
+        self.__summaryLogsVar.set(self.erl2context['state'].get('system','summaryLogs',1))
+
         # location defaults for startup module, used in Erl2Tank and Erl2Controller
         self.modDefaults = {'relief'      : 'flat',
                             'borderwidth' : 0,
@@ -236,6 +240,44 @@ class Erl2Startup:
         self.plotsFrame.columnconfigure(0,weight=0)
         self.plotsFrame.columnconfigure(1,weight=1)
 
+    def createSummaryLogsWidget (self, widgetLoc = {}):
+
+        # nothing to do if no parent is given
+        if 'parent' not in widgetLoc:
+            return
+
+        # read location parameter, set defaults if unspecified
+        loc = locDefaults(loc=widgetLoc, modDefaults=self.modDefaults)
+
+        # add a control to enable / disable the summary logs
+        self.summaryLogsFrame = ttk.Frame(loc['parent'], padding=loc['padding'], relief=loc['relief'], borderwidth=loc['borderwidth'])
+        self.summaryLogsFrame.grid(row=loc['row'], column=loc['column'], rowspan=loc['rowspan'], columnspan=loc['columnspan'],
+                             padx=loc['padx'], pady=loc['pady'], sticky=loc['sticky'])
+        summaryLogsCheckbutton = tk.Checkbutton(self.summaryLogsFrame,
+                                                indicatoron=0,
+                                                image=self.erl2context['img']['checkOff'],
+                                                selectimage=self.erl2context['img']['checkOn'],
+                                                variable=self.__summaryLogsVar,
+                                                height=40,
+                                                width=40,
+                                                bd=0,
+                                                highlightthickness=0,
+                                                highlightcolor='#DBDBDB',
+                                                highlightbackground='#DBDBDB',
+                                                #bg='#DBDBDB',
+                                                selectcolor='#DBDBDB',
+                                                command=self.setSummaryLogs)
+        summaryLogsCheckbutton.grid(row=0, column=0, padx='2 2', sticky='w')
+        l = ttk.Label(self.summaryLogsFrame, text='Summary Logs', font='Arial 16'
+            #, relief='solid', borderwidth=1
+            )
+        l.grid(row=0, column=1, padx='2 2', sticky='w')
+        l.bind('<Button-1>', self.setSummaryLogs)
+
+        self.summaryLogsFrame.rowconfigure(0,weight=1)
+        self.summaryLogsFrame.columnconfigure(0,weight=0)
+        self.summaryLogsFrame.columnconfigure(1,weight=1)
+
     def createRestartWidget (self, widgetLoc = {}, widgetText='Restart ERL2'):
 
         # nothing to do if no parent is given
@@ -337,6 +379,16 @@ class Erl2Startup:
         # update the state variable that controls whether matplotlib plots are drawn
         self.erl2context['state'].set([('system','plots',self.__plotsVar.get())])
 
+    # a method to enable / disable the summary logs
+    def setSummaryLogs(self, event=None):
+
+        # first: if an event was passed, manually change the checkbox value
+        if event is not None:
+            self.__summaryLogsVar.set(1-self.__summaryLogsVar.get())
+
+        # update the state variable that controls whether summary logs are updated
+        self.erl2context['state'].set([('system','summaryLogs',self.__summaryLogsVar.get())])
+
     # restart the App
     def restartApp(self, event=None):
 
@@ -411,6 +463,7 @@ class Erl2Startup:
 def main():
 
     root = tk.Tk()
+    root.title("ERL2")
     root.rowconfigure(0,weight=1)
     root.columnconfigure(0,weight=1)
 

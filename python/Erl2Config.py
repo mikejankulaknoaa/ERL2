@@ -2,237 +2,74 @@ from ast import literal_eval
 from configparser import ConfigParser
 from datetime import datetime as dt
 from datetime import timezone as tz
-from os import path
+from os import makedirs,path
 from sys import platform
 from tzlocal import get_localzone
 
+# hardcoded ERL2 version string
+VERSION = '0.083 (2024-08-19)'
+
+# top-level categories in the erl2.conf file
+CATEGORIES = ['system', 'device', 'network', 'virtualtemp',
+              'temperature', 'pH', 'DO', 'generic', 'heater',
+              'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2', 'voltage']
+
+# valid baud rates (borrowed from the pyrolib code)
+BAUDS = [ 1200,  2400,   4800,   9600,  14400,  19200,  28800,  38400,  38400,
+         56000, 57600, 115200, 128000, 153600, 230400, 256000, 460800, 921600]
+
+# valid modes
+MODES = ['manual', 'auto_static', 'auto_dynamic']
+
+# main directories that must be created if they don't already exist
+MAINDIRS = ['img', 'lock', 'log']
+
 class Erl2Config():
 
-    # hardcoded ERL2 version string
-    VERSION = '0.082 (2024-08-14)'
+    def __init__(self,
+                 configType = 'erl2',
+                 version = VERSION,
+                 categories = CATEGORIES,
+                 maindirs = MAINDIRS,
+                 thisFile = __file__
+                 ):
 
-    # top-level categories in the erl2.conf file
-    CATEGORIES = [ 'system', 'device', 'network', 'virtualtemp', 'temperature', 'pH', 'DO', 'generic', 'heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2', 'voltage']
+        self.configType = configType
+        self.version = version
+        self.categories = categories
+        self.maindirs = maindirs
 
-    # valid baud rates (borrowed from the pyrolib code)
-    BAUDS = [ 1200,  2400,   4800,   9600,  14400,  19200,  28800,  38400,  38400,
-             56000, 57600, 115200, 128000, 153600, 230400, 256000, 460800, 921600]
-
-    # valid modes
-    MODES = ['manual', 'auto_static', 'auto_dynamic']
-
-    # use these parameter strings as defaults if they are missing from the erl2.conf file
-    def __setDefaults(self):
-        self.__default = {}
-        for c in self.CATEGORIES:
-            self.__default[c] = {}
-
-        self.__default['system']['hideClockSeconds'] = 'False'
-        self.__default['system']['clockTwoLines'] = 'False'
-        self.__default['system']['loggingFrequency'] = '300'
-        self.__default['system']['memoryRetention'] = '86400'
-
-        self.__default['device']['type'] = 'tank'
-        self.__default['device']['id'] = 'Tank 0'
-
-        self.__default['network']['enabled'] = 'False'
-        self.__default['network']['controllerIP'] = 'None'
-        self.__default['network']['ipNetworkStub'] = 'None'
-        self.__default['network']['ipRange'] = '[2, 254]'
-        self.__default['network']['hardcoding'] = 'None'
-        self.__default['network']['updateFrequency'] = '5'
-        self.__default['network']['lapseTime'] = '60'
-
-        self.__default['virtualtemp']['enabled'] = 'False'
-
-        self.__default['temperature']['serialPort'] = '/dev/ttyAMA5'
-        self.__default['temperature']['baudRate'] = '9600'
-        self.__default['temperature']['stackLevel'] = '0'
-        self.__default['temperature']['inputChannel'] = '1'
-        self.__default['temperature']['channelType'] = 'milliAmps'
-        self.__default['temperature']['parameterName'] = 'temp.degC'
-        self.__default['temperature']['hardwareRange'] = '[0.0, 100.0]'
-
-        self.__default['temperature']['displayParameter'] = 'temp.degC'
-        self.__default['temperature']['displayDecimals'] = '1'
-        self.__default['temperature']['sampleFrequency'] = '5'
-        self.__default['temperature']['loggingFrequency'] = '300'
-        self.__default['temperature']['offsetParameter'] = 'temp.degC'
-        self.__default['temperature']['offsetDefault'] = '0.000'
-        self.__default['temperature']['validRange'] = '[10.0, 40.0]'
-
-        self.__default['temperature']['modeNameDefault'] = 'manual'
-        self.__default['temperature']['hysteresisDefault'] = '0.100'
-        self.__default['temperature']['setpointDefault'] = '25.0'
-        self.__default['temperature']['dynamicDefault'] = ('[27.0, 26.5, 26.0, 25.6, 25.3, 25.1, '
-                                                            '25.0, 25.1, 25.3, 25.6, 26.0, 26.5, '
-                                                            '27.0, 27.5, 28.0, 28.4, 28.7, 28.9, '
-                                                            '29.0, 28.9, 28.7, 28.4, 28.0, 27.5]')
-
-        self.__default['voltage']['parameterName'] = 'voltage'
-        self.__default['voltage']['hardwareRange'] = '[0.0, 36.0]'
-        self.__default['voltage']['displayParameter'] = 'voltage'
-        self.__default['voltage']['displayDecimals'] = '5'
-        self.__default['voltage']['sampleFrequency'] = '5'
-        self.__default['voltage']['loggingFrequency'] = '300'
-        self.__default['voltage']['offsetParameter'] = 'None'
-        self.__default['voltage']['offsetDefault'] = '0.00000'
-        self.__default['voltage']['validRange'] = '[0.0, 36.0]'
-
-        self.__default['pH']['serialPort'] = '/dev/ttyAMA2'
-        self.__default['pH']['baudRate'] = '19200'
-
-        self.__default['pH']['displayParameter'] = 'pH'
-        self.__default['pH']['displayDecimals'] = '2'
-        self.__default['pH']['sampleFrequency'] = '60'
-        self.__default['pH']['loggingFrequency'] = '300'
-        self.__default['pH']['offsetParameter'] = 'pH'
-        self.__default['pH']['offsetDefault'] = '0.0000'
-        self.__default['pH']['validRange'] = '[6.00, 9.00]'
-
-        self.__default['pH']['modeNameDefault'] = 'manual'
-        self.__default['pH']['setpointDefault'] = '7.80'
-        self.__default['pH']['dynamicDefault'] = ('[8.00, 7.99, 7.98, 7.96, 7.96, 7.95, '
-                                                   '7.95, 7.95, 7.96, 7.96, 7.98, 7.99, '
-                                                   '8.00, 8.01, 8.03, 8.04, 8.04, 8.05, '
-                                                   '8.05, 8.05, 8.04, 8.04, 8.03, 8.01]')
-
-        self.__default['pH']['mfc.air.Kp'] = '10000.0'
-        self.__default['pH']['mfc.air.Ki'] = '1000.0'
-        self.__default['pH']['mfc.air.Kd'] = '0.0'
-        self.__default['pH']['mfc.co2.Kp'] = '-40.0'
-        self.__default['pH']['mfc.co2.Ki'] = '-4.0'
-        self.__default['pH']['mfc.co2.Kd'] = '0.0'
-
-        self.__default['DO']['serialPort'] = '/dev/ttyAMA4'
-        self.__default['DO']['baudRate'] = '19200'
-
-        self.__default['DO']['displayParameter'] = 'uM'
-        self.__default['DO']['displayDecimals'] = '0'
-        self.__default['DO']['sampleFrequency'] = '60'
-        self.__default['DO']['loggingFrequency'] = '300'
-        self.__default['DO']['offsetParameter'] = 'uM'
-        self.__default['DO']['offsetDefault'] = '0.00'
-        self.__default['DO']['validRange'] = '[100., 400.]'
-
-        self.__default['DO']['modeNameDefault'] = 'manual'
-        self.__default['DO']['setpointDefault'] = '220.'
-        self.__default['DO']['dynamicDefault'] = ('[220., 216., 213., 209., 207., 206., '
-                                                   '205., 206., 207., 209., 213., 216., '
-                                                   '220., 224., 228., 231., 233., 234., '
-                                                   '235., 234., 233., 231., 228., 224.]')
-
-        self.__default['DO']['mfc.air.Kp'] = '10000.0'
-        self.__default['DO']['mfc.air.Ki'] = '1000.0'
-        self.__default['DO']['mfc.air.Kd'] = '0.0'
-        self.__default['DO']['mfc.n2.Kp'] = '-10000.0'
-        self.__default['DO']['mfc.n2.Ki'] = '-1000.0'
-        self.__default['DO']['mfc.n2.Kd'] = '0.0'
-
-        self.__default['generic']['displayParameter'] = 'generic'
-        self.__default['generic']['displayDecimals'] = '3'
-        self.__default['generic']['sampleFrequency'] = '5'
-        self.__default['generic']['loggingFrequency'] = '300'
-        self.__default['generic']['offsetParameter'] = 'generic'
-        self.__default['generic']['offsetDefault'] = '0.00000'
-        self.__default['generic']['validRange'] = '[-5.000, 5.000]'
-
-        self.__default['generic']['modeNameDefault'] = 'manual'
-        self.__default['generic']['setpointDefault'] = '0.500'
-        self.__default['generic']['dynamicDefault'] = ('[0.500, 0.371, 0.250, 0.146, 0.067, 0.017, '
-                                                        '0.000, 0.017, 0.067, 0.146, 0.250, 0.371, '
-                                                        '0.500, 0.629, 0.750, 0.854, 0.933, 0.983, '
-                                                        '1.000, 0.983, 0.933, 0.854, 0.750, 0.629]')
-
-        self.__default['heater']['channelType'] = '10v'
-        self.__default['heater']['stackLevel'] = '0'
-        self.__default['heater']['outputChannel'] = '4'
-        self.__default['heater']['gpioChannel'] = '23'
-        self.__default['heater']['loggingFrequency'] = '300'
-        self.__default['heater']['valueWhenReset'] = '0.'
-
-        self.__default['chiller']['channelType'] = 'pwm'
-        self.__default['chiller']['stackLevel'] = '0'
-        self.__default['chiller']['outputChannel'] = '4'
-        self.__default['chiller']['gpioChannel'] = 'None'
-        self.__default['chiller']['loggingFrequency'] = '300'
-        self.__default['chiller']['valueWhenReset'] = '0.'
-
-        self.__default['mfc.air']['stackLevel'] = '0'
-        self.__default['mfc.air']['inputChannel'] = '2'
-        self.__default['mfc.air']['channelType'] = 'volts'
-        self.__default['mfc.air']['parameterName'] = 'flow.mLperMin'
-        self.__default['mfc.air']['hardwareRange'] = '[0., 10000.]'
-        self.__default['mfc.air']['displayParameter'] = 'flow.mLperMin'
-        self.__default['mfc.air']['displayDecimals'] = '0'
-        self.__default['mfc.air']['sampleFrequency'] = '5'
-        self.__default['mfc.air']['loggingFrequency'] = '300'
-        self.__default['mfc.air']['offsetParameter'] = 'flow.mLperMin'
-        self.__default['mfc.air']['offsetDefault'] = '0.00'
-        self.__default['mfc.air']['validRange'] = '[0., 5000.]'
-        self.__default['mfc.air']['outputChannel'] = '1'
-        self.__default['mfc.air']['valueWhenReset'] = '500.'
-
-        self.__default['mfc.co2']['stackLevel'] = '0'
-        self.__default['mfc.co2']['inputChannel'] = '3'
-        self.__default['mfc.co2']['channelType'] = 'volts'
-        self.__default['mfc.co2']['parameterName'] = 'flow.mLperMin'
-        self.__default['mfc.co2']['hardwareRange'] = '[0.0, 40.0]'
-        self.__default['mfc.co2']['displayParameter'] = 'flow.mLperMin'
-        self.__default['mfc.co2']['displayDecimals'] = '1'
-        self.__default['mfc.co2']['sampleFrequency'] = '5'
-        self.__default['mfc.co2']['loggingFrequency'] = '300'
-        self.__default['mfc.co2']['offsetParameter'] = 'flow.mLperMin'
-        self.__default['mfc.co2']['offsetDefault'] = '0.000'
-        self.__default['mfc.co2']['validRange'] = '[0.0, 20.0]'
-        self.__default['mfc.co2']['outputChannel'] = '2'
-        self.__default['mfc.co2']['valueWhenReset'] = '0.'
-
-        self.__default['mfc.n2']['stackLevel'] = '0'
-        self.__default['mfc.n2']['inputChannel'] = '4'
-        self.__default['mfc.n2']['channelType'] = 'volts'
-        self.__default['mfc.n2']['parameterName'] = 'flow.mLperMin'
-        self.__default['mfc.n2']['hardwareRange'] = '[0., 2000.]'
-        self.__default['mfc.n2']['displayParameter'] = 'flow.mLperMin'
-        self.__default['mfc.n2']['displayDecimals'] = '0'
-        self.__default['mfc.n2']['sampleFrequency'] = '5'
-        self.__default['mfc.n2']['loggingFrequency'] = '300'
-        self.__default['mfc.n2']['offsetParameter'] = 'flow.mLperMin'
-        self.__default['mfc.n2']['offsetDefault'] = '0.00'
-        self.__default['mfc.n2']['validRange'] = '[0., 1000.]'
-        self.__default['mfc.n2']['outputChannel'] = '3'
-        self.__default['mfc.n2']['valueWhenReset'] = '0.'
-
-    def __init__(self):
-
-        # initialize configuration object that reads in erl2.conf parameters
+        # initialize configuration object that reads in .conf parameters
         self.in_conf = ConfigParser()
 
-        # initialize internal parameter dictionary
-        self.__erl2conf = {}
-        for c in self.CATEGORIES:
-            self.__erl2conf[c] = {}
+        # initialize internal parameter dictionaries
+        self.mainConfig = {}
+        self.default = {}
+
+        for c in self.categories:
+            self.mainConfig[c] = {}
+            self.default[c] = {}
 
             # there's no guarantee the file will mention all the categories
             if c not in self.in_conf:
                 self.in_conf[c] = {}
 
         # the python source file that is currently executing
-        thisFile = path.realpath(__file__)
+        thisFile = path.realpath(thisFile)
 
         # the directory holding the currently executing source file
         parent = path.dirname(thisFile)
 
-        # look for erl2.conf in its parent directories one by one
+        # look for .conf file in its parent directories one by one
         loop = 0
         while (True):
 
-            # found a file named erl2.conf !
-            if path.exists(parent + '/erl2.conf'):
-                self.__erl2conf['system']['rootDir'] = parent
-                self.__erl2conf['system']['confFile'] = parent + '/erl2.conf'
-                #print (f"{self.__class__.__name__}: Debug: found root directory {self.__erl2conf['system']['rootDir']}")
-                #print (f"{self.__class__.__name__}: Debug: found configuration file {self.__erl2conf['system']['confFile']}")
+            # found a file named {configType}.conf !
+            if path.exists(parent + f"/{self.configType}.conf"):
+                self.mainConfig['system']['rootDir'] = parent
+                self.mainConfig['system']['confFile'] = parent + f"/{self.configType}.conf"
+                #print (f"{self.__class__.__name__}: Debug: found root directory {self.mainConfig['system']['rootDir']}")
+                #print (f"{self.__class__.__name__}: Debug: found configuration file {self.mainConfig['system']['confFile']}")
                 break
 
             # give up if there are no higher directories to check
@@ -248,58 +85,247 @@ class Erl2Config():
                 break
 
         # if we found a configuration file
-        if 'confFile' in self.__erl2conf['system']:
+        if 'confFile' in self.mainConfig['system']:
 
             # read and parse the config file
-            self.in_conf.read(self.__erl2conf['system']['confFile'])
+            self.in_conf.read(self.mainConfig['system']['confFile'])
 
         # otherwise we couldn't find a config
         else:
-            raise RuntimeError('Cannot find the erl2.conf configuration file')
+            raise RuntimeError(f"Cannot find the {self.configType}.conf configuration file")
 
         # what OS are we running?
         #print (f"{self.__class__.__name__}: Debug: found platform is [{platform}]")
-        self.__erl2conf['system']['platform'] = platform
+        self.mainConfig['system']['platform'] = platform
 
         # share the version info with the app
-        self.__erl2conf['system']['version'] = self.VERSION
+        self.mainConfig['system']['version'] = self.version
 
         # record the system startup time
-        self.__erl2conf['system']['startup'] = dt.now(tz=tz.utc)
+        self.mainConfig['system']['startup'] = dt.now(tz=tz.utc)
 
         # whatever the OS considers our local timezone to be
-        self.__erl2conf['system']['timezone'] = get_localzone()
+        self.mainConfig['system']['timezone'] = get_localzone()
 
         # whether app is in shutdown or not
-        self.__erl2conf['system']['shutdown'] = False
+        self.mainConfig['system']['shutdown'] = False
 
         # explicitly define a date+time format to ensure reading/writing is consistent
-        # (these cannot be customized in the erl2.conf file)
-        self.__erl2conf['system']['dtFormat'] = '%Y-%m-%d %H:%M:%S'
-        self.__erl2conf['system']['dtRegexp'] = r'^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$'
+        # (these cannot be customized in the .conf file)
+        self.mainConfig['system']['dtFormat'] = '%Y-%m-%d %H:%M:%S'
+        self.mainConfig['system']['dtRegexp'] = r'^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$'
 
-        # special logic for setting up the main ERL2 directories
-        for d in ['img','lock','log']:
+        # special logic for setting up the main directories
+        for d in self.maindirs:
             dname = d + 'Dir'
             if dname not in self.in_conf['system']:
-                self.__erl2conf['system'][dname] = self.__erl2conf['system']['rootDir'] + '/' + d
+                self.mainConfig['system'][dname] = self.mainConfig['system']['rootDir'] + '/' + d
             else:
-                self.__erl2conf['system'][dname] = self.in_conf['system'][dname]
+                self.mainConfig['system'][dname] = self.in_conf['system'][dname]
 
             # we must insist that the parent of the specified directory already exists, at least
-            if not path.isdir(path.dirname(self.__erl2conf['system'][dname])):
-                raise TypeError(f"{self.__class__.__name__}: ['system']['{dname}'] = [{self.__erl2conf['system'][dname]}] is not a valid directory")
+            if not path.isdir(self.mainConfig['system'][dname]):
+                makedirs(self.mainConfig['system'][dname], exist_ok=True)
 
-        # placeholder for allWidgets system-level array
-        self.__erl2conf['system']['allWidgets'] = []
-        #print (f"{self.__class__.__name__}: Debug: allWidgets length [{len(self.__erl2conf['system']['allWidgets'])}]")
+                # one last check to make sure the directory creation worked
+                if not path.isdir(self.mainConfig['system'][dname]):
+                    raise TypeError(f"{self.__class__.__name__}: ['system']['{dname}'] = " +
+                                    f"[{self.mainConfig['system'][dname]}] is not a valid directory")
 
         # here is where we will define default values for key parameters,
-        # in case any crucial values are missing from the erl2.conf file.
+        # in case any crucial values are missing from the .conf file.
         # we are also doing some type-checking at the same time.
 
         # first, define what the default values should be
-        self.__setDefaults()
+        self.setDefaults()
+
+        # then, read .conf file values, validate, and override defaults
+        self.validateConfig()
+
+    # use these parameter strings as defaults if they are missing from the erl2.conf file
+    def setDefaults(self):
+
+        self.default['system']['hideClockSeconds'] = 'False'
+        self.default['system']['clockTwoLines'] = 'False'
+        self.default['system']['loggingFrequency'] = '300'
+        self.default['system']['memoryRetention'] = '86400'
+
+        self.default['device']['type'] = 'tank'
+        self.default['device']['id'] = 'Tank 0'
+
+        self.default['network']['enabled'] = 'False'
+        self.default['network']['controllerIP'] = 'None'
+        self.default['network']['ipNetworkStub'] = 'None'
+        self.default['network']['ipRange'] = '[2, 254]'
+        self.default['network']['hardcoding'] = 'None'
+        self.default['network']['updateFrequency'] = '5'
+        self.default['network']['lapseTime'] = '60'
+
+        self.default['virtualtemp']['enabled'] = 'False'
+
+        self.default['temperature']['serialPort'] = '/dev/ttyAMA5'
+        self.default['temperature']['baudRate'] = '9600'
+        self.default['temperature']['stackLevel'] = '0'
+        self.default['temperature']['inputChannel'] = '1'
+        self.default['temperature']['channelType'] = 'milliAmps'
+        self.default['temperature']['parameterName'] = 'temp.degC'
+        self.default['temperature']['hardwareRange'] = '[0.0, 100.0]'
+
+        self.default['temperature']['displayParameter'] = 'temp.degC'
+        self.default['temperature']['displayDecimals'] = '1'
+        self.default['temperature']['sampleFrequency'] = '5'
+        self.default['temperature']['loggingFrequency'] = '300'
+        self.default['temperature']['offsetParameter'] = 'temp.degC'
+        self.default['temperature']['offsetDefault'] = '0.000'
+        self.default['temperature']['validRange'] = '[10.0, 40.0]'
+
+        self.default['temperature']['modeNameDefault'] = 'manual'
+        self.default['temperature']['hysteresisDefault'] = '0.100'
+        self.default['temperature']['setpointDefault'] = '25.0'
+        self.default['temperature']['dynamicDefault'] = ('[27.0, 26.5, 26.0, 25.6, 25.3, 25.1, '
+                                                            '25.0, 25.1, 25.3, 25.6, 26.0, 26.5, '
+                                                            '27.0, 27.5, 28.0, 28.4, 28.7, 28.9, '
+                                                            '29.0, 28.9, 28.7, 28.4, 28.0, 27.5]')
+
+        self.default['voltage']['parameterName'] = 'voltage'
+        self.default['voltage']['hardwareRange'] = '[0.0, 36.0]'
+        self.default['voltage']['displayParameter'] = 'voltage'
+        self.default['voltage']['displayDecimals'] = '5'
+        self.default['voltage']['sampleFrequency'] = '5'
+        self.default['voltage']['loggingFrequency'] = '300'
+        self.default['voltage']['offsetParameter'] = 'None'
+        self.default['voltage']['offsetDefault'] = '0.00000'
+        self.default['voltage']['validRange'] = '[0.0, 36.0]'
+
+        self.default['pH']['serialPort'] = '/dev/ttyAMA2'
+        self.default['pH']['baudRate'] = '19200'
+
+        self.default['pH']['displayParameter'] = 'pH'
+        self.default['pH']['displayDecimals'] = '2'
+        self.default['pH']['sampleFrequency'] = '60'
+        self.default['pH']['loggingFrequency'] = '300'
+        self.default['pH']['offsetParameter'] = 'pH'
+        self.default['pH']['offsetDefault'] = '0.0000'
+        self.default['pH']['validRange'] = '[6.00, 9.00]'
+
+        self.default['pH']['modeNameDefault'] = 'manual'
+        self.default['pH']['setpointDefault'] = '7.80'
+        self.default['pH']['dynamicDefault'] = ('[8.00, 7.99, 7.98, 7.96, 7.96, 7.95, '
+                                                   '7.95, 7.95, 7.96, 7.96, 7.98, 7.99, '
+                                                   '8.00, 8.01, 8.03, 8.04, 8.04, 8.05, '
+                                                   '8.05, 8.05, 8.04, 8.04, 8.03, 8.01]')
+
+        self.default['pH']['mfc.air.Kp'] = '10000.0'
+        self.default['pH']['mfc.air.Ki'] = '1000.0'
+        self.default['pH']['mfc.air.Kd'] = '0.0'
+        self.default['pH']['mfc.co2.Kp'] = '-40.0'
+        self.default['pH']['mfc.co2.Ki'] = '-4.0'
+        self.default['pH']['mfc.co2.Kd'] = '0.0'
+
+        self.default['DO']['serialPort'] = '/dev/ttyAMA4'
+        self.default['DO']['baudRate'] = '19200'
+
+        self.default['DO']['displayParameter'] = 'uM'
+        self.default['DO']['displayDecimals'] = '0'
+        self.default['DO']['sampleFrequency'] = '60'
+        self.default['DO']['loggingFrequency'] = '300'
+        self.default['DO']['offsetParameter'] = 'uM'
+        self.default['DO']['offsetDefault'] = '0.00'
+        self.default['DO']['validRange'] = '[100., 400.]'
+
+        self.default['DO']['modeNameDefault'] = 'manual'
+        self.default['DO']['setpointDefault'] = '220.'
+        self.default['DO']['dynamicDefault'] = ('[220., 216., 213., 209., 207., 206., '
+                                                   '205., 206., 207., 209., 213., 216., '
+                                                   '220., 224., 228., 231., 233., 234., '
+                                                   '235., 234., 233., 231., 228., 224.]')
+
+        self.default['DO']['mfc.air.Kp'] = '10000.0'
+        self.default['DO']['mfc.air.Ki'] = '1000.0'
+        self.default['DO']['mfc.air.Kd'] = '0.0'
+        self.default['DO']['mfc.n2.Kp'] = '-10000.0'
+        self.default['DO']['mfc.n2.Ki'] = '-1000.0'
+        self.default['DO']['mfc.n2.Kd'] = '0.0'
+
+        self.default['generic']['displayParameter'] = 'generic'
+        self.default['generic']['displayDecimals'] = '3'
+        self.default['generic']['sampleFrequency'] = '5'
+        self.default['generic']['loggingFrequency'] = '300'
+        self.default['generic']['offsetParameter'] = 'generic'
+        self.default['generic']['offsetDefault'] = '0.00000'
+        self.default['generic']['validRange'] = '[-5.000, 5.000]'
+
+        self.default['generic']['modeNameDefault'] = 'manual'
+        self.default['generic']['setpointDefault'] = '0.500'
+        self.default['generic']['dynamicDefault'] = ('[0.500, 0.371, 0.250, 0.146, 0.067, 0.017, '
+                                                        '0.000, 0.017, 0.067, 0.146, 0.250, 0.371, '
+                                                        '0.500, 0.629, 0.750, 0.854, 0.933, 0.983, '
+                                                        '1.000, 0.983, 0.933, 0.854, 0.750, 0.629]')
+
+        self.default['heater']['channelType'] = '10v'
+        self.default['heater']['stackLevel'] = '0'
+        self.default['heater']['outputChannel'] = '4'
+        self.default['heater']['gpioChannel'] = '23'
+        self.default['heater']['loggingFrequency'] = '300'
+        self.default['heater']['valueWhenReset'] = '0.'
+
+        self.default['chiller']['channelType'] = 'pwm'
+        self.default['chiller']['stackLevel'] = '0'
+        self.default['chiller']['outputChannel'] = '4'
+        self.default['chiller']['gpioChannel'] = 'None'
+        self.default['chiller']['loggingFrequency'] = '300'
+        self.default['chiller']['valueWhenReset'] = '0.'
+
+        self.default['mfc.air']['stackLevel'] = '0'
+        self.default['mfc.air']['inputChannel'] = '2'
+        self.default['mfc.air']['channelType'] = 'volts'
+        self.default['mfc.air']['parameterName'] = 'flow.mLperMin'
+        self.default['mfc.air']['hardwareRange'] = '[0., 10000.]'
+        self.default['mfc.air']['displayParameter'] = 'flow.mLperMin'
+        self.default['mfc.air']['displayDecimals'] = '0'
+        self.default['mfc.air']['sampleFrequency'] = '5'
+        self.default['mfc.air']['loggingFrequency'] = '300'
+        self.default['mfc.air']['offsetParameter'] = 'flow.mLperMin'
+        self.default['mfc.air']['offsetDefault'] = '0.00'
+        self.default['mfc.air']['validRange'] = '[0., 5000.]'
+        self.default['mfc.air']['outputChannel'] = '1'
+        self.default['mfc.air']['valueWhenReset'] = '500.'
+
+        self.default['mfc.co2']['stackLevel'] = '0'
+        self.default['mfc.co2']['inputChannel'] = '3'
+        self.default['mfc.co2']['channelType'] = 'volts'
+        self.default['mfc.co2']['parameterName'] = 'flow.mLperMin'
+        self.default['mfc.co2']['hardwareRange'] = '[0.0, 40.0]'
+        self.default['mfc.co2']['displayParameter'] = 'flow.mLperMin'
+        self.default['mfc.co2']['displayDecimals'] = '1'
+        self.default['mfc.co2']['sampleFrequency'] = '5'
+        self.default['mfc.co2']['loggingFrequency'] = '300'
+        self.default['mfc.co2']['offsetParameter'] = 'flow.mLperMin'
+        self.default['mfc.co2']['offsetDefault'] = '0.000'
+        self.default['mfc.co2']['validRange'] = '[0.0, 20.0]'
+        self.default['mfc.co2']['outputChannel'] = '2'
+        self.default['mfc.co2']['valueWhenReset'] = '0.'
+
+        self.default['mfc.n2']['stackLevel'] = '0'
+        self.default['mfc.n2']['inputChannel'] = '4'
+        self.default['mfc.n2']['channelType'] = 'volts'
+        self.default['mfc.n2']['parameterName'] = 'flow.mLperMin'
+        self.default['mfc.n2']['hardwareRange'] = '[0., 2000.]'
+        self.default['mfc.n2']['displayParameter'] = 'flow.mLperMin'
+        self.default['mfc.n2']['displayDecimals'] = '0'
+        self.default['mfc.n2']['sampleFrequency'] = '5'
+        self.default['mfc.n2']['loggingFrequency'] = '300'
+        self.default['mfc.n2']['offsetParameter'] = 'flow.mLperMin'
+        self.default['mfc.n2']['offsetDefault'] = '0.00'
+        self.default['mfc.n2']['validRange'] = '[0., 1000.]'
+        self.default['mfc.n2']['outputChannel'] = '3'
+        self.default['mfc.n2']['valueWhenReset'] = '0.'
+
+    def validateConfig(self):
+
+        # placeholder for allWidgets system-level array
+        self.mainConfig['system']['allWidgets'] = []
+        #print (f"{self.__class__.__name__}: Debug: allWidgets length [{len(self.mainConfig['system']['allWidgets'])}]")
 
         # system
         self.validate(bool, 'system', 'hideClockSeconds')
@@ -309,8 +335,9 @@ class Erl2Config():
 
         # device
         self.validate(str, 'device', 'type')
-        if self.__erl2conf['device']['type'] not in ['tank', 'controller']:
-            raise TypeError(f"{self.__class__.__name__}: ['device']['type'] = [{self.__erl2conf['device']['type']}] must be 'tank' or 'controller'")
+        if self.mainConfig['device']['type'] not in ['tank', 'controller']:
+            raise TypeError(f"{self.__class__.__name__}: ['device']['type'] = " +
+                            f"[{self.mainConfig['device']['type']}] must be 'tank' or 'controller'")
         self.validate(str, 'device', 'id')
 
         # network
@@ -325,9 +352,10 @@ class Erl2Config():
 
         # ipRange has some extra logic (non-decreasing order)
         self.validateList(int, 'network', 'ipRange', 2)
-        if (self.__erl2conf['network']['ipRange'] is not None
-            and self.__erl2conf['network']['ipRange'][0] > self.__erl2conf['network']['ipRange'][1]):
-            raise TypeError(f"{self.__class__.__name__}: ['network']['ipRange'] = {self.__erl2conf['network']['ipRange']} must specified in increasing order")
+        if (self.mainConfig['network']['ipRange'] is not None
+            and self.mainConfig['network']['ipRange'][0] > self.mainConfig['network']['ipRange'][1]):
+            raise TypeError(f"{self.__class__.__name__}: ['network']['ipRange'] = " +
+                            f"{self.mainConfig['network']['ipRange']} must specified in increasing order")
 
         # whether to use a 'virtual' temperature sensor...
         self.validate(bool, 'virtualtemp', 'enabled')
@@ -343,50 +371,40 @@ class Erl2Config():
 
             # what type of input channel does the sensor use? volts or milliAmps
             self.validate(str,  sensorType, 'channelType')
-            if self.__erl2conf[sensorType]['channelType'] not in ['volts', 'milliAmps']:
-                raise TypeError(f"{self.__class__.__name__}: [sensorType]['channelType'] = [{self.__erl2conf[sensorType]['channelType']}] must be 'volts' or 'milliAmps'")
+            if self.mainConfig[sensorType]['channelType'] not in ['volts', 'milliAmps']:
+                raise TypeError(f"{self.__class__.__name__}: [sensorType]['channelType'] = " +
+                                f"[{self.mainConfig[sensorType]['channelType']}] must be 'volts' or 'milliAmps'")
 
             # hardwareRange has some extra logic (non-decreasing order)
             self.validateList(float, sensorType, 'hardwareRange', 2)
-            if (self.__erl2conf[sensorType]['hardwareRange'] is not None
-                and self.__erl2conf[sensorType]['hardwareRange'][0] > self.__erl2conf[sensorType]['hardwareRange'][1]):
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['hardwareRange'] = {self.__erl2conf[sensorType]['hardwareRange']} must specified in increasing order")
+            if (self.mainConfig[sensorType]['hardwareRange'] is not None
+                and (  self.mainConfig[sensorType]['hardwareRange'][0]
+                     > self.mainConfig[sensorType]['hardwareRange'][1])):
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['hardwareRange'] = " +
+                                f"{self.mainConfig[sensorType]['hardwareRange']} must specified in increasing order")
 
         # temperature, pH and DO comms parameters (serial port and baud rate)
         for sensorType in ['temperature', 'pH', 'DO']:
-            self.validate(str, sensorType, 'serialPort')
-            self.validate(int, sensorType, 'baudRate')
+            self.validateSerialPort(sensorType, 'serialPort')
+            self.validateBaudRate(sensorType, 'baudRate')
 
-            # if a serialPort is specified but doesn't exist on the system
-            if self.__erl2conf[sensorType]['serialPort'] is not None:
-                if not path.exists(self.__erl2conf[sensorType]['serialPort']):
-
-                    # special logic for controllers: reset any missing serialPort to None
-                    if self.__erl2conf['device']['type'] == 'controller':
-                        self.__erl2conf[sensorType]['serialPort'] = None
-                    else:
-                        raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['serialPort'] = [{self.__erl2conf[sensorType]['serialPort']}] does not exist on this system")
-
-            if (self.__erl2conf[sensorType]['baudRate'] is not None
-                and self.__erl2conf[sensorType]['baudRate'] not in self.BAUDS):
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['baudRate'] = [{self.__erl2conf[sensorType]['baudRate']}] is not a valid baud rate.\nValid baud rates are {self.BAUDS}.")
-
-        # temperature, pH, DO and the MFCs share a lot of the same parameter logic
+        # temperature, voltage, pH, DO and the MFCs share a lot of the same parameter logic
         for sensorType in ['temperature', 'voltage', 'pH', 'DO', 'mfc.air', 'mfc.co2', 'mfc.n2', 'generic']:
 
             # some sensors have hardwareRange as well as validRange
-            if 'hardwareRange' in self.__erl2conf[sensorType]:
-                minVal = self.__erl2conf[sensorType]['hardwareRange'][0]
-                maxVal = self.__erl2conf[sensorType]['hardwareRange'][1]
+            if 'hardwareRange' in self.mainConfig[sensorType]:
+                minVal = self.mainConfig[sensorType]['hardwareRange'][0]
+                maxVal = self.mainConfig[sensorType]['hardwareRange'][1]
             else:
                 minVal = None
                 maxVal = None
 
             # validRange has some extra logic (non-decreasing order)
             self.validateList(float, sensorType, 'validRange', 2, min=minVal, max=maxVal)
-            if (self.__erl2conf[sensorType]['validRange'] is not None
-                and self.__erl2conf[sensorType]['validRange'][0] > self.__erl2conf[sensorType]['validRange'][1]):
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['validRange'] = {self.__erl2conf[sensorType]['validRange']} must specified in increasing order")
+            if (self.mainConfig[sensorType]['validRange'] is not None
+                and self.mainConfig[sensorType]['validRange'][0] > self.mainConfig[sensorType]['validRange'][1]):
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['validRange'] = " +
+                                f"{self.mainConfig[sensorType]['validRange']} must specified in increasing order")
 
             self.validate(str,   sensorType, 'displayParameter')
             self.validate(int,   sensorType, 'displayDecimals',  min=0)
@@ -400,15 +418,22 @@ class Erl2Config():
 
             # mode is specified in words in the config file, and converted to integer here
             self.validate(str, sensorType, 'modeNameDefault')
-            if (self.__erl2conf[sensorType]['modeNameDefault'].lower() not in self.MODES):
-                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['modeNameDefault'] = [{self.__erl2conf[sensorType]['modeNameDefault']}] is not a valid mode name.\nValid mode names are {self.MODES}.")
+            if (self.mainConfig[sensorType]['modeNameDefault'].lower() not in MODES):
+                raise TypeError(f"{self.__class__.__name__}: [{sensorType}]['modeNameDefault'] = " +
+                                f"[{self.mainConfig[sensorType]['modeNameDefault']}] is not a " +
+                                f"valid mode name.\nValid mode names are {MODES}.")
 
             # convert modeNameDefault to an integer
-            self.__erl2conf[sensorType]['modeDefault'] = self.MODES.index(self.__erl2conf[sensorType]['modeNameDefault'].lower())
+            self.mainConfig[sensorType]['modeDefault'] = MODES.index(self.mainConfig[sensorType]['modeNameDefault'].lower())
 
             # these are required to fall within the validRange for the sensor
-            self.validate    (float, sensorType, 'setpointDefault',    min=self.__erl2conf[sensorType]['validRange'][0], max=self.__erl2conf[sensorType]['validRange'][1])
-            self.validateList(float, sensorType, 'dynamicDefault', 24, min=self.__erl2conf[sensorType]['validRange'][0], max=self.__erl2conf[sensorType]['validRange'][1])
+            self.validate(float, sensorType, 'setpointDefault',   
+                          min=self.mainConfig[sensorType]['validRange'][0],
+                          max=self.mainConfig[sensorType]['validRange'][1])
+
+            self.validateList(float, sensorType, 'dynamicDefault', 24,
+                               min=self.mainConfig[sensorType]['validRange'][0],
+                               max=self.mainConfig[sensorType]['validRange'][1])
 
         # the pH and DO subsystems require PID parameter values for their controls
         for sys in 'pH', 'DO':
@@ -419,21 +444,24 @@ class Erl2Config():
                         self.validate(float, sys, f"mfc.{gas}.{param}")
 
         # slight kludge: if 'DO' uses mgL instead of uM (default), rescale parameters and ranges
-        if self.__erl2conf['DO']['displayParameter'] == 'mgL':
-            self.__erl2conf['DO']['validRange'] = [ x * 15.9994 * 2. / 1000. for x in self.__erl2conf['DO']['validRange'] ]
-            self.__erl2conf['DO']['setpointDefault'] = self.__erl2conf['DO']['setpointDefault'] * 15.9994 * 2. / 1000.
-            self.__erl2conf['DO']['dynamicDefault'] = [ x * 15.9994 * 2. / 1000. for x in self.__erl2conf['DO']['dynamicDefault'] ]
+        if self.mainConfig['DO']['displayParameter'] == 'mgL':
+            self.mainConfig['DO']['validRange'] = [ x * 15.9994 * 2. / 1000.
+                                                    for x in self.mainConfig['DO']['validRange'] ]
+            self.mainConfig['DO']['setpointDefault'] = self.mainConfig['DO']['setpointDefault'] * 15.9994 * 2. / 1000.
+            self.mainConfig['DO']['dynamicDefault'] = [ x * 15.9994 * 2. / 1000.
+                                                        for x in self.mainConfig['DO']['dynamicDefault'] ]
 
         # the virtual temperature sensor might be required even if not explicitly enabled
-        self.__erl2conf['virtualtemp'] = {**self.__erl2conf['virtualtemp'], **self.__erl2conf['temperature']}
+        self.mainConfig['virtualtemp'] = {**self.mainConfig['virtualtemp'], **self.mainConfig['temperature']}
 
         # heater/chiller parameters
         for controlType in ['heater', 'chiller']:
 
             # what type of output channel does the control use? pwm, 10v or gpio
             self.validate(str, controlType, 'channelType')
-            if self.__erl2conf[controlType]['channelType'] not in ['pwm', '10v', 'gpio']:
-                raise TypeError(f"{self.__class__.__name__}: [controlType]['channelType'] = [{self.__erl2conf[controlType]['channelType']}] must be 'pwm', '10v' or 'gpio'")
+            if self.mainConfig[controlType]['channelType'] not in ['pwm', '10v', 'gpio']:
+                raise TypeError(f"{self.__class__.__name__}: [controlType]['channelType'] = " +
+                                f"[{self.mainConfig[controlType]['channelType']}] must be 'pwm', '10v' or 'gpio'")
 
             self.validate(int, controlType, 'stackLevel',    min=0, max=7)
             self.validate(int, controlType, 'outputChannel', min=1, max=4)
@@ -441,8 +469,9 @@ class Erl2Config():
 
             # heater and chiller have 0. or 1. as valid reset values
             self.validate(float, controlType, 'valueWhenReset')
-            if self.__erl2conf[controlType]['valueWhenReset'] not in [0., 1.]:
-                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['valueWhenReset'] = {self.__erl2conf[controlType]['valueWhenReset']} must be 0. or 1.")
+            if self.mainConfig[controlType]['valueWhenReset'] not in [0., 1.]:
+                raise TypeError(f"{self.__class__.__name__}: [{controlType}]['valueWhenReset'] = " +
+                                f"{self.mainConfig[controlType]['valueWhenReset']} must be 0. or 1.")
 
         # controls (heater, chiller, mfc.air, mfc.co2, mfc.n2) share some parameter logic
         for controlType in ['heater', 'chiller', 'mfc.air', 'mfc.co2', 'mfc.n2']:
@@ -454,32 +483,34 @@ class Erl2Config():
             self.validate(int, controlType, 'outputChannel', min=1, max=4)
 
             # the MFCs must merely have a reset value that falls within their validRange
-            self.validate(float, controlType, 'valueWhenReset', min=self.__erl2conf[controlType]['validRange'][0], max=self.__erl2conf[controlType]['validRange'][1])
+            self.validate(float, controlType, 'valueWhenReset',
+                          min=self.mainConfig[controlType]['validRange'][0],
+                          max=self.mainConfig[controlType]['validRange'][1])
 
     def validate(self, cl, cat, param, min=None, max=None):
 
         #print (f"{self.__class__.__name__}: Debug: validate({cl.__name__},{cat},{param},{min},{max})")
 
-        # pull value from system defaults if missing from the erl2.conf file
+        # pull value from system defaults if missing from the .conf file
         if param not in self.in_conf[cat]:
-            self.in_conf[cat][param] = self.__default[cat][param]
+            self.in_conf[cat][param] = self.default[cat][param]
 
         # special case: None
         if self.in_conf[cat][param] == 'None':
-            self.__erl2conf[cat][param] = None
+            self.mainConfig[cat][param] = None
             return
 
         # attempt the conversion to the requested class
         try:
             # special handling for booleans
             if cl == bool:
-                self.__erl2conf[cat][param] = self.in_conf.getboolean(cat,param)
+                self.mainConfig[cat][param] = self.in_conf.getboolean(cat,param)
             else:
-                self.__erl2conf[cat][param] = cl(self.in_conf[cat][param])
+                self.mainConfig[cat][param] = cl(self.in_conf[cat][param])
 
             # if bounds are specified, check them
-            if (   (min is not None and self.__erl2conf[cat][param] < min)
-                or (max is not None and self.__erl2conf[cat][param] > max)):
+            if (   (min is not None and self.mainConfig[cat][param] < min)
+                or (max is not None and self.mainConfig[cat][param] > max)):
                 raise TypeError
 
         except:
@@ -504,44 +535,45 @@ class Erl2Config():
             elif max is not None:
                 msg = f" less than [{max}]"
 
-            raise TypeError(f"{self.__class__.__name__}: [{cat}][{param}] = [{self.in_conf[cat][param]}] is not {tp}{msg}") #from None
+            raise TypeError(f"{self.__class__.__name__}: [{cat}][{param}] = " +
+                            f"[{self.in_conf[cat][param]}] is not {tp}{msg}") #from None
 
 
     def validateList(self, cl, cat, param, cnt=None, min=None, max=None):
 
         #print (f"{self.__class__.__name__}: Debug: validateList({cl.__name__},{cat},{param},{cnt},{min},{max})")
 
-        # pull value from system defaults if missing from the erl2.conf file
+        # pull value from system defaults if missing from the .conf file
         if param not in self.in_conf[cat]:
-            self.in_conf[cat][param] = self.__default[cat][param]
+            self.in_conf[cat][param] = self.default[cat][param]
 
         # special case: None
         if self.in_conf[cat][param] == 'None':
-            self.__erl2conf[cat][param] = None
+            self.mainConfig[cat][param] = None
             return
 
         # attempt the conversion to the requested class
         try:
             # convert a string that looks like a Python list into an actual Python list
-            self.__erl2conf[cat][param] = literal_eval(self.in_conf[cat][param])
+            self.mainConfig[cat][param] = literal_eval(self.in_conf[cat][param])
 
             # is it a list?
-            if type(self.__erl2conf[cat][param]) is not list:
+            if type(self.mainConfig[cat][param]) is not list:
                 raise
 
             # if length is specified, is it the expected length?
             if (    cnt is not None
-                and len(self.__erl2conf[cat][param]) != cnt):
+                and len(self.mainConfig[cat][param]) != cnt):
                 raise
 
             # explicitly convert values to requested class
-            self.__erl2conf[cat][param] = [ cl(x) if type(x) is not cl else x for x in self.__erl2conf[cat][param] ]
-            if len([ x for x in self.__erl2conf[cat][param] if type(x) is not cl ]) > 0:
+            self.mainConfig[cat][param] = [ cl(x) if type(x) is not cl else x for x in self.mainConfig[cat][param] ]
+            if len([ x for x in self.mainConfig[cat][param] if type(x) is not cl ]) > 0:
                 raise
 
             # if bounds are specified, check them
-            if (   (min is not None and len([ x for x in self.__erl2conf[cat][param] if x < min ]) > 0)
-                or (max is not None and len([ x for x in self.__erl2conf[cat][param] if x > max ]) > 0)):
+            if (   (min is not None and len([ x for x in self.mainConfig[cat][param] if x < min ]) > 0)
+                or (max is not None and len([ x for x in self.mainConfig[cat][param] if x > max ]) > 0)):
                 raise TypeError
 
         except:
@@ -566,15 +598,40 @@ class Erl2Config():
             elif max is not None:
                 msg = f" less than [{max}]"
 
-            raise TypeError(f"{self.__class__.__name__}: [{cat}][{param}] = {self.in_conf[cat][param]} is not a list of {tp}{msg}") from None
+            raise TypeError(f"{self.__class__.__name__}: [{cat}][{param}] = "
+                            f"{self.in_conf[cat][param]} is not a list of {tp}{msg}") from None
+
+    def validateSerialPort(self, cat, param):
+
+        # first, validate as string
+        self.validate(str, cat, param)
+
+        # if a serialPort is specified but doesn't exist on the system
+        if self.mainConfig[cat][param] is not None:
+            if not path.exists(self.mainConfig[cat][param]):
+
+                # special logic for controllers: reset any missing serialPort to None
+                if self.mainConfig['device']['type'] == 'controller':
+                    self.mainConfig[cat][param] = None
+                else:
+                    raise TypeError(f"{self.__class__.__name__}: [{cat}][{param}] = "
+                                    f"[{self.mainConfig[cat][param]}] does not exist on this system")
+
+    def validateBaudRate(self, cat, param):
+
+        # first, validate as integer
+        self.validate(int, cat, param)
+
+        # if a baud rate is specified but isn't found in the list of valid baud rates
+        if (self.mainConfig[cat][param] is not None
+            and self.mainConfig[cat][param] not in BAUDS):
+            raise TypeError(f"{self.__class__.__name__}: [{cat}][{param}] = "
+                            f"[{self.mainConfig[cat][param]}] is not a valid "
+                            f"baud rate.\nValid baud rates are {BAUDS}.")
 
     # override [] syntax to return dictionaries of parameter values
     def __getitem__(self, key):
-        return self.__erl2conf[key]
-
-    # provide a method similar to configparser's section()
-    def sections(self):
-        return self.__erl2conf.keys()
+        return self.mainConfig[key]
 
 def main():
 

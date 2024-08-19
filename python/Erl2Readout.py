@@ -89,12 +89,12 @@ class Erl2Readout():
                               and self.__deviceState.get('virtualtemp','enabled',False))
 
         # create the main readout parent frame (no border, no padding)
-        self.__parentFrame = ttk.Frame(self.__displayLoc['parent'], padding='0 0', relief='flat', borderwidth=0)
+        self.__parentFrame = ttk.Frame(self.__displayLoc['parent'], padding='2', relief='solid', borderwidth=2)
 
         # exact grid location might not be defined at readout creation time
         if (        'row' in self.__displayLoc and self.__displayLoc['row'] is not None
                 and 'column' in self.__displayLoc and self.__displayLoc['column'] is not None):
-            self.__parentFrame.grid(row=self.__displayLoc['row'], column=self.__displayLoc['column'], padx='0', pady='0', sticky='nesw')
+            self.__parentFrame.grid(row=self.__displayLoc['row'], column=self.__displayLoc['column'], padx='2', pady='2', sticky='nesw')
 
         # column count in first row
         c1 = -1
@@ -123,7 +123,7 @@ class Erl2Readout():
 
         # device label in first row
         c1 += 1
-        l = ttk.Label(f1, text=self.__labelText, font='Arial 12 bold'
+        l = ttk.Label(f1, text=self.__labelText, font='Arial 20 bold'
             #, relief='solid', borderwidth=1
             )
         l.grid(row=0, column=c1, sticky='ew')
