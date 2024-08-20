@@ -1439,6 +1439,7 @@ class Erl2Network():
                                              width=40,
                                              bd=0,
                                              highlightthickness=0,
+                                             background='#DBDBDB',
                                              activebackground='#DBDBDB',
                                              command=self.rescanSubnet,
                                              )

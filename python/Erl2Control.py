@@ -167,6 +167,7 @@ class Erl2Control():
                           width=40,
                           bd=0,
                           highlightthickness=0,
+                          background='#DBDBDB',
                           activebackground='#DBDBDB',
                           command=self.toggleSetting)
             b.grid(row=0, column=0, padx='2 2', sticky='w')

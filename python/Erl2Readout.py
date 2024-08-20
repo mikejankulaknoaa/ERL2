@@ -89,7 +89,7 @@ class Erl2Readout():
                               and self.__deviceState.get('virtualtemp','enabled',False))
 
         # create the main readout parent frame (no border, no padding)
-        self.__parentFrame = ttk.Frame(self.__displayLoc['parent'], padding='2', relief='solid', borderwidth=2)
+        self.__parentFrame = ttk.Frame(self.__displayLoc['parent'], padding='2', relief='solid', borderwidth=3)
 
         # exact grid location might not be defined at readout creation time
         if (        'row' in self.__displayLoc and self.__displayLoc['row'] is not None

@@ -64,8 +64,11 @@ class Erl2Controller():
         self.__deviceLabels = []
         self.__deviceReadouts = []
 
+        # apply a style
+        ttk.Style().theme_use('default')
+
         # divide the main display vertically
-        displayTop = ttk.Frame(self.erl2context['root'], padding='0', relief='solid', borderwidth=2)
+        displayTop = ttk.Frame(self.erl2context['root'], padding='0', relief='solid', borderwidth=3)
         displayTop.grid(row=0, column=0, padx='4', pady='2', sticky='nesw')
         displayBody = ttk.Frame(self.erl2context['root'], padding='0', relief='solid', borderwidth=0)
         displayBody.grid(row=1, column=0, padx='2', pady='2', sticky='nesw')
@@ -124,6 +127,7 @@ class Erl2Controller():
                                width=40,
                                bd=0,
                                highlightthickness=0,
+                               background='#DBDBDB',
                                activebackground='#DBDBDB',
                                command=self.editPopup)
         editButton.grid(row=0, column=0, padx='2 2', sticky='w')
@@ -147,6 +151,7 @@ class Erl2Controller():
                                   width=40,
                                   bd=0,
                                   highlightthickness=0,
+                                  background='#DBDBDB',
                                   activebackground='#DBDBDB',
                                   command=self.networkPopup)
         networkButton.grid(row=0, column=0, padx='2 2', sticky='w')
@@ -170,6 +175,7 @@ class Erl2Controller():
                                    width=40,
                                    bd=0,
                                    highlightthickness=0,
+                                   background='#DBDBDB',
                                    activebackground='#DBDBDB',
                                    command=self.settingsPopup)
         settingsButton.grid(row=0, column=0, padx='2 2', sticky='w')
@@ -193,6 +199,7 @@ class Erl2Controller():
                                 width=40,
                                 bd=0,
                                 highlightthickness=0,
+                                background='#DBDBDB',
                                 activebackground='#DBDBDB',
                                 command=self.aboutPopup)
         aboutButton.grid(row=0, column=0, padx='2 2', sticky='w')

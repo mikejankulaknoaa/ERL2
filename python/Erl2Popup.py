@@ -100,8 +100,8 @@ class Erl2Popup(tk.Toplevel):
         self.__f.grid(row=0, column=0, padx='2', pady='2', sticky='nesw')
 
         # divide the popup frame into top (content) and bottom (buttons) sections
-        displayContent = ttk.Frame(self.__f, padding='2', relief='solid', borderwidth=1)
-        displayContent.grid(row=0, column=0, padx='2', pady='2', sticky='nesw')
+        displayContent = ttk.Frame(self.__f, padding='2', relief='flat', borderwidth=0)
+        displayContent.grid(row=0, column=0, padx='0', pady='0', sticky='nesw')
         displayButtons = ttk.Frame(self.__f, padding='0', relief='flat', borderwidth=0)
         displayButtons.grid(row=2, column=0, padx='2', pady='2', sticky='ns')
 
@@ -283,7 +283,7 @@ class Erl2Popup(tk.Toplevel):
             editFrame.grid(row=r, column=0, sticky='ne')
 
             # subframe for tanks
-            tanksFrame = ttk.Frame(editFrame, padding='2', relief='solid', borderwidth=1)
+            tanksFrame = ttk.Frame(editFrame, padding='2', relief='solid', borderwidth=3)
             tanksFrame.grid(row=0, column=0, rowspan=3, padx='2', pady='2', sticky='nesw')
             ttk.Label(tanksFrame, text='Apply to Tanks:', font='Arial 12 bold'
                 #, relief='solid', borderwidth=1
@@ -308,7 +308,7 @@ class Erl2Popup(tk.Toplevel):
                 var = tk.StringVar()
                 var.set(tankList)
                 self.__listbox = tk.Listbox(tanksFrame, listvariable=var, selectmode=tk.MULTIPLE, font='Arial 12')
-                self.__listbox.grid(row=1,column=0,sticky='nesw')
+                self.__listbox.grid(row=1,column=0,padx=2,pady=2,sticky='nesw')
 
                 # preselect matching mac, if found
                 if matching is not None:
@@ -321,7 +321,7 @@ class Erl2Popup(tk.Toplevel):
             sysR = -1
             for sys in SUBSYSTEMS:
                 sysR += 1
-                sysF = ttk.Frame(editFrame, padding='2', relief='solid', borderwidth=1)
+                sysF = ttk.Frame(editFrame, padding='2', relief='solid', borderwidth=3)
                 sysF.grid(row=sysR, column=1, padx='2', pady='2', sticky='nesw')
 
                 # keep track of widgets created
@@ -343,6 +343,7 @@ class Erl2Popup(tk.Toplevel):
                               width=30,
                               bd=0,
                               highlightthickness=0,
+                              background='#DBDBDB',
                               activebackground='#DBDBDB',
                               #borderwidth=1,
                               command=lambda x=sys: self.toggleSubSystem(sys=x))
@@ -386,6 +387,7 @@ class Erl2Popup(tk.Toplevel):
                                         font='Arial 16',
                                         bd=0,
                                         highlightthickness=0,
+                                        background='#DBDBDB',
                                         activebackground='#DBDBDB',
                                         highlightcolor='#DBDBDB',
                                         highlightbackground='#DBDBDB',
@@ -425,6 +427,7 @@ class Erl2Popup(tk.Toplevel):
                                   width=40,
                                   bd=0,
                                   highlightthickness=0,
+                                  background='#DBDBDB',
                                   activebackground='#DBDBDB',
                                   #borderwidth=1,
                                   command=lambda x='temperature', y=0: self.toggleHeaterChiller(sys=x,ind=y))
@@ -451,6 +454,7 @@ class Erl2Popup(tk.Toplevel):
                                   width=40,
                                   bd=0,
                                   highlightthickness=0,
+                                  background='#DBDBDB',
                                   activebackground='#DBDBDB',
                                   #borderwidth=1,
                                   command=lambda x='temperature', y=1: self.toggleHeaterChiller(sys=x,ind=y))
@@ -655,6 +659,7 @@ class Erl2Popup(tk.Toplevel):
                                    width=40,
                                    bd=0,
                                    highlightthickness=0,
+                                   background='#DBDBDB',
                                    activebackground='#DBDBDB',
                                    command=self.copyFromTank)
             copyButton.grid(row=0, column=0, padx='2 2', sticky='w')
@@ -668,6 +673,11 @@ class Erl2Popup(tk.Toplevel):
             copyFrame.columnconfigure(0,weight=0)
             copyFrame.columnconfigure(1,weight=1)
 
+            tanksFrame.rowconfigure(0,weight=0)
+            tanksFrame.rowconfigure(1,weight=1)
+            tanksFrame.rowconfigure(2,weight=0)
+            tanksFrame.columnconfigure(0,weight=0)
+
             # button: load from file
             c += 1
             loadFrame = ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1)
@@ -678,6 +688,7 @@ class Erl2Popup(tk.Toplevel):
                                    width=40,
                                    bd=0,
                                    highlightthickness=0,
+                                   background='#DBDBDB',
                                    activebackground='#DBDBDB',
                                    command=self.loadFromFile)
             loadButton.grid(row=0, column=0, padx='2 2', sticky='w')
@@ -701,6 +712,7 @@ class Erl2Popup(tk.Toplevel):
                                    width=40,
                                    bd=0,
                                    highlightthickness=0,
+                                   background='#DBDBDB',
                                    activebackground='#DBDBDB',
                                    command=self.saveToFile)
             saveButton.grid(row=0, column=0, padx='2 2', sticky='w')
@@ -726,6 +738,7 @@ class Erl2Popup(tk.Toplevel):
                                width=40,
                                bd=0,
                                highlightthickness=0,
+                               background='#DBDBDB',
                                activebackground='#DBDBDB',
                                command=self.closeWindow)
         exitButton.grid(row=0, column=0, padx='2 2', sticky='w')
@@ -750,6 +763,7 @@ class Erl2Popup(tk.Toplevel):
                                     width=40,
                                     bd=0,
                                     highlightthickness=0,
+                                    background='#DBDBDB',
                                     activebackground='#DBDBDB',
                                     command=self.applyToTanks)
             applyButton.grid(row=0, column=0, padx='2 2', sticky='w')

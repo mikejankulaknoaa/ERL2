@@ -149,6 +149,7 @@ class Erl2Startup:
                                                bd=0,
                                                highlightthickness=0,
                                                highlightcolor='#DBDBDB',
+                                               background='#DBDBDB',
                                                highlightbackground='#DBDBDB',
                                                #bg='#DBDBDB',
                                                selectcolor='#DBDBDB',
@@ -187,6 +188,7 @@ class Erl2Startup:
                                                bd=0,
                                                highlightthickness=0,
                                                highlightcolor='#DBDBDB',
+                                               background='#DBDBDB',
                                                highlightbackground='#DBDBDB',
                                                #bg='#DBDBDB',
                                                selectcolor='#DBDBDB',
@@ -225,6 +227,7 @@ class Erl2Startup:
                                           bd=0,
                                           highlightthickness=0,
                                           highlightcolor='#DBDBDB',
+                                          background='#DBDBDB',
                                           highlightbackground='#DBDBDB',
                                           #bg='#DBDBDB',
                                           selectcolor='#DBDBDB',
@@ -263,6 +266,7 @@ class Erl2Startup:
                                                 bd=0,
                                                 highlightthickness=0,
                                                 highlightcolor='#DBDBDB',
+                                                background='#DBDBDB',
                                                 highlightbackground='#DBDBDB',
                                                 #bg='#DBDBDB',
                                                 selectcolor='#DBDBDB',
@@ -297,6 +301,7 @@ class Erl2Startup:
                                   width=40,
                                   bd=0,
                                   highlightthickness=0,
+                                  background='#DBDBDB',
                                   activebackground='#DBDBDB',
                                   command=self.restartApp)
         restartButton.grid(row=0, column=0, padx='2 2', sticky='w')
@@ -330,6 +335,7 @@ class Erl2Startup:
                                width=40,
                                bd=0,
                                highlightthickness=0,
+                               background='#DBDBDB',
                                activebackground='#DBDBDB',
                                command=self.exitApp)
         exitButton.grid(row=0, column=0, padx='2 2', sticky='w')
