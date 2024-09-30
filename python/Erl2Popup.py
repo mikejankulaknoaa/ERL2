@@ -11,22 +11,28 @@ from Erl2Useful import MANUAL,AUTO_STATIC,AUTO_DYNAMIC,MODEDICT,SUBSYSTEMS
 
 class Erl2Popup(tk.Toplevel):
 
-    # allow only one Erl2Popup popup at a time
-    erl2Popup = None
-    popupType = None
+    # wait until a popup is finished opening before allowing more to open
     isOpening = False
 
-    def __init__(self, mac=None, erl2context={}):
+    def __init__(self,
+                 popupType='About ERL2',
+                 parent=None,
+                 mac=None,
+                 erl2context={}):
 
         super().__init__()
 
+        self.__popupType = popupType
+        self.__parent = parent
         self.__mac = mac
         self.erl2context = erl2context
 
         #print (f"{self.__class__.__name__}: Debug: __init__: mac [{self.__mac}]")
 
-        # insist on 'root' always being defined
-        assert('root' in self.erl2context and self.erl2context['root'] is not None)
+        # insist on 'root' always being defined if a parent window isn't passed in
+        if self.__parent is None:
+            assert('root' in self.erl2context and self.erl2context['root'] is not None)
+            self.__parent = self.erl2context['root']
 
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
@@ -106,7 +112,7 @@ class Erl2Popup(tk.Toplevel):
         displayButtons.grid(row=2, column=0, padx='2', pady='2', sticky='ns')
 
         # label for the main content frame
-        ttk.Label(displayContent, text=Erl2Popup.popupType, font='Arial 12 bold'
+        ttk.Label(displayContent, text=self.__popupType, font='Arial 12 bold'
             #, relief='solid', borderwidth=1
             ).grid(row=0, column=0, sticky='nw')
 
@@ -123,7 +129,7 @@ class Erl2Popup(tk.Toplevel):
         r = 0
 
         # the 'About ERL2' popup...
-        if Erl2Popup.popupType == 'About ERL2':
+        if self.__popupType == 'About ERL2':
 
             r += 1
             ttk.Label(displayContent, text='ERL2 Version:  ', font=fontleft, justify='right'
@@ -133,13 +139,13 @@ class Erl2Popup(tk.Toplevel):
                 #, relief='solid', borderwidth=1
                 ).grid(row=r, column=1, sticky='nw')
 
-            r += 1
-            ttk.Label(displayContent, text='Device Id:  ', font=fontleft, justify='right'
-                #, relief='solid', borderwidth=1
-                ).grid(row=r, column=0, sticky='ne')
-            ttk.Label(displayContent, text=self.erl2context['conf']['device']['id'], font=fontright
-                #, relief='solid', borderwidth=1
-                ).grid(row=r, column=1, sticky='nw')
+            #r += 1
+            #ttk.Label(displayContent, text='Device Id:  ', font=fontleft, justify='right'
+            #    #, relief='solid', borderwidth=1
+            #    ).grid(row=r, column=0, sticky='ne')
+            #ttk.Label(displayContent, text=self.erl2context['conf']['device']['id'], font=fontright
+            #    #, relief='solid', borderwidth=1
+            #    ).grid(row=r, column=1, sticky='nw')
 
             r += 1
             ttk.Label(displayContent, text='Log Directory:  ', font=fontleft, justify='right'
@@ -242,7 +248,7 @@ class Erl2Popup(tk.Toplevel):
                                                        )
 
         # the 'Settings' popup...
-        elif Erl2Popup.popupType == 'Settings':
+        elif self.__popupType == 'Settings':
 
             # these controls are defined in the startup module
             if ('startup' in self.erl2context):
@@ -263,8 +269,18 @@ class Erl2Popup(tk.Toplevel):
                 r += 1
                 self.erl2context['startup'].createSummaryLogsWidget(widgetLoc={'parent':displayContent,'row':r})
 
+                ## TEST of Erl2Popup calling itself
+                #r += 1
+                #testFrame = ttk.Frame(displayContent, padding='2 2', relief='flat', borderwidth=0)
+                #testFrame.grid(row=r, column=0)
+                #l = ttk.Label(testFrame, text='About ERL2', font='Arial 16'
+                #    #, relief='solid', borderwidth=1
+                #    )
+                #l.grid(row=0, column=1, padx='2 2', sticky='w')
+                #l.bind('<Button-1>', lambda event, tp='About ERL2', pt=self, cx=self.erl2context: Erl2Popup.openPopup(popupType=tp,parent=pt,erl2context=cx))
+
         # the 'Network' popup...
-        elif Erl2Popup.popupType == 'Network':
+        elif self.__popupType == 'Network':
 
             # this item is only relevant if network is defined
             if 'network' in self.erl2context and self.erl2context['network'] is not None:
@@ -276,7 +292,7 @@ class Erl2Popup(tk.Toplevel):
                 self.erl2context['network'].addWidgets(childrenLocs=childrenLocs)
 
         # the 'Edit Tank Settings' popup...
-        elif Erl2Popup.popupType == 'Edit Tank Settings':
+        elif self.__popupType == 'Edit Tank Settings':
 
             r += 1
             editFrame = ttk.Frame(displayContent, padding='0', relief='flat', borderwidth=0)
@@ -482,14 +498,15 @@ class Erl2Popup(tk.Toplevel):
                     self.__modeWidgets[sys]['manual.enabled'] = []
 
                     # create the entry field for manual control of the Air MFC
-                    e = Erl2Entry(entryLoc={'parent':manF,'row':2,'column':1},
-                                            labelLoc={'parent':manF,'row':2,'column':0},
-                                            label='Air',
-                                            width=5,
-                                            displayDecimals=self.__mfcAirDecimals,
-                                            validRange=self.__mfcAirRange,
-                                            initValue=0.,
-                                            erl2context=self.erl2context)
+                    e = Erl2Entry(parent=self,
+                                  entryLoc={'parent':manF,'row':2,'column':1},
+                                  labelLoc={'parent':manF,'row':2,'column':0},
+                                  label='Air',
+                                  width=5,
+                                  displayDecimals=self.__mfcAirDecimals,
+                                  validRange=self.__mfcAirRange,
+                                  initValue=0.,
+                                  erl2context=self.erl2context)
 
                     # keep a reference to this Air MFC control widget
                     self.__modeWidgets[sys]['manual'].append(e)
@@ -497,14 +514,15 @@ class Erl2Popup(tk.Toplevel):
                     self.__modeWidgets[sys]['manual.enabled'].append(False)
 
                     # create the entry field for manual control of the CO2 MFC
-                    e = Erl2Entry(entryLoc={'parent':manF,'row':3,'column':1},
-                                            labelLoc={'parent':manF,'row':3,'column':0},
-                                            label=u'CO\u2082',
-                                            width=5,
-                                            displayDecimals=self.__mfcCO2Decimals,
-                                            validRange=self.__mfcCO2Range,
-                                            initValue=0.,
-                                            erl2context=self.erl2context)
+                    e = Erl2Entry(parent=self,
+                                  entryLoc={'parent':manF,'row':3,'column':1},
+                                  labelLoc={'parent':manF,'row':3,'column':0},
+                                  label=u'CO\u2082',
+                                  width=5,
+                                  displayDecimals=self.__mfcCO2Decimals,
+                                  validRange=self.__mfcCO2Range,
+                                  initValue=0.,
+                                  erl2context=self.erl2context)
 
                     # keep a reference to this CO2 MFC control widget
                     self.__modeWidgets[sys]['manual'].append(e)
@@ -519,14 +537,15 @@ class Erl2Popup(tk.Toplevel):
                     self.__modeWidgets[sys]['manual.enabled'] = []
 
                     # create the entry field for manual control of the N2 MFC
-                    e = Erl2Entry(entryLoc={'parent':manF,'row':2,'column':1},
-                                            labelLoc={'parent':manF,'row':2,'column':0},
-                                            label=u'N\u2082',
-                                            width=5,
-                                            displayDecimals=self.__mfcN2Decimals,
-                                            validRange=self.__mfcN2Range,
-                                            initValue=0.,
-                                            erl2context=self.erl2context)
+                    e = Erl2Entry(parent=self,
+                                  entryLoc={'parent':manF,'row':2,'column':1},
+                                  labelLoc={'parent':manF,'row':2,'column':0},
+                                  label=u'N\u2082',
+                                  width=5,
+                                  displayDecimals=self.__mfcN2Decimals,
+                                  validRange=self.__mfcN2Range,
+                                  initValue=0.,
+                                  erl2context=self.erl2context)
 
                     # keep a reference to this N2 MFC control widget
                     self.__modeWidgets[sys]['manual'].append(e)
@@ -543,28 +562,30 @@ class Erl2Popup(tk.Toplevel):
                 self.__modeWidgets[sys]['header']['auto'] = l
 
                 # create the entry field for the static setpoint
-                e = Erl2Entry(entryLoc={'parent':autF,'row':1,'column':1},
-                                        labelLoc={'parent':autF,'row':1,'column':0},
-                                        label='Static\nSetpoint',
-                                        width=5,
-                                        displayDecimals=dispDecimals,
-                                        validRange=validRg,
-                                        initValue=self.erl2context['conf'][sys]['setpointDefault'],
-                                        erl2context=self.erl2context)
+                e = Erl2Entry(parent=self,
+                              entryLoc={'parent':autF,'row':1,'column':1},
+                              labelLoc={'parent':autF,'row':1,'column':0},
+                              label='Static\nSetpoint',
+                              width=5,
+                              displayDecimals=dispDecimals,
+                              validRange=validRg,
+                              initValue=self.erl2context['conf'][sys]['setpointDefault'],
+                              erl2context=self.erl2context)
 
                 # keep a reference to this static setpoint widget
                 self.__modeWidgets[sys]['staticSetpoint'] = e
 
                 # create the entry field for hysteresis (temperature only)
                 if sys == 'temperature':
-                    e = Erl2Entry(entryLoc={'parent':autF,'row':2,'column':1},
-                                            labelLoc={'parent':autF,'row':2,'column':0},
-                                            label='Hysteresis',
-                                            width=5,
-                                            displayDecimals=(dispDecimals+2),
-                                            validRange=[0.,None],
-                                            initValue=self.erl2context['conf'][sys]['hysteresisDefault'],
-                                            erl2context=self.erl2context)
+                    e = Erl2Entry(parent=self,
+                                  entryLoc={'parent':autF,'row':2,'column':1},
+                                  labelLoc={'parent':autF,'row':2,'column':0},
+                                  label='Hysteresis',
+                                  width=5,
+                                  displayDecimals=(dispDecimals+2),
+                                  validRange=[0.,None],
+                                  initValue=self.erl2context['conf'][sys]['hysteresisDefault'],
+                                  erl2context=self.erl2context)
 
                     # keep a reference to this hysteresis widget
                     self.__modeWidgets[sys]['hysteresis'] = e
@@ -577,7 +598,6 @@ class Erl2Popup(tk.Toplevel):
                     )
                 l.grid(row=0, column=0, columnspan=24, sticky='nw')
                 self.__modeWidgets[sys]['header']['dynamicSetpoints'] = l
-
 
                 # add dynamic setpoint entry fields
                 hourNum = 0
@@ -606,7 +626,8 @@ class Erl2Popup(tk.Toplevel):
                     l.grid(row=hourRow, column=hourCol, pady=hourPady, sticky='s')
 
                     # create the entry field for each dynamic setpoint
-                    e = Erl2Entry(entryLoc={'parent':dynF,'row':valRow,'column':valCol},
+                    e = Erl2Entry(parent=self,
+                                  entryLoc={'parent':dynF,'row':valRow,'column':valCol},
                                   width=5,
                                   font='Arial 16',
                                   displayDecimals=dispDecimals,
@@ -642,13 +663,13 @@ class Erl2Popup(tk.Toplevel):
         #).grid(row=0, column=c, padx='0', pady=0, sticky='ew')
 
         # if this is the 'Network' popup, add the Rescan button
-        if Erl2Popup.popupType == 'Network' and 'network' in self.erl2context:
+        if self.__popupType == 'Network' and 'network' in self.erl2context:
             c += 1
             self.erl2context['network'].addWidgets(buttonLocs=[{'parent':displayButtons, 'padding':'2 2', 'relief':'solid', 'borderwidth':1,
                                                                 'row':0, 'column':c, 'padx':'0 4', 'pady':'0', 'sticky':'ew'}])
 
         # these three buttons are only for the edit settings popup
-        if Erl2Popup.popupType == 'Edit Tank Settings':
+        if self.__popupType == 'Edit Tank Settings':
 
             # button: copy from tank
             copyFrame = ttk.Frame(tanksFrame, padding='2 2', relief='solid', borderwidth=1)
@@ -728,7 +749,7 @@ class Erl2Popup(tk.Toplevel):
 
         # exit button
         c += 1
-        if Erl2Popup.popupType == 'Edit Tank Settings': lbl = 'Cancel'
+        if self.__popupType == 'Edit Tank Settings': lbl = 'Cancel'
         else:                                           lbl = 'Close Window'
         exitFrame = ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1)
         exitFrame.grid(row=0, column=c, padx='0', pady=0, sticky='ew')
@@ -753,7 +774,7 @@ class Erl2Popup(tk.Toplevel):
         exitFrame.columnconfigure(1,weight=1)
 
         # apply button (edit settings only)
-        if Erl2Popup.popupType == 'Edit Tank Settings':
+        if self.__popupType == 'Edit Tank Settings':
             c += 1
             applyFrame = ttk.Frame(displayButtons, padding='2 2', relief='solid', borderwidth=1)
             applyFrame.grid(row=0, column=c, padx='4 0', pady=0, sticky='ew')
@@ -794,8 +815,8 @@ class Erl2Popup(tk.Toplevel):
 
         # even if this approach fails on macOS, on the PC it seems to work
         self.wait_visibility()
+        self.transient(self.__parent)
         self.grab_set()
-        self.transient(self.erl2context['root'])
 
         # these are ideas that might work on linux but are problematic on mac + PC
         #self.overrideredirect(1)
@@ -983,8 +1004,6 @@ class Erl2Popup(tk.Toplevel):
             #    print (f"{__name__}: Debug: saveToFile() returns None (canceled)")
 
         self.modalOpen = False
-        #self.grab_set()
-        #self.transient(self.erl2context['root'])
 
     def loadFromFile(self):
 
@@ -1037,8 +1056,6 @@ class Erl2Popup(tk.Toplevel):
         #    print (f"{__name__}: Debug: saveToFile() returns None (canceled)")
 
         self.modalOpen = False
-        #self.grab_set()
-        #self.transient(self.erl2context['root'])
 
     def copyFromTank(self, force=False):
 
@@ -1098,8 +1115,6 @@ class Erl2Popup(tk.Toplevel):
                     self.enableWidgets(sys)
 
         self.modalOpen = False
-        #self.grab_set()
-        #self.transient(self.erl2context['root'])
 
     def applyToTanks(self):
 
@@ -1147,8 +1162,6 @@ class Erl2Popup(tk.Toplevel):
                 self.destroy()
 
         self.modalOpen = False
-        #self.grab_set()
-        #self.transient(self.erl2context['root'])
 
     def closeWindow(self):
 
@@ -1164,14 +1177,11 @@ class Erl2Popup(tk.Toplevel):
         #self.transient()
 
         # only ask for confirmation for 'Edit Tank Setting' popup
-        if (   Erl2Popup.popupType != 'Edit Tank Settings'
-            or mb.askyesno('Confirm Cancelation',f"Are you sure you want to cancel this {Erl2Popup.popupType} operation?",parent=self)):
+        if (   self.__popupType != 'Edit Tank Settings'
+            or mb.askyesno('Confirm Cancelation',f"Are you sure you want to cancel this {self.__popupType} operation?",parent=self)):
             self.destroy()
 
         self.modalOpen = False
-        #self.grab_set()
-        #self.transient(self.erl2context['root'])
-        #self.onFocusOut()
 
     def getSettings(self):
 
@@ -1380,28 +1390,24 @@ class Erl2Popup(tk.Toplevel):
         # no errors to report
         return None
 
-    # rather than instantiate a new Erl2Popup instance, and risk opening multiple
-    # popups at once, provide this classmethod that reads a class attribute and
-    # decides whether to instantiate anything (or just co-opt an already-open popup)
+    # Erl2Popup can now call itself, meaning that multiple popup windows can be
+    # open at the same time, but we still don't want to open new popups while
+    # a previous popup window is still in the process of opening
 
     @classmethod
     def openPopup(cls,
                   popupType='About ERL2',
+                  parent=None,
                   mac=None,
                   erl2context={}):
 
-        if (cls.erl2Popup is not None and cls.erl2Popup.winfo_exists()
-                and cls.popupType is not None and cls.popupType == popupType):
-            #print (f"{__name__}: Debug: openPopup({popupType}): popup already open")
-            cls.erl2Popup.lift()
-        elif cls.isOpening:
+        if cls.isOpening:
             #print (f"{__name__}: Debug: openPopup({popupType}): popup in the process of opening")
             pass
         else:
             #print (f"{__name__}: Debug: openPopup({popupType}): new popup")
-            cls.popupType = popupType
             cls.isOpening = True
-            cls.erl2Popup = Erl2Popup(mac=mac, erl2context=erl2context)
+            Erl2Popup(popupType=popupType, parent=parent, mac=mac, erl2context=erl2context)
 
 def testPopup(popupType='About ERL2', erl2context={}):
 

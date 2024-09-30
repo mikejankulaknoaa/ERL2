@@ -8,6 +8,7 @@ from Erl2State import Erl2State
 class Erl2Entry():
 
     def __init__(self,
+                 parent=None,
                  entryLoc={},
                  labelLoc={},
                  label=None,
@@ -22,6 +23,7 @@ class Erl2Entry():
                  erl2context={}):
 
         # save the Erl2Entry-specific parameters in attributes
+        self.__parent = parent
         self.__entryLoc = entryLoc
         self.__labelLoc = labelLoc
         self.__label = label
@@ -37,6 +39,10 @@ class Erl2Entry():
 
         # insist on 'root' always being defined
         assert('root' in self.erl2context and self.erl2context['root'] is not None)
+
+        # use 'root' as parent window if not explicitly passed
+        if self.__parent is None:
+            self.__parent = self.erl2context['root']
 
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
@@ -199,7 +205,7 @@ class Erl2Entry():
 
             # check numPad setting, but default to opening the popup if not set
             if self.erl2context['state'].get('system','numPad',1):
-                Erl2NumPad.openPopup(event.widget, erl2context=self.erl2context)
+                Erl2NumPad.openPopup(event.widget, parent=self.__parent, erl2context=self.erl2context)
 
     #def tabHandler(self,event):
     #    return 'break'

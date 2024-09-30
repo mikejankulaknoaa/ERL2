@@ -12,19 +12,27 @@ from Erl2Image import Erl2Image
 class Erl2NumPad(tk.Toplevel):
 
     # allow only one Erl2NumPad popup at a time
-    numPad = None
+    erl2NumPad = None
+    isOpening = False
     entryWidget = None
-    varName = None
+    entryVarName = None
     buttonsPressed = False
 
     # list of buttons (in order of appearance, 4x4 grid)
     BUTTONS = ['7', '8', '9', 'Del', '4', '5', '6', 'Clear', '1', '2', '3', 'Cancel', '0', 'Dot', 'Minus', 'Done']
 
-    def __init__(self, erl2context={}):
+    def __init__(self, parent=None, erl2context={}):
+
+        self.__parent = parent
 
         super().__init__()
 
         self.erl2context = erl2context
+
+        # insist on 'root' always being defined if a parent window isn't passed in
+        if self.__parent is None:
+            assert('root' in self.erl2context and self.erl2context['root'] is not None)
+            self.__parent = self.erl2context['root']
 
         # read in the system configuration file if needed
         if 'conf' not in self.erl2context:
@@ -43,13 +51,25 @@ class Erl2NumPad(tk.Toplevel):
         vcmd = self.register(self.validateNumPad)
 
         # create a Frame to hold everything
-        self.__f = ttk.Frame(self, padding='2 2', relief='flat', borderwidth=5)
+        self.__f = ttk.Frame(self, padding='2 2', relief='solid', borderwidth=1)
         self.__f.grid(row=0, column=0, padx='2', pady='2', sticky='nesw')
 
-        # assuming popup is 312x322, screen is 800x480
-        self.geometry("+244+79")
+        #print (f"{self.__class__.__name__}: Debug: __init__: " +
+        #       f"width [{self.__parent['root'].winfo_screenwidth()}], " +
+        #       f"height [{self.__parent.winfo_screenheight()}]")
+
+        # if this looks like a 800x480 Pi touchscreen, try to center it
+        if (    self.__parent.winfo_screenwidth() == 800
+            and self.__parent.winfo_screenheight() == 480):
+
+            self.geometry("+244+79")
+
+        # function to call if window is closed
         self.protocol('WM_DELETE_WINDOW', self.ok)
-        self.overrideredirect(1)
+
+        # these are ideas that might work on linux but are problematic on mac + PC
+        if self.erl2context['conf']['system']['platform'] not in ['darwin','win32']:
+            self.overrideredirect(1)
 
         # use a variable for the display widget
         self.displayVar = tk.StringVar()
@@ -66,9 +86,9 @@ class Erl2NumPad(tk.Toplevel):
 
         # when first opening, copy the initial value from the field being edited
         self.displayVar.set('')
-        if Erl2NumPad.entryWidget is not None and Erl2NumPad.varName is not None:
-            #print (f"{__name__}: Debug: entryWidget is !NOT! None [{Erl2NumPad.entryWidget.getvar(Erl2NumPad.varName)}]")
-            self.displayVar.set(Erl2NumPad.entryWidget.getvar(Erl2NumPad.varName))
+        if Erl2NumPad.entryWidget is not None and Erl2NumPad.entryVarName is not None:
+            #print (f"{__name__}: Debug: entryWidget is !NOT! None [{Erl2NumPad.entryWidget.getvar(Erl2NumPad.entryVarName)}]")
+            self.displayVar.set(Erl2NumPad.entryWidget.getvar(Erl2NumPad.entryVarName))
         #else:
         #    print (f"{__name__}: Debug: entryWidget is None")
 
@@ -83,9 +103,13 @@ class Erl2NumPad(tk.Toplevel):
 
             cur.grid(row=floor(n/4)+1, column=(n%4))
 
-        # this is meant to disallow clicks on any other window but the popup
+        # even if this approach fails on macOS, on the PC it seems to work
         self.wait_visibility()
         self.grab_set()
+        self.transient(self.__parent)
+
+        # indicate that we've finished opening
+        Erl2NumPad.isOpening = False
 
     def click(self, label):
 
@@ -107,11 +131,11 @@ class Erl2NumPad(tk.Toplevel):
             self.ok()
 
         elif label == 'Done':
-            if Erl2NumPad.entryWidget is not None and Erl2NumPad.varName is not None:
+            if Erl2NumPad.entryWidget is not None and Erl2NumPad.entryVarName is not None:
 
                 # it's okay if the old value cannot be interpreted as a float, but try
                 try:
-                    oldVal = float(Erl2NumPad.entryWidget.getvar(Erl2NumPad.varName))
+                    oldVal = float(Erl2NumPad.entryWidget.getvar(Erl2NumPad.entryVarName))
                 except:
                     oldVal = None
 
@@ -124,7 +148,7 @@ class Erl2NumPad(tk.Toplevel):
                 # insist that newVal is a float, and oldVal is blank or different
                 if newVal is not None and (oldVal is None or oldVal != newVal):
                     #print (f"{__name__}: Debug: click('Done'): before [{oldVal}], after [{newVal}]")
-                    Erl2NumPad.entryWidget.setvar(Erl2NumPad.varName,self.displayVar.get())
+                    Erl2NumPad.entryWidget.setvar(Erl2NumPad.entryVarName,self.displayVar.get())
 
             self.ok()
 
@@ -198,24 +222,29 @@ class Erl2NumPad(tk.Toplevel):
     @classmethod
     def openPopup(cls,
                   entryWidget,
+                  parent=None,
                   erl2context={}):
 
         cls.entryWidget = entryWidget
-        cls.varName = cls.entryWidget['textvariable']
+        cls.entryVarName = cls.entryWidget['textvariable']
         cls.buttonsPressed = False
 
-        #print (f"{__name__}: Debug: openPopup([{cls.entryWidget}]): value in [{cls.varName}] is {cls.entryWidget.getvar(cls.varName)}")
+        #print (f"{__name__}: Debug: openPopup([{cls.entryWidget}]): value in [{cls.entryVarName}] is {cls.entryWidget.getvar(cls.entryVarName)}")
 
-        if cls.numPad is not None and cls.numPad.winfo_exists():
+        if cls.erl2NumPad is not None and cls.erl2NumPad.winfo_exists():
             #print (f"{__name__}: Debug: openPopup({cls.__name__}): popup already open")
-            cls.numPad.lift()
+            cls.erl2NumPad.lift()
+        elif cls.isOpening:
+            #print (f"{__name__}: Debug: openPopup({cls.__name__}): popup in the process of opening")
+            pass
         else:
             #print (f"{__name__}: Debug: openPopup({cls.__name__}): new popup")
-            cls.numPad = Erl2NumPad(erl2context=erl2context)
+            cls.isOpening = True
+            cls.erl2NumPad = Erl2NumPad(parent=parent, erl2context=erl2context)
 
-def testPopup(event):
+def testPopup(event, erl2context={}):
 
-    Erl2NumPad.openPopup(event.widget)
+    Erl2NumPad.openPopup(event.widget, erl2context=erl2context)
 
 def main():
 
@@ -224,8 +253,8 @@ def main():
 
     v = tk.StringVar()
     e = ttk.Entry(root,textvariable=v)
-    e.grid(row=2,column=0)
-    e.bind('<Button-1>', testPopup)
+    e.grid(row=1,column=0)
+    e.bind('<Button-1>', lambda event, cx={'root':root}: testPopup(event,erl2context=cx))
 
     root.mainloop()
 

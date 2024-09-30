@@ -89,7 +89,21 @@ def subthreadReceiveMessage(sock, firstByte=None):
         # check if we've received everything we expected to
         if expected is not None and len(replyString) >= expected:
             #print (f"Erl2Network|subthreadReceiveMessage: Debug: expected [{expected}], finished with [{len(replyString)}]")
-            break
+
+            # let's try ignoring an 'OKAY!' reply
+            if replyString == b"OKAY!":
+
+                #print (f"Erl2Network|subthreadReceiveMessage: Debug: replyString [{replyString}] IGNORED")
+
+                # reset loop variables for another message
+                expected = None
+                replyString = b''
+                data = b''
+
+            # otherwise we're done
+            else:
+                #print (f"Erl2Network|subthreadReceiveMessage: Debug: replyString [{replyString}]")
+                break
 
         # reset loop variable
         firstLoop = False
@@ -128,11 +142,14 @@ def subthreadSendCommand(host,
                 # send whatever command we've been told to send
                 s.sendall(sendString)
 
-                # get the reply, which might be longer than 1024 characters
-                replyString = subthreadReceiveMessage(s)
+                # skip the part of waiting for a reply if this is HANGUP!
+                if command != b"HANGUP!":
 
-                # construct a reply Object to leave in the command results queue
-                replyObj = SimpleNamespace(addr=host, command=command, replyTime=dt.now(tz=tz.utc), replyString=replyString)
+                    # get the reply, which might be longer than 1024 characters
+                    replyString = subthreadReceiveMessage(s)
+
+                    # construct a reply Object to leave in the command results queue
+                    replyObj = SimpleNamespace(addr=host, command=command, replyTime=dt.now(tz=tz.utc), replyString=replyString)
 
             else:
                 pass
@@ -145,11 +162,14 @@ def subthreadSendCommand(host,
         finally:
             s.close()
 
-            # communicate reply by queue or by return value
-            if commandResultsQ is not None:
-                commandResultsQ.put(replyObj)
-            else:
-                return replyObj
+            # check if there was any reply
+            if replyObj is not None:
+
+                # communicate reply by queue or by return value
+                if commandResultsQ is not None:
+                    commandResultsQ.put(replyObj)
+                else:
+                    return replyObj
 
 def subthreadScan(stub,
                   interface,
@@ -551,7 +571,7 @@ class Erl2Network():
                     if 'addr' in adr.keys():
 
                         # skip loopback/localhost address; skip Automatic Private IP Addresses (APIPA)
-                        if adr['addr'] != '127.0.0.1' and re.search('^169\.254\.', adr['addr']) is None:
+                        if adr['addr'] != '127.0.0.1' and re.search(r'^169\.254\.', adr['addr']) is None:
 
                             # figure out any associated MAC address
                             mac = None
@@ -560,9 +580,9 @@ class Erl2Network():
 
                             # addresses that already end in .1 represent networks that a controller can scan for child devices
                             # (also, the user can override this .1 logic and hardcode the controller IP address)
-                            if re.search('\.1$', adr['addr']) is not None or (self.__controllerIP is not None and adr['addr'] == self.__controllerIP):
+                            if re.search(r'\.1$', adr['addr']) is not None or (self.__controllerIP is not None and adr['addr'] == self.__controllerIP):
                                 # strip off the last octet and remember the network 'stub'
-                                self.__networkStubs.append({'IF':i, 'IP':adr['addr'], 'MAC':mac, 'STUB':re.sub('\.[0-9]+$', '.', adr['addr'])})
+                                self.__networkStubs.append({'IF':i, 'IP':adr['addr'], 'MAC':mac, 'STUB':re.sub(r'\.[0-9]+$', '.', adr['addr'])})
 
                             # addresses that don't end in .1 are interfaces that
                             # a child device can listen on for connections from a controller
@@ -812,7 +832,7 @@ class Erl2Network():
                 if 'internalID' not in self.childrenDict[thisMac]:
 
                     # eliminate symbols and spaces
-                    adjustedID = re.sub('(^__*)|(__*$)','',re.sub('\W\W*','_',self.childrenDict[thisMac]['id']))
+                    adjustedID = re.sub('(^__*)|(__*$)','',re.sub(r'\W\W*','_',self.childrenDict[thisMac]['id']))
 
                     # find a sequence number that hasn't already been used
                     rpt = 0
@@ -1015,7 +1035,7 @@ class Erl2Network():
                 elif re.match(b"^GETLOG", rq.inb, flags=re.DOTALL):
 
                     # unpack second parameter (most recent timestamp already sent)
-                    mat = re.search(b'^GETLOG\|(.*)$', rq.inb)
+                    mat = re.search(br'^GETLOG\|(.*)$', rq.inb)
                     if not mat:
                         raise RuntimeError(f"Erl2Network|manageQueues: Error: [{localTimeStr}]: badly formatted GETLOG request")
 
@@ -1045,7 +1065,7 @@ class Erl2Network():
                 elif re.match(b"^SETSTATE", rq.inb, flags=re.DOTALL):
 
                     # unpack second parameter (tank programming instructions)
-                    mat = re.search(b'^SETSTATE\|(.*)$', rq.inb, flags=re.DOTALL)
+                    mat = re.search(br'^SETSTATE\|(.*)$', rq.inb, flags=re.DOTALL)
                     if not mat:
                         #print (f"{self.__class__.__name__}: manageQueues: Debug: received command [{rq.inb}]")
                         raise RuntimeError(f"Erl2Network|manageQueues: Error: badly formatted SETSTATE request")
