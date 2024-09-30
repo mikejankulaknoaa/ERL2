@@ -1,6 +1,7 @@
 # just a spot to collect useful constants + functions that don't need to belong to a class
 
 from os import path,remove,rename
+from time import time as timeTime
 
 # control constants
 OFFLINE=0
@@ -63,12 +64,32 @@ def nextIntervalTime(currentTime, interval):
 
     return retval
 
-def moveFile(fromFile,toFile):
+def moveFile(fromFile,toFile,timeout=10):
 
     # on windows you must first explicitly remove the file you're overwriting
     if path.isfile(toFile):
         remove(toFile)
 
-    # now do the move (renaming)
-    rename(fromFile, toFile)
+    # rename the file, being careful not to run into OneDrive file locking errors
+    startTime = timeTime()
+    while True:
+        try:
+            rename(fromFile, toFile)
+            break
 
+        except PermissionError as e:
+
+            # PermissionError likely due to the file being locked
+            if "being used by another process" in str(e):
+                elapsedTime = timeTime() - startTime
+
+                if elapsedTime > timeout:
+                    print(f"Timeout reached after {timeout} seconds. File is still locked.")
+                    raise RuntimeError(f"{self.__class__.__name__}: moveFile: Error: file {fromFile} still locked after [{timeout}] seconds")
+
+                else:
+                    # Wait and try again
+                    print (f"{self.__class__.__name__}: moveFile: Warning: file {fromFile} is locked, elapsed [{elapsedTime:.2f}] seconds, retrying...")
+                    time.sleep(0.5)
+            else:
+                raise RuntimeError(f"{self.__class__.__name__}: moveFile: Error: renaming file {fromFile} led to unexpected error {e}")

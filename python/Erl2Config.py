@@ -7,7 +7,7 @@ from sys import platform
 from tzlocal import get_localzone
 
 # hardcoded ERL2 version string
-VERSION = '0.085 (2024-09-30)'
+VERSION = '0.086 (2024-09-30b)'
 
 # top-level categories in the erl2.conf file
 CATEGORIES = ['system', 'device', 'network', 'virtualtemp',
