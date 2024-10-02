@@ -1202,6 +1202,11 @@ class Erl2SubSystem():
                 # the controls, and the values to apply
                 manualKeys = list(self.__MFCs.keys())
                 manualSets = self.erl2context['parentState'].get(self.subSystemType, 'manual', None)
+
+                # need a pretty big kludge for DO and the mfc.air control
+                if self.subSystemType == 'DO' and 'mfc.air' in manualKeys:
+                    manualKeys.remove('mfc.air')
+
                 assert(len(manualKeys) == len(manualSets))
 
                 # one control value for each manual control
