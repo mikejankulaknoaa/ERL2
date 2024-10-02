@@ -955,6 +955,11 @@ class Erl2SubSystem():
                         newSetting = self.__PIDs[mfc](currVal)
                         #print (f"{__class__.__name__}: Debug: PID says flow rate for [{mfc}] should be [{newSetting}], given current system value [{currVal}]")
 
+                        # for now, don't let it go lower than the default minimum
+                        vwr = self.__MFCs[mfc].valueWhenReset()
+                        if newSetting < vwr:
+                            newSetting = vwr
+
                         # apply that value to the MFC
                         self.__MFCs[mfc].setControl(newSetting=newSetting)
 

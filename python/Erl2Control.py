@@ -492,6 +492,10 @@ class Erl2Control():
         #    print (f"{self.__class__.__name__}: Debug: resetControl({self.controlType}).setControl({self.__valueWhenReset})")
         self.setControl(newSetting=self.__valueWhenReset, force=True)
 
+    def valueWhenReset(self):
+
+        return self.__valueWhenReset
+
     # placeholder method -- must be overridden in child classes
     def changeHardwareSetting(self):
         pass
