@@ -1,9 +1,11 @@
 import atexit
 from datetime import datetime as dt
 from datetime import timezone as tz
-from multiprocessing import Process, Queue
+from multiprocessing import Process as mpProcess, Queue as mpQueue
 import netifaces
+from os import getpid
 import pickle
+from psutil import Process as psProcess
 import re
 import selectors
 import socket
@@ -397,10 +399,13 @@ class Erl2Network():
         self.__listenTime = None
         self.__scanProcess = None
         self.__childProcesses = {}
-        self.__scanResultsQueue = Queue()
-        self.__commandResultsQueue = Queue()
-        self.__incomingQueue = Queue()
-        self.__outgoingQueue = Queue()
+        self.__scanResultsQueue = mpQueue()
+        self.__commandResultsQueue = mpQueue()
+        self.__incomingQueue = mpQueue()
+        self.__outgoingQueue = mpQueue()
+
+        # also for multithreading... what is the primary ERL2 process id?
+        self.__primaryProcess = psProcess(getpid())
 
         # last network activity of any kind for this device (less useful for a controller)
         self.__lastActive = self.erl2context['state'].get('network','lastActive',None)
@@ -928,11 +933,11 @@ class Erl2Network():
     def wrapperListen(self):
 
         # do this in a separate process thread
-        self.__listenProcess = Process(target=subthreadListen,
-                                       args=(self.__deviceAddresses[0]['IP'],
-                                             self.__incomingQueue,
-                                             self.__outgoingQueue,
-                                             ))
+        self.__listenProcess = mpProcess(target=subthreadListen,
+                                         args=(self.__deviceAddresses[0]['IP'],
+                                               self.__incomingQueue,
+                                               self.__outgoingQueue,
+                                               ))
         self.__listenProcess.start()
         self.__listenTime = dt.now(tz=tz.utc)
 
@@ -942,25 +947,25 @@ class Erl2Network():
         self.__networkLog.writeMessage('initiating subnet scan')
 
         # do this in a separate process thread
-        self.__scanProcess = Process(target=subthreadScan,
-                                     args=(self.__stub,
-                                           self.__interface,
-                                           self.__ip,
-                                           self.__mac,
-                                           self.__ipRange,
-                                           self.__hardcoding,
-                                           self.__scanResultsQueue,
-                                           ))
+        self.__scanProcess = mpProcess(target=subthreadScan,
+                                       args=(self.__stub,
+                                             self.__interface,
+                                             self.__ip,
+                                             self.__mac,
+                                             self.__ipRange,
+                                             self.__hardcoding,
+                                             self.__scanResultsQueue,
+                                             ))
         self.__scanProcess.start()
 
     def wrapperSendCommand(self, mac, command, commandResultsQ):
 
         # do this in a separate process thread
-        proc = Process(target=subthreadSendCommand,
-                       args=(self.childrenDict[mac]['ip'],
-                             command,
-                             commandResultsQ,
-                             ))
+        proc = mpProcess(target=subthreadSendCommand,
+                         args=(self.childrenDict[mac]['ip'],
+                               command,
+                               commandResultsQ,
+                               ))
 
         # clean up the list of child processes, or create it if it doesn't exist yet
         if mac in self.__childProcesses:
@@ -969,9 +974,17 @@ class Erl2Network():
                 if self.__childProcesses[mac][p].is_alive():
                     p += 1
                 else:
+                    # 'join' the terminated process first, to free up resources
+                    self.__childProcesses[mac][p].join()
+
+                    # then delete it
                     del self.__childProcesses[mac][p]
         else:
             self.__childProcesses[mac] = []
+
+        #childProcesses = self.__primaryProcess.children(recursive=True)
+        #activeProcesses = [ x for x in childProcesses if x.is_running() ]
+        #print (f"{self.__class__.__name__}: Debug: wrapperSendCommand: childProcesses [{len(childProcesses)}], activeProcesses[{len(activeProcesses)}]")
 
         # add the new process and start() it
         self.__childProcesses[mac].append(proc)
